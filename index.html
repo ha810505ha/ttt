@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>大冰奶</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- ==================== 左側導覽面板 ==================== -->
+        <aside id="left-panel" class="left-panel">
+            <div class="panel-view-container">
+                <!-- 角色列表視圖 -->
+                <div id="character-view" class="panel-view active">
+                    <header class="panel-header">
+                        <h2>角色列表</h2>
+                        <div>
+                            <button id="theme-toggle-btn" class="icon-btn" title="切換模式"><i class="fa-solid fa-moon"></i></button>
+                            <button id="global-settings-btn" class="icon-btn" title="全域設定"><i class="fa-solid fa-gear"></i></button>
+                        </div>
+                    </header>
+                    <ul id="character-list" class="character-list">
+                        <!-- 角色列表會由 JavaScript 動態生成 -->
+                    </ul>
+                    <button id="add-character-btn" class="add-character-btn">
+                        <i class="fa-solid fa-plus"></i> 新增角色
+                    </button>
+                </div>
+
+                <!-- 聊天室列表視圖 -->
+                <div id="chat-session-view" class="panel-view">
+                    <header class="panel-header">
+                        <button id="back-to-chars-btn" class="icon-btn" title="返回角色列表"><i class="fa-solid fa-arrow-left"></i></button>
+                        <h2 id="chat-list-header-name"></h2>
+                        <button id="edit-active-character-btn" class="icon-btn" title="編輯角色"><i class="fa-solid fa-pencil"></i></button>
+                    </header>
+                    <ul id="chat-session-list" class="chat-session-list">
+                        <!-- 聊天室列表會由 JavaScript 動態生成 -->
+                    </ul>
+                    <button id="add-chat-btn" class="add-character-btn">
+                        <i class="fa-solid fa-plus"></i> 開啟新聊天
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ==================== 右側主聊天面板 ==================== -->
+        <main class="chat-panel">
+             <button id="menu-toggle-btn" class="icon-btn menu-toggle-btn"><i class="fa-solid fa-bars"></i></button>
+            <!-- 初始歡迎畫面 -->
+            <div id="welcome-screen" class="welcome-screen">
+                <i class="fa-solid fa-comments"></i>
+                <h2>歡迎使用「大冰奶」</h2>
+                <p>請從左側選擇一個角色開始對話，或新增一個新角色。</p>
+            </div>
+
+            <!-- 聊天介面 (預設隱藏) -->
+            <div id="chat-interface" class="chat-interface hidden">
+                <header class="chat-header">
+                    <div class="char-info">
+                        <img id="chat-header-avatar" src="" alt="頭像" class="chat-avatar-sm">
+                        <div class="char-info-details">
+                           <h2 id="chat-header-name"></h2>
+                           <input type="text" id="chat-notes-input" class="chat-notes-input" placeholder="新增備註...">
+                        </div>
+                    </div>
+                    <div class="chat-actions">
+                        <button id="delete-current-chat-btn" class="icon-btn" title="刪除目前對話"><i class="fa-solid fa-trash-can"></i></button>
+                        <button id="export-current-chat-btn" class="icon-btn" title="匯出對話紀錄"><i class="fa-solid fa-file-export"></i></button>
+                    </div>
+                </header>
+
+                <div id="chat-window" class="chat-window">
+                    <!-- 聊天訊息會顯示在這裡 -->
+                </div>
+
+                <div class="input-area">
+                    <div class="input-actions">
+                         <button id="prompt-settings-btn" class="action-btn-sm">提示詞設定</button>
+                         <button id="update-memory-btn" class="action-btn-sm">更新記憶</button>
+                    </div>
+                    <div class="message-input-container">
+                        <input type="text" id="message-input" placeholder="在這裡輸入訊息...">
+                        <button id="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <div id="mobile-overlay" class="mobile-overlay hidden"></div>
+    </div>
+
+    <!-- ==================== 彈出視窗 (Modals) ==================== -->
+
+    <div id="rename-chat-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>重新命名對話</h2>
+            <div class="modal-body">
+                <input type="text" id="rename-chat-input" placeholder="請輸入新的對話名稱">
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-rename-chat-btn" class="action-btn secondary">取消</button>
+                <button id="save-rename-chat-btn" class="action-btn primary">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="character-editor-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="character-editor-title">新增角色</h2>
+            <div class="modal-body">
+                <!-- 【修改】改為檔案上傳 -->
+                <label for="char-avatar-upload" class="avatar-upload-label">
+                    <div class="avatar-preview-container">
+                        <img id="char-avatar-preview" src="https://placehold.co/100x100/EFEFEF/AAAAAA?text=頭像" alt="角色頭像預覽" class="avatar-preview">
+                        <div class="avatar-upload-overlay"><i class="fa-solid fa-camera"></i></div>
+                    </div>
+                </label>
+                <input type="file" id="char-avatar-upload" class="avatar-upload-input" accept="image/*">
+                
+                <input type="text" id="char-name" placeholder="角色名稱">
+                <textarea id="char-description" placeholder="角色描述 (性格、背景)"></textarea>
+                <textarea id="char-first-message" placeholder="第一句話 (問候語)"></textarea>
+                <textarea id="char-example-dialogue" placeholder="對話範例 (格式: {{user}}: 你好\n{{char}}: 你好呀)"></textarea>
+                <div class="modal-actions-split">
+                    <button id="import-char-btn" class="action-btn"><i class="fa-solid fa-upload"></i> 匯入</button>
+                    <button id="export-char-btn" class="action-btn"><i class="fa-solid fa-download"></i> 匯出</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="delete-char-btn" class="action-btn danger hidden"><i class="fa-solid fa-trash"></i> 刪除</button>
+                <button id="cancel-char-editor-btn" class="action-btn secondary">取消</button>
+                <button id="save-char-btn" class="action-btn primary">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="global-settings-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>全域設定</h2>
+            <div class="modal-body">
+                <h3>API 設定</h3>
+                <select id="api-provider">
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Claude (Anthropic)</option>
+                    <option value="google">Gemini (Google)</option>
+                    <option value="xai">Grok (xAI)</option>
+                    <option value="mistral">Mistral</option>
+                </select>
+                <select id="api-model-select" placeholder="模型型號"></select>
+                <input type="password" id="api-key" placeholder="API 金鑰">
+
+                <h4>進階參數</h4>
+                <div class="settings-slider-group">
+                    <label for="temperature-slider">溫度 (Temperature)</label>
+                    <input type="range" id="temperature-slider" min="0" max="2" step="0.1">
+                    <input type="number" id="temperature-value" class="slider-value" min="0" max="2" step="0.1">
+                </div>
+                <div class="settings-slider-group">
+                    <label for="top-p-slider">Top P</label>
+                    <input type="range" id="top-p-slider" min="0" max="1" step="0.01">
+                    <input type="number" id="top-p-value" class="slider-value" min="0" max="1" step="0.01">
+                </div>
+                <div class="settings-slider-group">
+                    <label for="repetition-penalty-slider">重複懲罰</label>
+                    <input type="range" id="repetition-penalty-slider" min="0" max="2" step="0.01">
+                    <input type="number" id="repetition-penalty-value" class="slider-value" min="0" max="2" step="0.01">
+                </div>
+                <div class="settings-slider-group">
+                    <label for="context-size-input">上下文大小 (則)</label>
+                    <input type="number" id="context-size-input" class="slider-value" min="0" step="1">
+                </div>
+                <div class="settings-slider-group">
+                    <label for="max-tokens-slider">最大回應長度</label>
+                    <input type="range" id="max-tokens-slider" min="50" max="4096" step="1">
+                    <input type="number" id="max-tokens-value" class="slider-value" min="50" max="4096" step="1">
+                </div>
+
+                <h3>使用者設定</h3>
+                <!-- 【修改】改為檔案上傳 -->
+                <label for="user-avatar-upload" class="avatar-upload-label">
+                    <div class="avatar-preview-container">
+                        <img id="user-avatar-preview" src="https://placehold.co/100x100/EFEFEF/AAAAAA?text=頭像" alt="使用者頭像預覽" class="avatar-preview">
+                        <div class="avatar-upload-overlay"><i class="fa-solid fa-camera"></i></div>
+                    </div>
+                </label>
+                <input type="file" id="user-avatar-upload" class="avatar-upload-input" accept="image/*">
+                
+                <input type="text" id="user-name" placeholder="您的名稱">
+                <textarea id="user-description" placeholder="您的角色描述或個人設定"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-global-settings-btn" class="action-btn secondary">取消</button>
+                <button id="save-global-settings-btn" class="action-btn primary">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="prompt-settings-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>提示詞設定</h2>
+            <div id="prompt-settings-body" class="modal-body">
+                <!-- 提示詞設定會由 JavaScript 動態生成 -->
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-prompt-settings-btn" class="action-btn secondary">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
