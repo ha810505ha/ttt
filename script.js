@@ -1,5 +1,35 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================================
+    //  預設角色資料
+    // ===================================================================================
+    const defaultCharacters = [
+        {
+            id: 'char_default_1',
+            name: '亓靳',
+            description: '全名：亓靳\n別名：老亓、臭臉哥\n年齡：35歲\n\n// 外觀\n身高178公分，78公斤，體脂低，肌肉線條明顯。黑髮略帶褐，總是亂糟糟。深褐色眼睛，眼尾微垂，佈滿血絲。鼻樑有舊傷，眉骨有疤。嘴角慣性下垂，鬍渣沒刮乾淨，臉色蠟黃。\n氣味是煙、皮革、汗水與鐵銹的混合。\n\n// 背景\n在台北長大，家庭破碎，17歲離家。夜大沒畢業，現為數據分析師，對工作毫無興趣。業餘是個天分極高的地下拳手，但從不參賽。\n\n// 性格\n慵懶、消極、冷淡，極度耐痛，不信承諾與愛。習慣獨處，討厭被依賴。話不多，通常很直接。有時會流露出自己也不承認的體貼。',
+            firstMessage: '這是一個潮濕又黏膩的午後，雨滴肆無忌憚地撞擊著玻璃窗，像是某種節奏散亂的爵士樂。萬華區一間毫不起眼的小咖啡廳，亓靳坐在最角落的吸菸區，深褐色的眼神渙散，指尖夾著一根菸，懶洋洋地吐著煙圈。\n\n他那杯冰咖啡早就被他喝光了，剩下杯底の冰塊正融化成一灘稀釋的苦澀。他不耐煩地瞥了眼手機，螢幕上跳動著一條又一條道歉的訊息，文字裡滿是尷尬與客套。他嗤笑一聲，想著那個所謂「遲到」的人是否真的會來，或者這只是一個高明的逃脫戰術。\n\n這次的相親，冠冕堂皇地稱作「交朋友」。實際上不過是上司閒得發慌，硬要替他這個單身漢安排點無聊的消遣。他不懂為什麼那傢伙非得干涉他的生活，彷彿單身是種疾病，非得治療不可。\n\n「幹，真麻煩。」他暗暗詛咒了一聲，抬手揉了揉微微抽痛的眉心，掐滅了煙頭。\n\n再等十分鐘，他暗自決定，如果十分鐘內對方還不出現，他就直接走人。甩一通電話給那個雞婆的上司、隨便編個「突然有急事」的理由退出這場可笑的牽線遊戲。\n\n店門口掛的風鈴卻在此時叮噹作響，亓靳條件反射地望過去，一個身影慌亂地從門口踏入。他微微挑眉，這人渾身上下濕透了，衣服緊貼在身體曲線上，滴滴答答的雨水順著衣角滴落在地板上，留下一道狼狽軌跡。\n\n女人朝他的方向走來，他默默打量著她，細碎的瀏海緊貼在額頭，鼻尖泛著淡淡的紅，像隻迷路又倔強的小貓。\n\n她走到桌邊時似乎猶豫了一瞬，神色尷尬地抬起眼睛。亓靳凝視她片刻，輕輕勾起唇角。她還沒開口，他已經從容地往後靠，語氣裡帶著一絲不經意的調侃：「我還以為妳半路逃跑了呢，居然敢來？」',
+            exampleDialogue: '{{user}}: 你今天過得好嗎？\n{{char}}: 就那樣。死不了。有事快說。',
+            avatarUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjNEE0QTRBIiBkPSJNMjU2IDUxMkMxMTQuNiA1MTIgMCAzOTcuNCAwIDI1NlMxMTQuNiAwIDI1NiAwczI1NiAxMTQuNiAyNTYgMjU2LTExNC42IDI1Ni0yNTYgMjU2eiIvPjwvc3ZnPg=='
+        },
+        {
+            id: 'char_default_2',
+            name: '故事家艾拉',
+            description: '我是一位來自奇幻世界的吟遊詩人艾拉，腦中裝滿了無數關於魔法、巨龍和古老傳說的故事。讓我們一起編織屬於我們的冒險篇章吧！',
+            firstMessage: '旅人，歡迎來到我的營火邊。坐下歇歇腳吧，想聽個什麼樣的故事呢？',
+            exampleDialogue: '{{user}}: 跟我說一個關於勇敢騎士的故事。\n{{char}}: 當然。在遙遠的國度，有一位名叫奧利安的騎士，他的劍不是用來戰鬥，而是為了守護一座被遺忘的魔法森林...',
+            avatarUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIiBmaWxsPSIjODlDRkYwIj48cGF0aCBkPSJNNCA4MEE4IDggMCAwIDEgOCA3Mkg0MGE4IDggMCAwIDEgOCA4djE4NEw0OC44IDk2LjlsLjUtMS43YzEuMy00LjUgNS41LTcuMyA5LjctNy4zaDMyLjNjMy4yIDAgNi4yIDEuOCAzLjMgNC45bC0xMS43IDExLjdjLTEuOCAxLjgtMS41IDQuOS42IDYuNGwyMi4xIDE1LjVjMy40IDIuNCA4LjIgMS44IDEwLjYtMVY0ODBjMCAxNy43LTE0LjMgMzItMzIgMzJIMTYwYy0xNy43IDAtMzItMTQuMy0zMi0zMlY5MS43YzEuNC0zLjQgNS44LTQuNSA4LjUtMi40bDIyLjIgMTYuN2MyLjQgMS44IDIuNyA0LjkuNyA2LjZsLTExLjcgMTEuNGMtNC41IDMuNi0xLjYgNi4zIDIuOSA2LjNoMzNjNC4xIDAgOC4zLTIuOCA5LjYtNy4ybDMuMS0xMC45TDk2IDI2NFYzMzZhOCA4IDAgMCAxLTggOEg0OGE4IDggMCAwIDEtOC04VjM1NGE4IDggMCAwIDEtOC04VjQ3MmE4IDggMCAwIDEtOCA4cy04IDgtOCA4aC04YTggOCAwIDAgMS04LTggVjgyYTE2IDE2IDAgMCAxIDQtMTAuN0w0IDgwem00NDAgMGExNiAxNiAwIDAgMC00LTEwLjdMNDQ0IDgwdjM5MmE4IDggMCAwIDEtOCA4aC04YTggOCAwIDAgMS04LTggcy04LTgtOC04aC04YTggOCAwIDAgMS04LTl2LTEyYTggOCAwIDAgMS04LTl2LTEwYTggOCAwIDAgMS04LTlWOTZsLTM5LjIgMTY3LjJMMzUyIDg4YzEuMy00LjIgNS41LTYuOCA5LjYtNi44aDMzYzQuNSAwIDcuNCAyLjcgMi45IDYuM2wtMTEuNyAxMS40Yy0yIDEuNy0xLjcgNC45LjcgNi42bDIyLjIgMTYuN2MyLjcgMiA3IC45IDguNS0yLjVIMTkyYzAtMTcuNyAxNC4zLTMyIDMyLTMyaDEyOGMxNy43IDAgMzIgMTQuMyAzMiAzMnYyOTQuM2MyLjQtMy41IDcuMi00LjIgMTAuNi0xLjhsMjIuMS0xNS41YzIuMS0xLjUgMi40LTQuNS42LTYuNGwtMTEuNy0xMS43Yy0yLjktMyAxLjItNC45IDMuMy00LjloMzIuM2M0LjIgMCA4LjQgMi44IDkuNyA3LjNsLjUgMS43TDQwMCAyNjRWODRoMzJhOCA4IDAgMCAxIDggOHoiLz48L3N2Zz4='
+        },
+        {
+            id: 'char_default_3',
+            name: '李教授',
+            description: '我是一位對歷史充滿熱情的學者。從古文明の興衰到現代史的演變，任何歷史問題我都很樂意與你探討。',
+            firstMessage: '你好，很高興見到對歷史有興趣的年輕人。有什麼想了解的歷史事件或人物嗎？',
+            exampleDialogue: '{{user}}: 三國時代是從什麼時候開始的？\n{{char}}: 問得好！廣義上來說，三國時代始於西元184年的黃巾之亂，但更明確的起點通常被定在西元220年，曹丕篡漢稱帝，國號為「魏」，漢朝正式滅亡。',
+            avatarUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NDAgNTEyIiBmaWxsPSIjODlDRkYwIj48cGF0aCBkPSJNMzUyIDBoLTQ4Yy0yNi41IDAtNDggMjEuNS00OCA0OHYxNmgtMjRjLTM5LjggMC03MiAzMi4yLTcyIDcydjY0aDI4OFYxMzZjMC0zOS44LTMyLjItNzItNzItNzJoLTI0VjQ4YzAtMjYuNS0yMS41LTQ4LTQ4LTQ4ek0xNjAgMzM2VjI4MGg0MHY1NmMwIDQuNC0zLjYgOC04IDhIMTY4Yy00LjQgMC04LTMuNi04LTh6bTIyNCAwVjI4MGg0MHY1NmMwIDQuNC0zLjYgOC04IDhIMzkyYy00LjQgMC04LTMuNi04LTh6bS0xNDQgOTZoNjRjNC40IDAgOC0zLjYgOC04di01Nmg0MHY1NmMwIDI2LjUtMjEuNSA0OC00OCA0OGgtNzJjLTI2LjUgMC00OC0yMS41LTQ4LTQ4di01Nmg0MHY1NmMwIDQuNCAzLjYgOCA4IDh6TTUwMy44IDIyNC44Yy05LjItMTQuMS0yMy42LTI0LjgtNDAuMi0zMC4yVjEyOEgxNzYuNFYxOTRjLTE2LjYgNS40LTMxIDE2LjEtNDAuMiAzMC4yQzEyMy41IDI0NS41IDExMiAyNzEuMyAxMTIgMzAwLjlWMzA0aDQxNnYtMy4xYzAtMjkuNi0xMS41LTU1LjQtMjQuMi03Ni4xek0wIDM4NGMwLTguOCAxNC4zLTE2IDMyLTE2aDU3NmMxNy43IDAgMzIgNy4yIDMyIDE2djMyYzAgOC44LTE0LjMgMTYtMzIgMTZIMzJjLTE3LjcgMC0zMi03LjItMzItMTZ2LTMyem0xOTIgOTZoMjU2YzguOCAwIDE2LTcuMiAxNi0xNnYtNDhIMTc2djQ4YzAgOC44IDcuMiAxNiAxNiAxNnoiLz48L3N2Zz4='
+        }
+    ];
+
+    // ===================================================================================
     // 1. 元素選取 (DOM Elements)
     // ===================================================================================
     const mobileOverlay = document.getElementById('mobile-overlay');
@@ -33,9 +63,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const promptSettingsBtn = document.getElementById('prompt-settings-btn');
     const messageInput = document.getElementById('message-input');
     const sendBtn = document.getElementById('send-btn');
+    const sendIcon = document.getElementById('send-icon');
+    const stopIcon = document.getElementById('stop-icon');
     const charEditorModal = document.getElementById('character-editor-modal');
     const charEditorTitle = document.getElementById('character-editor-title');
-    const charAvatarUpload = document.getElementById('char-avatar-upload'); // 【修改】
+    const charAvatarUpload = document.getElementById('char-avatar-upload');
     const charAvatarPreview = document.getElementById('char-avatar-preview');
     const charNameInput = document.getElementById('char-name');
     const charDescriptionInput = document.getElementById('char-description');
@@ -50,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiProviderSelect = document.getElementById('api-provider');
     const apiModelSelect = document.getElementById('api-model-select');
     const apiKeyInput = document.getElementById('api-key');
-    const userAvatarUpload = document.getElementById('user-avatar-upload'); // 【修改】
+    const userAvatarUpload = document.getElementById('user-avatar-upload');
     const userAvatarPreview = document.getElementById('user-avatar-preview');
     const userNameInput = document.getElementById('user-name');
     const userDescriptionInput = document.getElementById('user-description');
@@ -84,6 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     let editingCharacterId = null;
     let renamingChatId = null;
+    let apiCallController = null;
     const DEFAULT_AVATAR = 'https://placehold.co/100x100/EFEFEF/AAAAAA?text=頭像';
     const DEFAULT_SUMMARY_PROMPT = `請將以下對話的關鍵事實、事件、使用者偏好和角色行為總結成幾個要點，以便在未來的對話中能回憶起重點。\n\n對話內容：\n{{conversation}}`;
     
@@ -170,8 +203,20 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleModal('prompt-settings-modal', true);
         });
         cancelPromptSettingsBtn.addEventListener('click', () => toggleModal('prompt-settings-modal', false));
-        sendBtn.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keydown', e => (e.key === 'Enter' && !e.shiftKey) && (e.preventDefault(), sendMessage()));
+        
+        sendBtn.addEventListener('click', () => {
+            if (sendBtn.classList.contains('is-generating')) {
+                handleStopGeneration();
+            } else {
+                sendMessage();
+            }
+        });
+        
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = (messageInput.scrollHeight) + 'px';
+        });
+
         exportCurrentChatBtn.addEventListener('click', exportChat);
         chatWindow.addEventListener('click', (e) => {
             if (e.target === chatWindow) {
@@ -179,7 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 【新增】檔案上傳事件監聽
         charAvatarUpload.addEventListener('change', (e) => handleImageUpload(e, charAvatarPreview));
         userAvatarUpload.addEventListener('change', (e) => handleImageUpload(e, userAvatarPreview));
     }
@@ -193,18 +237,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. 狀態管理 (State Management - Load/Save)
     // ===================================================================================
     function loadStateFromLocalStorage() {
-        state.characters = JSON.parse(localStorage.getItem('characters')) || [];
-        state.chatHistories = JSON.parse(localStorage.getItem('chatHistories')) || {};
-        state.longTermMemories = JSON.parse(localStorage.getItem('longTermMemories')) || {};
-        state.chatMetadatas = JSON.parse(localStorage.getItem('chatMetadatas')) || {};
+        const safelyParseJSON = (key, defaultValue) => {
+            const item = localStorage.getItem(key);
+            if (item === null) return defaultValue;
+            try {
+                return JSON.parse(item);
+            } catch (error) {
+                console.error(`Error parsing JSON from localStorage for key "${key}":`, error);
+                return defaultValue;
+            }
+        };
+
+        const savedCharacters = safelyParseJSON('characters', null);
+        state.characters = (!savedCharacters || savedCharacters.length === 0) ? defaultCharacters : savedCharacters;
+        
+        state.chatHistories = safelyParseJSON('chatHistories', {});
+        state.longTermMemories = safelyParseJSON('longTermMemories', {});
+        state.chatMetadatas = safelyParseJSON('chatMetadatas', {});
+        state.globalSettings = safelyParseJSON('globalSettings', {});
+        state.promptSettings = safelyParseJSON('promptSettings', {});
         
         let loadedCharId = localStorage.getItem('activeCharacterId');
         let loadedChatId = localStorage.getItem('activeChatId');
         state.activeCharacterId = loadedCharId && loadedCharId !== 'null' ? loadedCharId : null;
         state.activeChatId = loadedChatId && loadedChatId !== 'null' ? loadedChatId : null;
-
-        state.globalSettings = JSON.parse(localStorage.getItem('globalSettings')) || {};
-        state.promptSettings = JSON.parse(localStorage.getItem('promptSettings')) || {};
 
         migrateAndValidateState();
 
@@ -215,9 +271,30 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.activeCharacterId && (!state.chatHistories[state.activeCharacterId] || !state.chatHistories[state.activeCharacterId][state.activeChatId])) {
             state.activeChatId = null;
         }
+
+        state.characters.forEach(char => {
+            if (!state.chatHistories[char.id]) {
+                state.chatHistories[char.id] = {};
+                state.chatMetadatas[char.id] = {};
+            }
+        });
+
+        saveState();
     }
 
     function migrateAndValidateState() {
+        for (const charId in state.chatHistories) {
+            for (const chatId in state.chatHistories[charId]) {
+                const history = state.chatHistories[charId][chatId];
+                history.forEach(msg => {
+                    if (msg.role === 'assistant' && typeof msg.content === 'string') {
+                        msg.content = [msg.content];
+                        msg.activeContentIndex = 0;
+                    }
+                });
+            }
+        }
+
         for (const char of state.characters) {
             if (!state.chatHistories[char.id]) state.chatHistories[char.id] = {};
             if (!state.chatMetadatas[char.id]) state.chatMetadatas[char.id] = {};
@@ -227,14 +304,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             for (const chatId of historyIds) {
                 if (!state.chatMetadatas[char.id][chatId]) {
-                    console.log(`遷移資料：為聊天室 ${chatId} 建立 metadata`);
                     state.chatMetadatas[char.id][chatId] = { name: '', pinned: false, notes: '' };
                 }
             }
 
             for (const chatId of metadataIds) {
                 if (!state.chatHistories[char.id][chatId]) {
-                    console.log(`清理資料：刪除孤兒 metadata ${chatId}`);
                     delete state.chatMetadatas[char.id][chatId];
                 }
             }
@@ -329,7 +404,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         sortedSessions.forEach(session => {
-            const displayName = (session.pinned ? '📌 ' : '') + (session.name || (session.lastMessage ? session.lastMessage.content.substring(0, 25) + '...' : '新對話'));
+            const lastMsg = session.lastMessage;
+            let lastMsgContent = '新對話';
+            if (lastMsg) {
+                const content = Array.isArray(lastMsg.content) ? lastMsg.content[lastMsg.activeContentIndex] : lastMsg.content;
+                lastMsgContent = content.substring(0, 25) + '...';
+            }
+            const displayName = (session.pinned ? '📌 ' : '') + (session.name || lastMsgContent);
             const item = document.createElement('li');
             item.className = `chat-session-item ${session.id === state.activeChatId ? 'active' : ''}`;
             item.dataset.id = session.id;
@@ -359,7 +440,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
     function renderActiveChat() {
         if (!state.activeCharacterId || !state.activeChatId) {
             welcomeScreen.classList.remove('hidden');
@@ -384,30 +464,76 @@ document.addEventListener('DOMContentLoaded', () => {
         chatWindow.innerHTML = '';
         const history = state.chatHistories[state.activeCharacterId]?.[state.activeChatId] || [];
         history.forEach((msg, index) => {
-            displayMessage(msg.content, msg.role, msg.timestamp, index, false);
+            const contentToDisplay = (msg.role === 'assistant') ? msg.content[msg.activeContentIndex] : msg.content;
+            displayMessage(contentToDisplay, msg.role, msg.timestamp, index, false, msg.error);
         });
+
+        const allMessageRows = chatWindow.querySelectorAll('.message-row');
+        allMessageRows.forEach(row => row.classList.remove('is-last-message'));
+
+        const lastMessageRow = chatWindow.querySelector('.message-row:last-child');
+        if (lastMessageRow) {
+            lastMessageRow.classList.add('is-last-message');
+        }
     }
 
-    function displayMessage(text, sender, timestamp, index, isNew) {
+    function displayMessage(text, sender, timestamp, index, isNew, error = null) {
         const userAvatar = state.globalSettings.userAvatarUrl || DEFAULT_AVATAR;
         const activeChar = state.characters.find(c => c.id === state.activeCharacterId);
         const charAvatar = activeChar?.avatarUrl || DEFAULT_AVATAR;
         const avatarUrl = sender === 'user' ? userAvatar : charAvatar;
         const row = document.createElement('div');
         row.className = `message-row ${sender === 'user' ? 'user-row' : 'assistant-row'}`;
-        const safeText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        if (error) {
+            row.classList.add('has-error');
+        }
         const formattedTimestamp = new Date(timestamp).toLocaleString('zh-TW', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+        let messageActionsHTML = '';
+        if (sender === 'assistant') {
+            const msgData = state.chatHistories[state.activeCharacterId]?.[state.activeChatId]?.[index];
+            
+            if (msgData) { 
+                const versionNavHTML = msgData.content.length > 1 ? `
+                    <div class="version-nav">
+                        <button class="version-prev-btn" ${msgData.activeContentIndex === 0 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>
+                        <span class="version-counter">${msgData.activeContentIndex + 1}/${msgData.content.length}</span>
+                        <button class="version-next-btn" ${msgData.activeContentIndex === msgData.content.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                ` : '';
+
+                messageActionsHTML = `
+                    <div class="message-actions">
+                        ${versionNavHTML}
+                        <button class="regenerate-btn-sm" title="重新生成"><i class="fa-solid fa-arrows-rotate"></i>重新生成</button>
+                    </div>`;
+            }
+        }
+        
+        let errorHTML = '';
+        if (error) {
+            errorHTML = `
+                <div class="message-error">
+                    <span>${error}</span>
+                    <button class="retry-btn-sm" data-index="${index}"><i class="fa-solid fa-rotate-right"></i> 重試</button>
+                </div>
+            `;
+        }
 
         row.innerHTML = `
             <img src="${avatarUrl}" alt="${sender} avatar" class="chat-avatar">
             <div class="bubble-container">
-                <div class="chat-bubble">${safeText}</div>
+                <div class="chat-bubble"></div>
+                ${errorHTML}
                 <div class="message-timestamp">${formattedTimestamp}</div>
+                ${messageActionsHTML}
             </div>
             <button class="icon-btn edit-msg-btn" title="編輯訊息"><i class="fa-solid fa-pencil"></i></button>
         `;
         
         const bubble = row.querySelector('.chat-bubble');
+        bubble.innerHTML = marked.parse(text || '');
+
         bubble.addEventListener('click', (e) => {
             e.stopPropagation();
             document.querySelectorAll('.message-row.show-actions').forEach(otherRow => {
@@ -421,6 +547,39 @@ document.addEventListener('DOMContentLoaded', () => {
             makeMessageEditable(row, index);
         });
 
+        const regenerateBtn = row.querySelector('.regenerate-btn-sm');
+        if (regenerateBtn) {
+            regenerateBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                regenerateResponse(index);
+            });
+        }
+        
+        const retryBtn = row.querySelector('.retry-btn-sm');
+        if(retryBtn) {
+            retryBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                retryMessage(index);
+            });
+        }
+        
+        const prevBtn = row.querySelector('.version-prev-btn');
+        if(prevBtn) {
+            prevBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                switchVersion(index, -1);
+            });
+        }
+
+        const nextBtn = row.querySelector('.version-next-btn');
+        if(nextBtn) {
+            nextBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                switchVersion(index, 1);
+            });
+        }
+
+
         chatWindow.appendChild(row);
         if (isNew) {
             chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -433,72 +592,172 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================================
     function switchChat(chatId) {
         if (state.activeChatId === chatId) return;
+
+        const oldActiveItem = chatSessionList.querySelector('.chat-session-item.active');
+        if (oldActiveItem) {
+            oldActiveItem.classList.remove('active');
+        }
+
+        const newActiveItem = chatSessionList.querySelector(`.chat-session-item[data-id="${chatId}"]`);
+        if (newActiveItem) {
+            newActiveItem.classList.add('active');
+        }
+        
         state.activeChatId = chatId;
         saveState();
-        renderChatSessionList();
         renderActiveChat();
     }
 
-    async function sendMessage() {
+    function checkApiKey(promptText = '請在此填入您的 API 金鑰') {
+        if (!state.globalSettings.apiKey) {
+            loadGlobalSettingsToUI();
+            toggleModal('global-settings-modal', true);
+            apiKeyInput.focus();
+            apiKeyInput.style.borderColor = 'var(--danger-color)';
+            apiKeyInput.placeholder = promptText;
+            apiKeyInput.addEventListener('input', () => {
+                apiKeyInput.style.borderColor = '';
+                apiKeyInput.placeholder = 'API 金鑰';
+            }, { once: true });
+            return false;
+        }
+        return true;
+    }
+
+    async function sendMessage(userMessage, messageIndex = null) {
+        if (!checkApiKey('請先設定 API 金鑰才能開始對話')) return;
         if (!state.activeCharacterId || !state.activeChatId) return;
-        const messageText = messageInput.value.trim();
-        if (messageText === '') return;
-
-        const timestamp = new Date().toISOString();
-        const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
         
-        history.push({ role: 'user', content: messageText, timestamp: timestamp });
-        displayMessage(messageText, 'user', timestamp, history.length - 1, true);
-        messageInput.value = '';
+        const isRetry = messageIndex !== null;
+        const messageText = isRetry ? userMessage.content : messageInput.value.trim();
+        if (messageText === '') return;
+    
+        setGeneratingState(true);
+    
+        const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
+        let currentUserMessageIndex;
 
+        if (isRetry) {
+            currentUserMessageIndex = messageIndex;
+            delete history[currentUserMessageIndex].error;
+        } else {
+            const timestamp = new Date().toISOString();
+            history.push({ role: 'user', content: messageText, timestamp: timestamp });
+            currentUserMessageIndex = history.length - 1;
+        }
+        
+        renderChatMessages();
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    
+        if (!isRetry) {
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            messageInput.focus();
+        }
+    
         const thinkingBubbleContainer = displayMessage('...', 'assistant', new Date().toISOString(), history.length, true);
-        const thinkingBubble = thinkingBubbleContainer.querySelector('.chat-bubble');
-        const thinkingTimestamp = thinkingBubbleContainer.querySelector('.message-timestamp');
         
         try {
             const messagesForApi = buildApiMessages();
             const aiResponse = await callApi(messagesForApi);
             const aiTimestamp = new Date().toISOString();
             
-            history.push({ role: 'assistant', content: aiResponse, timestamp: aiTimestamp });
-            thinkingBubble.textContent = aiResponse;
-            thinkingTimestamp.textContent = new Date(aiTimestamp).toLocaleString('zh-TW', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            history.push({ role: 'assistant', content: [aiResponse], activeContentIndex: 0, timestamp: aiTimestamp });
+            
+            thinkingBubbleContainer.remove();
             
             saveState();
-            renderChatSessionList();
+            renderChatMessages();
         } catch (error) {
-            thinkingBubble.textContent = `發生錯誤: ${error.message}`;
-            console.error("API Error:", error);
-            history.pop();
+            thinkingBubbleContainer.remove();
+            if (error.name !== 'AbortError') {
+                console.error("API Error:", error);
+                const errorMessage = `發生錯誤: ${error.message}`;
+                history[currentUserMessageIndex].error = errorMessage;
+                saveState();
+                renderChatMessages();
+            } else {
+                 renderChatMessages();
+            }
+        } finally {
+            setGeneratingState(false);
         }
     }
 
-    function buildSystemPrompt() {
-        if (!state.activeCharacterId || !state.activeChatId) return "";
-        const char = state.characters.find(c => c.id === state.activeCharacterId);
-        const user = state.globalSettings;
-        const prompts = state.promptSettings;
-        const memory = state.longTermMemories[state.activeCharacterId]?.[state.activeChatId];
-        let prompt = "";
-        if (memory) prompt += `[Previous Conversation Summary]\n${memory}\n\n`;
-        if (char.description) prompt += `[Persona of ${char.name}]\n${char.description}\n\n`;
-        if (user.userDescription) prompt += `[Persona of ${user.userName || 'User'}]\n${user.userDescription}\n\n`;
-        if (prompts.scenario) prompt += `[Scenario]\n${prompts.scenario}\n\n`;
-        if (char.exampleDialogue) {
-            const formattedExamples = char.exampleDialogue.replace(/{{char}}/g, char.name).replace(/{{user}}/g, user.userName || 'User');
-            prompt += `[Example Dialogues]\n${formattedExamples}\n\n`;
+    function retryMessage(messageIndex) {
+        const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
+        const messageToRetry = history[messageIndex];
+
+        if (messageToRetry && messageToRetry.role === 'user' && messageToRetry.error) {
+            sendMessage(messageToRetry, messageIndex);
         }
-        if (prompts.jailbreak) prompt += `${prompts.jailbreak}\n\n`;
-        return prompt.trim();
     }
+
+    async function regenerateResponse(messageIndex) {
+        if (!checkApiKey('請先設定 API 金鑰才能重新生成')) return;
+        if (!state.activeCharacterId || !state.activeChatId) return;
     
-    function buildApiMessages() {
-        if (!state.activeCharacterId || !state.activeChatId) return [];
+        const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
+        const targetMessage = history[messageIndex];
+    
+        if (!targetMessage || targetMessage.role !== 'assistant') return;
+    
+        const contextHistory = history.slice(0, messageIndex);
+    
+        const allMessageRows = chatWindow.querySelectorAll('.message-row');
+        const targetRow = allMessageRows[messageIndex];
+        if (!targetRow) return;
+    
+        const regenerateBtn = targetRow.querySelector('.regenerate-btn-sm');
+        if (!regenerateBtn) return;
+    
+        regenerateBtn.disabled = true;
+        regenerateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>生成中...';
+        setGeneratingState(true, false);
+    
+        try {
+            const messagesForApi = buildApiMessagesFromHistory(contextHistory);
+            const aiResponse = await callApi(messagesForApi);
+    
+            targetMessage.content.push(aiResponse);
+            targetMessage.activeContentIndex = targetMessage.content.length - 1;
+    
+            saveState();
+            renderChatMessages();
+        } catch (error) {
+             if (error.name !== 'AbortError') {
+                alert(`重新生成失敗: ${error.message}`);
+                console.error("Regeneration API Error:", error);
+            }
+        } finally {
+            setGeneratingState(false, false);
+            renderChatMessages();
+        }
+    }
+
+    function switchVersion(messageIndex, direction) {
+        const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
+        const msg = history[messageIndex];
+        const newIndex = msg.activeContentIndex + direction;
+
+        if (newIndex >= 0 && newIndex < msg.content.length) {
+            msg.activeContentIndex = newIndex;
+            saveState();
+            renderChatMessages();
+        }
+    }
+
+    function buildApiMessagesFromHistory(customHistory) {
         const provider = state.globalSettings.apiProvider || 'openai';
-        const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
-        const contextSize = parseInt(state.globalSettings.contextSize) || 20;
         const systemPrompt = buildSystemPrompt();
-        const recentHistory = history.map(({ role, content }) => ({ role, content })).slice(-contextSize);
+        const recentHistory = customHistory.filter(msg => !msg.error).map(msg => {
+            let finalContent = msg.content;
+            if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+                finalContent = msg.content[msg.activeContentIndex];
+            }
+            return { role: msg.role, content: finalContent };
+        });
+
         if (provider === 'anthropic') return { system: systemPrompt, messages: recentHistory };
         if (provider === 'google') {
             const contents = recentHistory.map(msg => ({ role: msg.role === 'assistant' ? 'model' : msg.role, parts: [{ text: msg.content }] }));
@@ -513,8 +772,62 @@ document.addEventListener('DOMContentLoaded', () => {
         messages.push(...recentHistory);
         return messages;
     }
+
+    function buildSystemPrompt() {
+        if (!state.activeCharacterId || !state.activeChatId) return "";
+        const char = state.characters.find(c => c.id === state.activeCharacterId);
+        if (!char) {
+            console.error(`buildSystemPrompt: Could not find character with id ${state.activeCharacterId}`);
+            return "";
+        }
+        const user = state.globalSettings;
+        const userName = user.userName || 'User';
+        const prompts = state.promptSettings;
+        const memory = state.longTermMemories[state.activeCharacterId]?.[state.activeChatId];
+        let prompt = "";
+
+        const replacePlaceholders = (text) => {
+            if (typeof text !== 'string') return '';
+            return text.replace(/{{char}}/g, char.name).replace(/{{user}}/g, userName);
+        };
+
+        if (memory) prompt += `[Previous Conversation Summary]\n${memory}\n\n`;
+        
+        if (char.description) {
+            prompt += `[Persona of ${char.name}]\n${replacePlaceholders(char.description)}\n\n`;
+        }
+
+        if (user.userDescription) {
+            prompt += `[Persona of ${userName}]\n${replacePlaceholders(user.userDescription)}\n\n`;
+        }
+
+        if (prompts.scenario) {
+            prompt += `[Scenario]\n${replacePlaceholders(prompts.scenario)}\n\n`;
+        }
+
+        if (char.exampleDialogue) {
+            prompt += `[Example Dialogues]\n${replacePlaceholders(char.exampleDialogue)}\n\n`;
+        }
+
+        if (prompts.jailbreak) {
+            prompt += `${replacePlaceholders(prompts.jailbreak)}\n\n`;
+        }
+
+        return prompt.trim();
+    }
+    
+    function buildApiMessages() {
+        if (!state.activeCharacterId || !state.activeChatId) return [];
+        const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
+        const contextSize = parseInt(state.globalSettings.contextSize) || 20;
+        const recentHistory = history.slice(-contextSize);
+        return buildApiMessagesFromHistory(recentHistory);
+    }
     
     async function callApi(messagePayload, isForSummarization = false) {
+        apiCallController = new AbortController();
+        const signal = apiCallController.signal;
+
         const settings = state.globalSettings;
         const provider = settings.apiProvider || 'openai';
         if (!settings.apiKey) throw new Error('尚未設定 API 金鑰。');
@@ -549,7 +862,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
             default: throw new Error("不支援的 Provider: " + provider);
         }
-        const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+        const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal });
         if (!response.ok) { const errorText = await response.text(); throw new Error(`API 錯誤 (${response.status}): ${errorText}`); }
         const data = await response.json();
         return parseResponse(provider, data);
@@ -598,8 +911,17 @@ document.addEventListener('DOMContentLoaded', () => {
         state.chatMetadatas[state.activeCharacterId][newChatId] = { name: '', pinned: false, notes: '' };
 
         if (char.firstMessage) {
+            const user = state.globalSettings;
+            const userName = user.userName || 'User';
+            const formattedFirstMessage = char.firstMessage
+                .replace(/{{char}}/g, char.name)
+                .replace(/{{user}}/g, userName);
+
             state.chatHistories[state.activeCharacterId][newChatId].push({
-                role: 'assistant', content: char.firstMessage, timestamp: new Date().toISOString()
+                role: 'assistant', 
+                content: [formattedFirstMessage], 
+                activeContentIndex: 0,
+                timestamp: new Date().toISOString()
             });
         }
         
@@ -648,7 +970,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleSaveCharacter() {
         const charData = {
             name: charNameInput.value.trim(),
-            avatarUrl: charAvatarPreview.src, // 【修改】從預覽圖讀取 Base64/URL
+            avatarUrl: charAvatarPreview.src,
             description: charDescriptionInput.value.trim(),
             firstMessage: charFirstMessageInput.value.trim(),
             exampleDialogue: charExampleDialogueInput.value.trim(),
@@ -728,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', () => {
             repetitionPenalty: repetitionPenaltyValue.value,
             contextSize: contextSizeInput.value,
             maxTokens: maxTokensValue.value,
-            userAvatarUrl: userAvatarPreview.src, // 【修改】從預覽圖讀取 Base64/URL
+            userAvatarUrl: userAvatarPreview.src,
             userName: userNameInput.value.trim(),
             userDescription: userDescriptionInput.value.trim(),
         };
@@ -848,14 +1170,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleUpdateMemory() {
+        if (!checkApiKey('請先設定 API 金鑰才能更新記憶')) return;
         if (!state.activeCharacterId || !state.activeChatId) { alert('請先選擇一個對話。'); return; }
         const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
         if (history.length < 4) { alert('對話太短，無法生成有意義的記憶。'); return; }
         
         updateMemoryBtn.textContent = '記憶生成中...';
         updateMemoryBtn.disabled = true;
+        setGeneratingState(true, false);
         try {
-            const conversationText = history.map(m => `${m.role}: ${m.content}`).join('\n');
+            const conversationText = history.map(m => {
+                const content = (m.role === 'assistant') ? m.content[m.activeContentIndex] : m.content;
+                return `${m.role}: ${content}`;
+            }).join('\n');
             const userPrompt = state.promptSettings.summarizationPrompt || DEFAULT_SUMMARY_PROMPT;
             const summaryPrompt = userPrompt.replace('{{conversation}}', conversationText);
             const summaryMessages = [{ role: 'user', content: summaryPrompt }];
@@ -871,16 +1198,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 buildPromptSettingsUI();
             }
         } catch (error) {
-            alert(`記憶更新失敗: ${error.message}`);
+            if (error.name !== 'AbortError') {
+                alert(`記憶更新失敗: ${error.message}`);
+            }
         } finally {
             updateMemoryBtn.textContent = '更新記憶';
             updateMemoryBtn.disabled = false;
+            setGeneratingState(false, false);
         }
     }
 
     // ===================================================================================
     // 10. 通用工具與新功能函式
     // ===================================================================================
+    function setGeneratingState(isGenerating, changeMainButton = true) {
+        if (changeMainButton) {
+            sendBtn.classList.toggle('is-generating', isGenerating);
+            sendIcon.classList.toggle('hidden', isGenerating);
+            stopIcon.classList.toggle('hidden', !isGenerating);
+            messageInput.disabled = isGenerating;
+        }
+        
+        document.querySelectorAll('.regenerate-btn-sm, .retry-btn-sm').forEach(btn => {
+            btn.disabled = isGenerating;
+        });
+    }
+
+    function handleStopGeneration() {
+        if (apiCallController) {
+            apiCallController.abort();
+            apiCallController = null;
+        }
+        setGeneratingState(false);
+    }
+
     function handleImageUpload(event, previewElement) {
         const file = event.target.files[0];
         if (file) {
@@ -986,7 +1337,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 reader.readAsText(file);
             } else if (file.type === 'image/png') {
-                // 【修改】同時讀取圖片的 Base64 和 ArrayBuffer
                 let fileAsDataURL = '';
                 const readerForDataURL = new FileReader();
                 readerForDataURL.onload = (e) => {
@@ -1010,7 +1360,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (keyword === 'chara') {
                                     const base64Data = new TextDecoder("ascii").decode(chunkData.slice(nullSeparatorIndex + 1));
                                     const jsonData = JSON.parse(atob(base64Data));
-                                    populateEditorWithCharData(jsonData, fileAsDataURL); // 傳入圖片的 Base64
+                                    populateEditorWithCharData(jsonData, fileAsDataURL);
                                     characterDataFound = true;
                                     break;
                                 }
@@ -1033,7 +1383,6 @@ document.addEventListener('DOMContentLoaded', () => {
         charFirstMessageInput.value = data.first_mes || '';
         charExampleDialogueInput.value = data.mes_example || '';
         
-        // 【修改】優先使用 PNG 自身的 Base64，其次是卡片內的 URL
         charAvatarPreview.src = imageBase64 || data.character_avatar || DEFAULT_AVATAR;
         
         alert('角色卡匯入成功！請記得儲存。');
@@ -1044,10 +1393,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentlyEditing) { renderChatMessages(); }
         row.classList.add('is-editing');
         const bubbleContainer = row.querySelector('.bubble-container');
-        const originalText = state.chatHistories[state.activeCharacterId][state.activeChatId][index].content;
+        const msg = state.chatHistories[state.activeCharacterId][state.activeChatId][index];
+        const originalText = (msg.role === 'assistant') ? msg.content[msg.activeContentIndex] : msg.content;
         
         row.querySelector('.chat-bubble').style.display = 'none';
         row.querySelector('.message-timestamp').style.display = 'none';
+        if (row.querySelector('.message-actions')) {
+            row.querySelector('.message-actions').style.display = 'none';
+        }
 
         const editContainer = document.createElement('div');
         editContainer.innerHTML = `
@@ -1070,7 +1423,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function saveMessageEdit(index, newText) {
-        state.chatHistories[state.activeCharacterId][state.activeChatId][index].content = newText.trim();
+        const msg = state.chatHistories[state.activeCharacterId][state.activeChatId][index];
+        if (msg.role === 'assistant') {
+            msg.content[msg.activeContentIndex] = newText.trim();
+        } else {
+            msg.content = newText.trim();
+        }
         saveState();
         renderChatMessages();
     }

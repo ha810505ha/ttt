@@ -368,6 +368,13 @@ body {
 .user-row .edit-msg-btn { left: -45px; }
 .assistant-row .edit-msg-btn { right: -45px; }
 
+/* 新增：編輯狀態樣式 */
+.message-row.is-editing {
+    background-color: var(--hover-background);
+    padding: 10px;
+    border-radius: 12px;
+}
+
 .edit-textarea {
     width: 100%;
     min-height: 80px;
@@ -400,6 +407,45 @@ body {
     border-radius: 16px;
 }
 
+/* 新增：錯誤訊息樣式 */
+.message-error {
+    font-size: 12px;
+    color: var(--danger-color);
+    margin: 8px 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.retry-btn-sm {
+    background-color: var(--hover-background);
+    border: 1px solid var(--border-color);
+    color: var(--text-light-color);
+    padding: 2px 10px;
+    font-size: 12px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    display: inline-flex;
+    align-items: center;
+}
+.retry-btn-sm:hover {
+    background-color: var(--active-background);
+    color: var(--primary-color);
+}
+.retry-btn-sm i {
+    margin-right: 4px;
+}
+.retry-btn-sm:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+.message-row.has-error .chat-bubble {
+    border: 1px solid var(--danger-color);
+    box-shadow: 0 2px 4px rgba(255, 138, 128, 0.3);
+}
+
+
 .input-area {
     padding: 10px 20px;
     background-color: var(--panel-background);
@@ -408,7 +454,13 @@ body {
     transition: background-color 0.3s, border-color 0.3s;
 }
 .input-actions { display: flex; gap: 10px; margin-bottom: 10px; }
-.message-input-container { display: flex; gap: 10px; align-items: center; }
+
+.message-input-container { 
+    display: flex; 
+    gap: 10px; 
+    align-items: flex-end; 
+}
+
 #message-input {
     flex-grow: 1;
     padding: 12px 20px;
@@ -418,7 +470,13 @@ body {
     background-color: var(--input-background);
     color: var(--text-color);
     transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+    resize: none;
+    overflow-y: auto;
+    max-height: 120px;
+    line-height: 1.4;
+    font-family: inherit;
 }
+
 #message-input:focus {
     outline: none;
     border-color: var(--primary-color);
@@ -435,9 +493,13 @@ body {
     cursor: pointer;
     flex-shrink: 0;
     transition: background-color 0.2s ease;
+    margin-bottom: 2px;
 }
 #send-btn:hover {
     background-color: var(--primary-hover-color);
+}
+#send-btn.is-generating {
+    background-color: var(--danger-color);
 }
 
 /* --- 通用按鈕樣式 --- */
@@ -553,18 +615,34 @@ body.dark-mode .action-btn.secondary:hover { background-color: #555; }
     margin-top: 10px;
 }
 .modal-actions-split .action-btn { flex: 1; }
-.modal-body input, .modal-body select, .modal-body textarea {
+
+.form-group {
+    margin-bottom: 15px;
+}
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-light-color);
+    margin-bottom: 8px;
+}
+.modal-body .form-group input, 
+.modal-body .form-group select, 
+.modal-body .form-group textarea {
     width: 100%;
     padding: 12px;
-    margin-bottom: 15px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
     font-size: 16px;
     background-color: var(--input-background);
     color: var(--text-color);
     transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+    margin-bottom: 0;
 }
-.modal-body input:focus, .modal-body select:focus, .modal-body textarea:focus {
+
+.modal-body input:focus, 
+.modal-body select:focus, 
+.modal-body textarea:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(137, 207, 240, 0.3);
@@ -708,4 +786,133 @@ input[type="range"]::-moz-range-thumb {
     .chat-header {
         padding-left: 60px;
     }
+}
+
+/* --- Markdown 樣式 --- */
+.chat-bubble p {
+    margin: 0 0 10px 0;
+}
+.chat-bubble p:last-child {
+    margin-bottom: 0;
+}
+.chat-bubble ul, .chat-bubble ol {
+    padding-left: 20px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+.chat-bubble li {
+    margin-bottom: 5px;
+}
+.chat-bubble pre {
+    background-color: var(--input-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    overflow-x: auto;
+    font-family: 'Courier New', Courier, monospace;
+    white-space: pre-wrap;
+}
+.chat-bubble code {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: var(--hover-background);
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+.chat-bubble pre code {
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+.chat-bubble blockquote {
+    border-left: 3px solid var(--primary-color);
+    padding-left: 15px;
+    margin: 10px 0;
+    color: var(--text-light-color);
+}
+.chat-bubble table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+.chat-bubble th, .chat-bubble td {
+    border: 1px solid var(--border-color);
+    padding: 8px;
+}
+.chat-bubble th {
+    background-color: var(--hover-background);
+}
+
+/* --- 重新生成與版本控制樣式 --- */
+.message-actions {
+    display: none;
+    padding-top: 8px;
+    align-self: flex-start;
+    align-items: center;
+    gap: 10px;
+}
+
+.assistant-row.is-last-message .message-actions {
+    display: flex;
+}
+
+.regenerate-btn-sm {
+    background-color: var(--hover-background);
+    border: 1px solid var(--border-color);
+    color: var(--text-light-color);
+    padding: 4px 12px;
+    font-size: 12px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    display: inline-flex;
+    align-items: center;
+}
+.regenerate-btn-sm:hover {
+    background-color: var(--active-background);
+    color: var(--primary-color);
+}
+.regenerate-btn-sm i {
+    margin-right: 5px;
+}
+.regenerate-btn-sm:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.version-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.version-nav button {
+    background: none;
+    border: none;
+    color: var(--text-light-color);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.version-nav button:hover {
+    background-color: var(--hover-background);
+    color: var(--primary-color);
+}
+
+.version-nav button:disabled {
+    color: var(--border-color);
+    cursor: not-allowed;
+    background-color: transparent;
+}
+
+.version-counter {
+    font-size: 12px;
+    color: var(--text-light-color);
+    font-weight: 500;
 }

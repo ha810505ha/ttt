@@ -6,6 +6,7 @@
     <title>大冰奶</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -83,8 +84,11 @@
                          <button id="update-memory-btn" class="action-btn-sm">更新記憶</button>
                     </div>
                     <div class="message-input-container">
-                        <input type="text" id="message-input" placeholder="在這裡輸入訊息...">
-                        <button id="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                        <textarea id="message-input" placeholder="在這裡輸入訊息..." rows="1"></textarea>
+                        <button id="send-btn">
+                            <i id="send-icon" class="fa-solid fa-paper-plane"></i>
+                            <i id="stop-icon" class="fa-solid fa-square hidden"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -98,7 +102,10 @@
         <div class="modal-content">
             <h2>重新命名對話</h2>
             <div class="modal-body">
-                <input type="text" id="rename-chat-input" placeholder="請輸入新的對話名稱">
+                <div class="form-group">
+                    <label for="rename-chat-input">新的對話名稱</label>
+                    <input type="text" id="rename-chat-input" placeholder="請輸入新的對話名稱">
+                </div>
             </div>
             <div class="modal-footer">
                 <button id="cancel-rename-chat-btn" class="action-btn secondary">取消</button>
@@ -111,7 +118,6 @@
         <div class="modal-content">
             <h2 id="character-editor-title">新增角色</h2>
             <div class="modal-body">
-                <!-- 【修改】改為檔案上傳 -->
                 <label for="char-avatar-upload" class="avatar-upload-label">
                     <div class="avatar-preview-container">
                         <img id="char-avatar-preview" src="https://placehold.co/100x100/EFEFEF/AAAAAA?text=頭像" alt="角色頭像預覽" class="avatar-preview">
@@ -120,10 +126,23 @@
                 </label>
                 <input type="file" id="char-avatar-upload" class="avatar-upload-input" accept="image/*">
                 
-                <input type="text" id="char-name" placeholder="角色名稱">
-                <textarea id="char-description" placeholder="角色描述 (性格、背景)"></textarea>
-                <textarea id="char-first-message" placeholder="第一句話 (問候語)"></textarea>
-                <textarea id="char-example-dialogue" placeholder="對話範例 (格式: {{user}}: 你好\n{{char}}: 你好呀)"></textarea>
+                <div class="form-group">
+                    <label for="char-name">角色名稱</label>
+                    <input type="text" id="char-name" placeholder="角色名稱">
+                </div>
+                <div class="form-group">
+                    <label for="char-description">角色描述 (性格、背景)</label>
+                    <textarea id="char-description" placeholder="角色描述 (性格、背景)"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="char-first-message">第一句話 (問候語)</label>
+                    <textarea id="char-first-message" placeholder="第一句話 (問候語)"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="char-example-dialogue">對話範例</label>
+                    <textarea id="char-example-dialogue" placeholder="格式: {{user}}: 你好\n{{char}}: 你好呀"></textarea>
+                </div>
+                
                 <div class="modal-actions-split">
                     <button id="import-char-btn" class="action-btn"><i class="fa-solid fa-upload"></i> 匯入</button>
                     <button id="export-char-btn" class="action-btn"><i class="fa-solid fa-download"></i> 匯出</button>
@@ -142,15 +161,24 @@
             <h2>全域設定</h2>
             <div class="modal-body">
                 <h3>API 設定</h3>
-                <select id="api-provider">
-                    <option value="openai">OpenAI</option>
-                    <option value="anthropic">Claude (Anthropic)</option>
-                    <option value="google">Gemini (Google)</option>
-                    <option value="xai">Grok (xAI)</option>
-                    <option value="mistral">Mistral</option>
-                </select>
-                <select id="api-model-select" placeholder="模型型號"></select>
-                <input type="password" id="api-key" placeholder="API 金鑰">
+                <div class="form-group">
+                    <label for="api-provider">API 供應商</label>
+                    <select id="api-provider">
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Claude (Anthropic)</option>
+                        <option value="google">Gemini (Google)</option>
+                        <option value="xai">Grok (xAI)</option>
+                        <option value="mistral">Mistral</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="api-model-select">模型型號</label>
+                    <select id="api-model-select"></select>
+                </div>
+                <div class="form-group">
+                    <label for="api-key">API 金鑰</label>
+                    <input type="password" id="api-key" placeholder="API 金鑰">
+                </div>
 
                 <h4>進階參數</h4>
                 <div class="settings-slider-group">
@@ -179,7 +207,6 @@
                 </div>
 
                 <h3>使用者設定</h3>
-                <!-- 【修改】改為檔案上傳 -->
                 <label for="user-avatar-upload" class="avatar-upload-label">
                     <div class="avatar-preview-container">
                         <img id="user-avatar-preview" src="https://placehold.co/100x100/EFEFEF/AAAAAA?text=頭像" alt="使用者頭像預覽" class="avatar-preview">
@@ -188,8 +215,14 @@
                 </label>
                 <input type="file" id="user-avatar-upload" class="avatar-upload-input" accept="image/*">
                 
-                <input type="text" id="user-name" placeholder="您的名稱">
-                <textarea id="user-description" placeholder="您的角色描述或個人設定"></textarea>
+                <div class="form-group">
+                    <label for="user-name">您的名稱</label>
+                    <input type="text" id="user-name" placeholder="您的名稱">
+                </div>
+                <div class="form-group">
+                    <label for="user-description">您的角色描述或個人設定</label>
+                    <textarea id="user-description" placeholder="您的角色描述或個人設定"></textarea>
+                </div>
             </div>
             <div class="modal-footer">
                 <button id="cancel-global-settings-btn" class="action-btn secondary">取消</button>
