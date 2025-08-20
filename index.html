@@ -81,7 +81,7 @@
             <!-- 初始歡迎畫面 -->
             <div id="welcome-screen" class="welcome-screen">
                 <i class="fa-solid fa-comments"></i>
-                <h2>歡迎使用「大冰奶Beta」</h2>
+                <h2>歡迎使用「大冰奶」</h2>
                 <p>請從左側選擇一個角色開始對話，或新增一個新角色。</p>
             </div>
 
@@ -111,6 +111,7 @@
 
                 <div class="input-area">
                     <div class="input-actions">
+                         <button id="view-memory-btn" class="action-btn-sm">查看/編輯記憶</button>
                          <button id="update-memory-btn" class="action-btn-sm">更新記憶</button>
                     </div>
                     <div class="message-input-container">
@@ -283,6 +284,24 @@
             </div>
         </div>
     </div>
+    
+    <!-- 【新增】長期記憶編輯視窗 -->
+    <div id="memory-editor-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>長期記憶</h2>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="memory-editor-textarea">此處顯示的是目前對話的長期記憶摘要。您可以手動編輯。</label>
+                    <textarea id="memory-editor-textarea"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-memory-editor-btn" class="action-btn secondary">取消</button>
+                <button id="save-memory-editor-btn" class="action-btn primary">儲存</button>
+            </div>
+        </div>
+    </div>
+
 
     <script src="script.js"></script>
 </body>
