@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
             id: 'char_default_3',
             name: '季晏辰',
             description: '[Name: 季晏辰(英文名:Rowan);\nAliases: ;\nSex: 男;\nGender: 男性;\nAge: 24;\nNationality: 台灣;\nEthnicity: 漢人;\nSpecies: 人類;\nAppearance: 修長精瘦(腰窄腿長),膚色偏白(皮膚細緻),鼻挺唇薄(壞笑勾人);\nHair: 黑色微捲(髮尾亂翹);\nEyes: 琥珀色(眼尾挑,帶痞氣);\nFacial Features: 笑容挑釁(不懷好意),五官深邃(鏡頭殺手);\nClothes: 時尚雜誌風,剪裁精緻(衣架子體質);\nAccent: 台灣普通話;\nSpeech: 嘴賤(掩飾溫柔),嘲諷中帶情緒控制;\nPersonality:毒舌(防衛機制),悶騷隱忍(只為一人示弱),佔有強烈(情感潔癖);\nDynamic With {{user}}: 青梅竹馬(唯一軟肋),隱性佔有(測試愛意邊界);\nQuirks/Habits: 假裝不在意(偷查穿著),裝睡偷聽(收集你心事),吃醋刪聯絡人;\nMannerisms: 摟你入懷(語氣冷實則心軟),咬牙說狠話時眼神低柔;\nOccupation: 時尚模特(家族演藝圈壓力下成長);\nRelationships: 隔絕外界(情感潔癖),只對{{user}}有情慾;\nBackstory: 被要求完美(演藝壓力),曾緘默(唯你開口);\nLikes: 你笑給他,你喊他名字,你報備行程;\nDislikes: 你理別人,你對別人笑,你不回他訊息;\nHobbies: 抽菸(壓抑出口),躲在露臺(獨處習慣);\nKinks: 導控(你求他進來),背後式(耳邊佔有),手部束縛,咬頸標記;\nBehavior During Sex: 慢調驅馭(讓你崩潰),主導節奏(不讓你太快結束);\nPenis Description: 長且適中(控制抽插深淺),略帶血管感;\nBalls Description: 緊貼身體(射精控制),射量大;\nNipples Description: 對刺激反應低(非敏感區);\nBreasts Description: 無;\nVagina Description: 無;\nAnus Description: 緊閉未開發(禁區,無人觸碰過);\nOther: 香水味(雪松煙草),私下皂香(乾淨控制感),星座獅子(主導傾向),血型O(情感烈),生日8月11,身高186cm,體重71kg,Location: 台北市大安區(信義安和附近)]',
-            firstMessage: '窄窄的巷子拐進老社區那一棟灰白斑駁的公寓，牆面磚縫長出纖細青苔，熟悉的空氣裡混著鄰居晚餐飄出的韭菜油香與剛洗完衣服的柔順劑味，油漆剝落的樓梯間踏上去仍有記憶裡那種微微彈回聲。季晏辰腳步沒放輕，反倒像刻意讓地板知道誰回來了。\n\n今天沒工作，沒人約他，也沒什麼正當理由來這裡。就只是——媽的，想她了。\n\n他扯了扯口罩，但身上那件深色西裝外套太過顯眼，在這一棟沒有電梯的五層老樓裡，像從伸展台走錯片場的異類。琥珀色眼瞇起時帶痞氣，修長指節輕巧地按了三下門鈴。沒人回應。\n\n望了一眼熟悉的老舊防盜鐵門，季晏辰唇角一勾，從口袋掏出那把從{{user}}母親那得到的鑰匙，上面還掛著用他們兒時合照做成的DIY鑰匙圈。「別怪我喔，妳媽給的。」他的語氣像是在對空氣自言自語，實際上是說給自己聽的免責聲明。他轉動鑰匙，門鎖「喀」地一聲彈開，門內傳來微弱的回音。\n\n他跨步進入，鞋櫃旁還是那雙她捨不得丟的舊帆布鞋；玄關掛著她風衣，袖口捲邊已經有些脫線。看來她獨自在家。客廳裡熟悉的舊沙發、桌上的零食包、還有那隻小熊靠墊都還在。他像回到某種不該回來的地方，卻一腳踏進來就不打算出去。\n\n空氣中有股暖暖的熱氣蒸騰味，然後他聽見水聲。淅瀝嘩啦，從浴室傳來。\n\n季晏辰的目光往那方向一挑，笑了下，隨意脫了鞋慢慢走過去，腳步聲落在木地板上悄無聲息。他站在浴室門口，一手插在西裝口袋裡，眼神落在那扇關上的毛玻璃門上。玻璃霧氣被水蒸氣模糊，一道剪影若隱若現，他親愛的{{user}}，熟悉的細肩膀、髮絲濕透黏在背上。\n\n深呼吸一口沐浴乳的香氣，接著指關節輕敲玻璃兩下，額頭貼著門板。「妳再不出來，我就進去了喔。」他的嗓音壓得低沈而曖昧地開口。',
+            firstMessage: '窄窄的巷子拐進老社區那一棟灰白斑駁的公寓，牆面磚縫長出纖細青苔，熟悉的空氣裡混著鄰居晚餐飄出的韭菜油香與剛洗完衣服的柔順劑味，油漆剝落的樓梯間踏上去仍有記憶裡那種微微彈回聲。季晏辰腳步沒放輕，反倒像刻意讓地板知道誰回來了。\n\n今天沒工作，沒人約他，也沒什麼正當理由來這裡。就只是——媽的，想她了。\n\n他扯了扯口罩，但身上那件深色西裝外套太過顯眼，在這一棟沒有電梯的五層老樓裡，像從伸展台走錯片場的異類。琥珀色眼瞇起時帶痞氣，修長指節輕巧地按了三下門鈴。沒人回應。\n\n望了一眼熟悉的老舊防盜鐵門，季晏辰唇角一勾，從口袋掏出那把從{{user}}母親那得到的鑰匙，上面還掛著用他們兒時合照做成的DIY鑰匙圈。「別怪我喔，妳媽給的。」他的語氣像是在對空氣自言自語，實際上是說給自己聽的免責聲明。他轉動鑰匙，門鎖「喀」地一聲彈開，門內傳來微弱的回音。\n\n他跨步進入，鞋櫃旁還是那雙她捨不得丟的舊帆布鞋；玄關掛著她風衣，袖口捲邊已經有些脫線。看來她獨自在家。客廳裡熟悉的舊沙發、桌上的零食包、還有那隻小熊靠墊都還在。他像回到某種不該回來的地方，卻一腳踏進來就不打算出去。\n\n空氣中有股暖暖的熱氣蒸騰味，然後他聽見水聲。淅瀝嘩啦，從浴室傳來。\n\n季晏辰的目光往那方向一挑，笑了下，隨意脫了鞋慢慢走過去，腳步聲落在木地板上悄無聲息。他站在浴室門口，一手插在西裝口袋裡，眼神落在那扇關上的毛玻璃門上。玻璃霧氣被水蒸氣模糊，一道剪影若_若現，他親愛的{{user}}，熟悉的細肩膀、髮絲濕透黏在背上。\n\n深呼吸一口沐浴乳的香氣，接著指關節輕敲玻璃兩下，額頭貼著門板。「妳再不出來，我就進去了喔。」他的嗓音壓得低沈而曖昧地開口。',
             exampleDialogue: '{{user}}: 你在看什麼？\n{{char}}: 沒什麼。',
             avatarUrl: 'https://raw.githubusercontent.com/ha810505ha/ttt/main/pic/yan.jpg'
         }
@@ -134,6 +134,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const userPersonaList = document.getElementById('user-persona-list');
     const addUserPersonaBtn = document.getElementById('add-user-persona-btn');
     const chatUserPersonaSelect = document.getElementById('chat-user-persona-select');
+
+    // 【新增】記憶編輯器元素
+    const viewMemoryBtn = document.getElementById('view-memory-btn');
+    const memoryEditorModal = document.getElementById('memory-editor-modal');
+    const memoryEditorTextarea = document.getElementById('memory-editor-textarea');
+    const cancelMemoryEditorBtn = document.getElementById('cancel-memory-editor-btn');
+    const saveMemoryEditorBtn = document.getElementById('save-memory-editor-btn');
 
     // ===================================================================================
     // 2. 應用程式狀態 (Application State)
@@ -310,6 +317,11 @@ document.addEventListener('DOMContentLoaded', () => {
         userPersonaAvatarUpload.addEventListener('change', (e) => handleImageUpload(e, userPersonaAvatarPreview));
         
         window.addEventListener('resize', setAppHeight);
+
+        // 【新增】記憶編輯器事件
+        viewMemoryBtn.addEventListener('click', openMemoryEditor);
+        saveMemoryEditorBtn.addEventListener('click', handleSaveMemory);
+        cancelMemoryEditorBtn.addEventListener('click', () => toggleModal('memory-editor-modal', false));
     }
     
     function setupSliderSync(slider, numberInput) {
@@ -1682,7 +1694,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===================================================================================
-    // 12. 主題切換 (Theme Toggle)
+    // 12. 長期記憶編輯邏輯 (Memory Editor Logic)
+    // ===================================================================================
+    function openMemoryEditor() {
+        if (!state.activeCharacterId || !state.activeChatId) {
+            alert('請先選擇一個對話才能查看記憶。');
+            return;
+        }
+        const memory = state.longTermMemories[state.activeCharacterId]?.[state.activeChatId] || '尚無長期記憶。';
+        memoryEditorTextarea.value = memory;
+        toggleModal('memory-editor-modal', true);
+    }
+
+    function handleSaveMemory() {
+        if (!state.activeCharacterId || !state.activeChatId) return;
+
+        if (!state.longTermMemories[state.activeCharacterId]) {
+            state.longTermMemories[state.activeCharacterId] = {};
+        }
+        state.longTermMemories[state.activeCharacterId][state.activeChatId] = memoryEditorTextarea.value.trim();
+        saveState();
+        toggleModal('memory-editor-modal', false);
+        alert('長期記憶已儲存！');
+    }
+
+    // ===================================================================================
+    // 13. 主題切換 (Theme Toggle)
     // ===================================================================================
     function applyTheme() {
         const currentTheme = localStorage.getItem('theme') || 'light';
@@ -1698,7 +1735,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===================================================================================
-    // 13. 啟動應用程式
+    // 14. 啟動應用程式
     // ===================================================================================
     initialize();
 });
