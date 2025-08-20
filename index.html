@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>大冰奶</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -18,8 +18,9 @@
                 <div id="character-view" class="panel-view active">
                     <header class="panel-header">
                         <h2>角色列表</h2>
-                        <div>
+                        <div class="header-actions">
                             <button id="theme-toggle-btn" class="icon-btn" title="切換模式"><i class="fa-solid fa-moon"></i></button>
+                            <button id="prompt-library-btn" class="icon-btn" title="提示詞庫"><i class="fa-solid fa-book-bookmark"></i></button>
                             <button id="global-settings-btn" class="icon-btn" title="全域設定"><i class="fa-solid fa-gear"></i></button>
                         </div>
                     </header>
@@ -43,6 +44,32 @@
                     </ul>
                     <button id="add-chat-btn" class="add-character-btn">
                         <i class="fa-solid fa-plus"></i> 開啟新聊天
+                    </button>
+                </div>
+
+                <!-- 提示詞庫視圖 -->
+                <div id="prompt-view" class="panel-view">
+                     <header class="panel-header">
+                        <button id="back-to-main-from-prompt-btn" class="icon-btn" title="返回"><i class="fa-solid fa-arrow-left"></i></button>
+                        <h2>提示詞庫</h2>
+                        <div class="placeholder-div"></div>
+                    </header>
+                    <div class="prompt-view-body">
+                        <div class="form-group">
+                            <label for="prompt-scenario">場景 (Scenario)</label>
+                            <textarea id="prompt-scenario" placeholder="例如：這是一個發生在奇幻世界的對話..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="prompt-jailbreak">越獄提示 (Jailbreak)</label>
+                            <textarea id="prompt-jailbreak" placeholder="輸入特定的越獄或角色扮演提示..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="prompt-summarization">長期記憶生成提示</label>
+                            <textarea id="prompt-summarization" placeholder="請將以下對話的關鍵事實..."></textarea>
+                        </div>
+                    </div>
+                    <button id="save-prompt-settings-btn" class="add-character-btn">
+                        <i class="fa-solid fa-save"></i> 儲存提示詞
                     </button>
                 </div>
             </div>
@@ -69,6 +96,10 @@
                         </div>
                     </div>
                     <div class="chat-actions">
+                        <div class="persona-selector-container">
+                            <i class="fa-solid fa-user"></i>
+                            <select id="chat-user-persona-select"></select>
+                        </div>
                         <button id="delete-current-chat-btn" class="icon-btn" title="刪除目前對話"><i class="fa-solid fa-trash-can"></i></button>
                         <button id="export-current-chat-btn" class="icon-btn" title="匯出對話紀錄"><i class="fa-solid fa-file-export"></i></button>
                     </div>
@@ -80,7 +111,6 @@
 
                 <div class="input-area">
                     <div class="input-actions">
-                         <button id="prompt-settings-btn" class="action-btn-sm">提示詞設定</button>
                          <button id="update-memory-btn" class="action-btn-sm">更新記憶</button>
                     </div>
                     <div class="message-input-container">
@@ -206,23 +236,17 @@
                     <input type="number" id="max-tokens-value" class="slider-value" min="50" max="4096" step="1">
                 </div>
 
-                <h3>使用者設定</h3>
-                <label for="user-avatar-upload" class="avatar-upload-label">
-                    <div class="avatar-preview-container">
-                        <img id="user-avatar-preview" src="https://placehold.co/100x100/EFEFEF/AAAAAA?text=頭像" alt="使用者頭像預覽" class="avatar-preview">
-                        <div class="avatar-upload-overlay"><i class="fa-solid fa-camera"></i></div>
+                <h3>使用者角色管理</h3>
+                <div id="user-persona-management-area">
+                    <div class="form-group">
+                        <label for="active-user-persona-select">預設使用者角色</label>
+                        <select id="active-user-persona-select"></select>
                     </div>
-                </label>
-                <input type="file" id="user-avatar-upload" class="avatar-upload-input" accept="image/*">
-                
-                <div class="form-group">
-                    <label for="user-name">您的名稱</label>
-                    <input type="text" id="user-name" placeholder="您的名稱">
+                    <ul id="user-persona-list" class="persona-list">
+                        <!-- 使用者角色列表 -->
+                    </ul>
                 </div>
-                <div class="form-group">
-                    <label for="user-description">您的角色描述或個人設定</label>
-                    <textarea id="user-description" placeholder="您的角色描述或個人設定"></textarea>
-                </div>
+                <button id="add-user-persona-btn" class="action-btn-sm"><i class="fa-solid fa-plus"></i> 新增角色</button>
             </div>
             <div class="modal-footer">
                 <button id="cancel-global-settings-btn" class="action-btn secondary">取消</button>
@@ -231,14 +255,30 @@
         </div>
     </div>
 
-    <div id="prompt-settings-modal" class="modal-overlay hidden">
+    <div id="user-persona-editor-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h2>提示詞設定</h2>
-            <div id="prompt-settings-body" class="modal-body">
-                <!-- 提示詞設定會由 JavaScript 動態生成 -->
+            <h2 id="user-persona-editor-title">新增使用者角色</h2>
+            <div class="modal-body">
+                <label for="user-persona-avatar-upload" class="avatar-upload-label">
+                    <div class="avatar-preview-container">
+                        <img id="user-persona-avatar-preview" src="https://placehold.co/100x100/EFEFEF/AAAAAA?text=頭像" alt="使用者頭像預覽" class="avatar-preview">
+                        <div class="avatar-upload-overlay"><i class="fa-solid fa-camera"></i></div>
+                    </div>
+                </label>
+                <input type="file" id="user-persona-avatar-upload" class="avatar-upload-input" accept="image/*">
+                
+                <div class="form-group">
+                    <label for="user-persona-name">您的名稱</label>
+                    <input type="text" id="user-persona-name" placeholder="您的名稱">
+                </div>
+                <div class="form-group">
+                    <label for="user-persona-description">您的角色描述或個人設定</label>
+                    <textarea id="user-persona-description" placeholder="您的角色描述或個人設定"></textarea>
+                </div>
             </div>
             <div class="modal-footer">
-                <button id="cancel-prompt-settings-btn" class="action-btn secondary">關閉</button>
+                <button id="cancel-user-persona-editor-btn" class="action-btn secondary">取消</button>
+                <button id="save-user-persona-btn" class="action-btn primary">儲存</button>
             </div>
         </div>
     </div>

@@ -1,5 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================================
+    //  Markdown 自訂設定
+    // ===================================================================================
+    const renderer = new marked.Renderer();
+    
+    renderer.link = (href, title, text) => {
+        return text;
+    };
+
+    renderer.heading = (text, level, raw) => {
+        return `<p>${raw}</p>`;
+    };
+    
+    marked.setOptions({
+        renderer: renderer,
+        gfm: true,
+        breaks: true,
+    });
+
+    // ===================================================================================
     //  預設角色資料
     // ===================================================================================
     const defaultCharacters = [
@@ -38,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const leftPanel = document.getElementById('left-panel');
     const characterView = document.getElementById('character-view');
     const chatSessionView = document.getElementById('chat-session-view');
+    const promptView = document.getElementById('prompt-view');
     const backToCharsBtn = document.getElementById('back-to-chars-btn');
     const chatListHeaderName = document.getElementById('chat-list-header-name');
     const editActiveCharacterBtn = document.getElementById('edit-active-character-btn');
@@ -60,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatHeaderName = document.getElementById('chat-header-name');
     const exportCurrentChatBtn = document.getElementById('export-current-chat-btn');
     const chatWindow = document.getElementById('chat-window');
-    const promptSettingsBtn = document.getElementById('prompt-settings-btn');
     const messageInput = document.getElementById('message-input');
     const sendBtn = document.getElementById('send-btn');
     const sendIcon = document.getElementById('send-icon');
@@ -82,10 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiProviderSelect = document.getElementById('api-provider');
     const apiModelSelect = document.getElementById('api-model-select');
     const apiKeyInput = document.getElementById('api-key');
-    const userAvatarUpload = document.getElementById('user-avatar-upload');
-    const userAvatarPreview = document.getElementById('user-avatar-preview');
-    const userNameInput = document.getElementById('user-name');
-    const userDescriptionInput = document.getElementById('user-description');
     const cancelGlobalSettingsBtn = document.getElementById('cancel-global-settings-btn');
     const saveGlobalSettingsBtn = document.getElementById('save-global-settings-btn');
     const temperatureSlider = document.getElementById('temperature-slider');
@@ -97,9 +112,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const contextSizeInput = document.getElementById('context-size-input');
     const maxTokensSlider = document.getElementById('max-tokens-slider');
     const maxTokensValue = document.getElementById('max-tokens-value');
-    const promptSettingsModal = document.getElementById('prompt-settings-modal');
-    const promptSettingsBody = document.getElementById('prompt-settings-body');
-    const cancelPromptSettingsBtn = document.getElementById('cancel-prompt-settings-btn');
+    
+    // New Prompt View Elements
+    const promptLibraryBtn = document.getElementById('prompt-library-btn');
+    const backToMainFromPromptBtn = document.getElementById('back-to-main-from-prompt-btn');
+    const promptScenarioInput = document.getElementById('prompt-scenario');
+    const promptJailbreakInput = document.getElementById('prompt-jailbreak');
+    const promptSummarizationInput = document.getElementById('prompt-summarization');
+    const savePromptSettingsBtn = document.getElementById('save-prompt-settings-btn');
+    
+    // New User Persona Elements
+    const userPersonaEditorModal = document.getElementById('user-persona-editor-modal');
+    const userPersonaEditorTitle = document.getElementById('user-persona-editor-title');
+    const userPersonaAvatarUpload = document.getElementById('user-persona-avatar-upload');
+    const userPersonaAvatarPreview = document.getElementById('user-persona-avatar-preview');
+    const userPersonaNameInput = document.getElementById('user-persona-name');
+    const userPersonaDescriptionInput = document.getElementById('user-persona-description');
+    const cancelUserPersonaEditorBtn = document.getElementById('cancel-user-persona-editor-btn');
+    const saveUserPersonaBtn = document.getElementById('save-user-persona-btn');
+    const activeUserPersonaSelect = document.getElementById('active-user-persona-select');
+    const userPersonaList = document.getElementById('user-persona-list');
+    const addUserPersonaBtn = document.getElementById('add-user-persona-btn');
+    const chatUserPersonaSelect = document.getElementById('chat-user-persona-select');
 
     // ===================================================================================
     // 2. 應用程式狀態 (Application State)
@@ -109,12 +143,15 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistories: {}, 
         longTermMemories: {},
         chatMetadatas: {}, 
+        userPersonas: [],
+        activeUserPersonaId: null,
         activeCharacterId: null,
         activeChatId: null,
         globalSettings: {},
         promptSettings: {}
     };
     let editingCharacterId = null;
+    let editingUserPersonaId = null;
     let renamingChatId = null;
     let apiCallController = null;
     const DEFAULT_AVATAR = 'https://placehold.co/100x100/EFEFEF/AAAAAA?text=頭像';
@@ -159,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCharacterList();
         renderActiveChat();
         setupEventListeners();
+        setAppHeight();
     }
 
     function setupEventListeners() {
@@ -187,22 +225,32 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteCharBtn.addEventListener('click', handleDeleteCharacter);
         importCharBtn.addEventListener('click', importCharacter);
         exportCharBtn.addEventListener('click', exportCharacter);
+        
         globalSettingsBtn.addEventListener('click', () => {
             loadGlobalSettingsToUI();
             toggleModal('global-settings-modal', true);
         });
         saveGlobalSettingsBtn.addEventListener('click', handleSaveGlobalSettings);
         cancelGlobalSettingsBtn.addEventListener('click', () => toggleModal('global-settings-modal', false));
+        
         setupSliderSync(temperatureSlider, temperatureValue);
         setupSliderSync(topPSlider, topPValue);
         setupSliderSync(repetitionPenaltySlider, repetitionPenaltyValue);
         setupSliderSync(maxTokensSlider, maxTokensValue);
         apiProviderSelect.addEventListener('change', updateModelDropdown);
-        promptSettingsBtn.addEventListener('click', () => {
-            buildPromptSettingsUI();
-            toggleModal('prompt-settings-modal', true);
+        
+        promptLibraryBtn.addEventListener('click', showPromptView);
+        backToMainFromPromptBtn.addEventListener('click', showCharacterListView);
+        savePromptSettingsBtn.addEventListener('click', handleSavePromptSettings);
+
+        addUserPersonaBtn.addEventListener('click', () => openUserPersonaEditor());
+        saveUserPersonaBtn.addEventListener('click', handleSaveUserPersona);
+        cancelUserPersonaEditorBtn.addEventListener('click', () => toggleModal('user-persona-editor-modal', false));
+        activeUserPersonaSelect.addEventListener('change', (e) => {
+            state.activeUserPersonaId = e.target.value;
+            saveState();
         });
-        cancelPromptSettingsBtn.addEventListener('click', () => toggleModal('prompt-settings-modal', false));
+        chatUserPersonaSelect.addEventListener('change', handleChatPersonaChange);
         
         sendBtn.addEventListener('click', () => {
             if (sendBtn.classList.contains('is-generating')) {
@@ -225,7 +273,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         charAvatarUpload.addEventListener('change', (e) => handleImageUpload(e, charAvatarPreview));
-        userAvatarUpload.addEventListener('change', (e) => handleImageUpload(e, userAvatarPreview));
+        userPersonaAvatarUpload.addEventListener('change', (e) => handleImageUpload(e, userPersonaAvatarPreview));
+        
+        window.addEventListener('resize', setAppHeight);
     }
     
     function setupSliderSync(slider, numberInput) {
@@ -248,15 +298,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const savedCharacters = safelyParseJSON('characters', null);
-        state.characters = (!savedCharacters || savedCharacters.length === 0) ? defaultCharacters : savedCharacters;
-        
+        state.characters = safelyParseJSON('characters', defaultCharacters);
         state.chatHistories = safelyParseJSON('chatHistories', {});
         state.longTermMemories = safelyParseJSON('longTermMemories', {});
         state.chatMetadatas = safelyParseJSON('chatMetadatas', {});
+        state.userPersonas = safelyParseJSON('userPersonas', []);
+        state.activeUserPersonaId = localStorage.getItem('activeUserPersonaId') || null;
         state.globalSettings = safelyParseJSON('globalSettings', {});
         state.promptSettings = safelyParseJSON('promptSettings', {});
         
+        if (state.userPersonas.length === 0) {
+            const defaultPersona = { id: `user_${Date.now()}`, name: 'User', description: '', avatarUrl: DEFAULT_AVATAR };
+            state.userPersonas.push(defaultPersona);
+            state.activeUserPersonaId = defaultPersona.id;
+        }
+        if (!state.activeUserPersonaId || !state.userPersonas.find(p => p.id === state.activeUserPersonaId)) {
+            state.activeUserPersonaId = state.userPersonas[0]?.id || null;
+        }
+
         let loadedCharId = localStorage.getItem('activeCharacterId');
         let loadedChatId = localStorage.getItem('activeChatId');
         state.activeCharacterId = loadedCharId && loadedCharId !== 'null' ? loadedCharId : null;
@@ -304,7 +363,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             for (const chatId of historyIds) {
                 if (!state.chatMetadatas[char.id][chatId]) {
-                    state.chatMetadatas[char.id][chatId] = { name: '', pinned: false, notes: '' };
+                    state.chatMetadatas[char.id][chatId] = { name: '', pinned: false, notes: '', userPersonaId: state.activeUserPersonaId };
+                }
+                if (!state.chatMetadatas[char.id][chatId].userPersonaId) {
+                    state.chatMetadatas[char.id][chatId].userPersonaId = state.activeUserPersonaId;
                 }
             }
 
@@ -321,6 +383,8 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('chatHistories', JSON.stringify(state.chatHistories));
         localStorage.setItem('longTermMemories', JSON.stringify(state.longTermMemories));
         localStorage.setItem('chatMetadatas', JSON.stringify(state.chatMetadatas));
+        localStorage.setItem('userPersonas', JSON.stringify(state.userPersonas));
+        localStorage.setItem('activeUserPersonaId', state.activeUserPersonaId || '');
         localStorage.setItem('activeCharacterId', state.activeCharacterId || '');
         localStorage.setItem('activeChatId', state.activeChatId || '');
         localStorage.setItem('globalSettings', JSON.stringify(state.globalSettings));
@@ -332,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================================
     
     function showCharacterListView() {
-        leftPanel.classList.remove('show-chats');
+        leftPanel.classList.remove('show-chats', 'show-prompts');
         leftPanel.classList.remove('mobile-visible');
         mobileOverlay.classList.add('hidden');
         state.activeCharacterId = null;
@@ -349,6 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             leftPanel.classList.add('show-chats');
+            leftPanel.classList.remove('show-prompts');
             chatListHeaderName.textContent = character.name;
             renderChatSessionList();
             saveState();
@@ -357,6 +422,12 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("載入聊天室列表時發生錯誤，請檢查主控台。");
             leftPanel.classList.remove('show-chats');
         }
+    }
+
+    function showPromptView() {
+        leftPanel.classList.add('show-prompts');
+        leftPanel.classList.remove('show-chats');
+        loadPromptSettingsToUI();
     }
 
     function renderCharacterList() {
@@ -457,6 +528,8 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHeaderAvatar.src = activeChar.avatarUrl || DEFAULT_AVATAR;
         chatHeaderName.textContent = activeChar.name;
         chatNotesInput.value = metadata.notes || '';
+        
+        renderChatUserPersonaSelector();
         renderChatMessages();
     }
 
@@ -478,7 +551,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayMessage(text, sender, timestamp, index, isNew, error = null) {
-        const userAvatar = state.globalSettings.userAvatarUrl || DEFAULT_AVATAR;
+        const metadata = state.chatMetadatas[state.activeCharacterId]?.[state.activeChatId] || {};
+        const currentPersonaId = metadata.userPersonaId || state.activeUserPersonaId;
+        const userPersona = state.userPersonas.find(p => p.id === currentPersonaId) || state.userPersonas[0];
+        const userAvatar = userPersona?.avatarUrl || DEFAULT_AVATAR;
+
         const activeChar = state.characters.find(c => c.id === state.activeCharacterId);
         const charAvatar = activeChar?.avatarUrl || DEFAULT_AVATAR;
         const avatarUrl = sender === 'user' ? userAvatar : charAvatar;
@@ -780,8 +857,12 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(`buildSystemPrompt: Could not find character with id ${state.activeCharacterId}`);
             return "";
         }
-        const user = state.globalSettings;
-        const userName = user.userName || 'User';
+        
+        const metadata = state.chatMetadatas[state.activeCharacterId]?.[state.activeChatId] || {};
+        const currentPersonaId = metadata.userPersonaId || state.activeUserPersonaId;
+        const user = state.userPersonas.find(p => p.id === currentPersonaId) || state.userPersonas[0] || {};
+
+        const userName = user.name || 'User';
         const prompts = state.promptSettings;
         const memory = state.longTermMemories[state.activeCharacterId]?.[state.activeChatId];
         let prompt = "";
@@ -797,8 +878,8 @@ document.addEventListener('DOMContentLoaded', () => {
             prompt += `[Persona of ${char.name}]\n${replacePlaceholders(char.description)}\n\n`;
         }
 
-        if (user.userDescription) {
-            prompt += `[Persona of ${userName}]\n${replacePlaceholders(user.userDescription)}\n\n`;
+        if (user.description) {
+            prompt += `[Persona of ${userName}]\n${replacePlaceholders(user.description)}\n\n`;
         }
 
         if (prompts.scenario) {
@@ -908,11 +989,11 @@ document.addEventListener('DOMContentLoaded', () => {
             state.chatMetadatas[state.activeCharacterId] = {};
         }
         state.chatHistories[state.activeCharacterId][newChatId] = [];
-        state.chatMetadatas[state.activeCharacterId][newChatId] = { name: '', pinned: false, notes: '' };
+        state.chatMetadatas[state.activeCharacterId][newChatId] = { name: '', pinned: false, notes: '', userPersonaId: state.activeUserPersonaId };
 
         if (char.firstMessage) {
-            const user = state.globalSettings;
-            const userName = user.userName || 'User';
+            const user = state.userPersonas.find(p => p.id === state.activeUserPersonaId) || {};
+            const userName = user.name || 'User';
             const formattedFirstMessage = char.firstMessage
                 .replace(/{{char}}/g, char.name)
                 .replace(/{{user}}/g, userName);
@@ -1035,9 +1116,9 @@ document.addEventListener('DOMContentLoaded', () => {
         contextSizeInput.value = settings.contextSize || 20;
         maxTokensSlider.value = settings.maxTokens || 1024;
         maxTokensValue.value = settings.maxTokens || 1024;
-        userAvatarPreview.src = settings.userAvatarUrl || DEFAULT_AVATAR;
-        userNameInput.value = settings.userName || '';
-        userDescriptionInput.value = settings.userDescription || '';
+        
+        renderUserPersonaList();
+        renderActiveUserPersonaSelector();
     }
 
     function handleSaveGlobalSettings() {
@@ -1050,9 +1131,6 @@ document.addEventListener('DOMContentLoaded', () => {
             repetitionPenalty: repetitionPenaltyValue.value,
             contextSize: contextSizeInput.value,
             maxTokens: maxTokensValue.value,
-            userAvatarUrl: userAvatarPreview.src,
-            userName: userNameInput.value.trim(),
-            userDescription: userDescriptionInput.value.trim(),
         };
         saveState();
         toggleModal('global-settings-modal', false);
@@ -1080,93 +1158,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================================
     // 9. 提示詞與記憶邏輯 (Prompt & Memory Logic)
     // ===================================================================================
-    function buildPromptSettingsUI() {
-        promptSettingsBody.innerHTML = '';
+    function loadPromptSettingsToUI() {
+        const prompts = state.promptSettings;
+        promptScenarioInput.value = prompts.scenario || '';
+        promptJailbreakInput.value = prompts.jailbreak || '';
+        promptSummarizationInput.value = prompts.summarizationPrompt || DEFAULT_SUMMARY_PROMPT;
+    }
 
-        const modalFooter = promptSettingsModal.querySelector('.modal-footer');
-        const oldSaveBtn = modalFooter.querySelector('#save-prompts-btn');
-        if (oldSaveBtn) oldSaveBtn.remove();
-
-        if (!state.activeCharacterId || !state.activeChatId) {
-            promptSettingsBody.innerHTML = `<p>請先選擇一個對話以設定提示詞。</p>`;
-            return;
-        }
-        
-        const memory = state.longTermMemories[state.activeCharacterId]?.[state.activeChatId] || "尚無記憶。";
-        
-        const memoryGroup = document.createElement('div');
-        memoryGroup.className = 'prompt-group';
-        memoryGroup.innerHTML = `
-            <div class="prompt-label-group">
-                <label>長期記憶摘要</label>
-                <div>
-                    <button class="action-btn-sm secondary" id="edit-memory-btn">編輯</button>
-                    <button class="action-btn-sm primary hidden" id="save-memory-btn">儲存</button>
-                </div>
-            </div>
-            <textarea id="long-term-memory-display" readonly>${memory}</textarea>
-        `;
-        promptSettingsBody.appendChild(memoryGroup);
-
-        const memoryTextarea = promptSettingsBody.querySelector('#long-term-memory-display');
-        const editMemoryBtn = promptSettingsBody.querySelector('#edit-memory-btn');
-        const saveMemoryBtn = promptSettingsBody.querySelector('#save-memory-btn');
-
-        editMemoryBtn.addEventListener('click', () => {
-            memoryTextarea.readOnly = false;
-            memoryTextarea.focus();
-            editMemoryBtn.classList.add('hidden');
-            saveMemoryBtn.classList.remove('hidden');
-        });
-
-        saveMemoryBtn.addEventListener('click', () => {
-            const newMemory = memoryTextarea.value;
-            if (!state.longTermMemories[state.activeCharacterId]) {
-                state.longTermMemories[state.activeCharacterId] = {};
-            }
-            state.longTermMemories[state.activeCharacterId][state.activeChatId] = newMemory;
-            saveState();
-            
-            memoryTextarea.readOnly = true;
-            editMemoryBtn.classList.remove('hidden');
-            saveMemoryBtn.classList.add('hidden');
-            alert('長期記憶已儲存！');
-        });
-
-        const prompts = [
-            { id: 'scenario', label: '場景 (Scenario)', type: 'textarea' },
-            { id: 'jailbreak', label: '越獄提示 (Jailbreak)', type: 'textarea' },
-            { id: 'summarizationPrompt', label: '長期記憶生成提示', type: 'textarea', placeholder: DEFAULT_SUMMARY_PROMPT }
-        ];
-
-        prompts.forEach(p => {
-            const group = document.createElement('div');
-            group.className = 'prompt-group';
-            group.innerHTML = `<label for="prompt-${p.id}">${p.label}</label>`;
-            const input = document.createElement('textarea');
-            input.id = `prompt-${p.id}`;
-            input.placeholder = p.placeholder || '';
-            input.value = state.promptSettings[p.id] || (p.id === 'summarizationPrompt' ? DEFAULT_SUMMARY_PROMPT : '');
-            group.appendChild(input);
-            promptSettingsBody.appendChild(group);
-        });
-
-        const savePromptsBtn = document.createElement('button');
-        savePromptsBtn.id = 'save-prompts-btn';
-        savePromptsBtn.className = 'action-btn primary';
-        savePromptsBtn.textContent = '儲存提示詞';
-        savePromptsBtn.addEventListener('click', () => {
-            prompts.forEach(p => {
-                const inputElement = document.getElementById(`prompt-${p.id}`);
-                if (inputElement) {
-                    state.promptSettings[p.id] = inputElement.value;
-                }
-            });
-            saveState();
-            alert('提示詞設定已儲存！');
-            toggleModal('prompt-settings-modal', false);
-        });
-        modalFooter.insertBefore(savePromptsBtn, cancelPromptSettingsBtn);
+    function handleSavePromptSettings() {
+        state.promptSettings = {
+            scenario: promptScenarioInput.value.trim(),
+            jailbreak: promptJailbreakInput.value.trim(),
+            summarizationPrompt: promptSummarizationInput.value.trim()
+        };
+        saveState();
+        alert('提示詞設定已儲存！');
+        showCharacterListView();
     }
 
     async function handleUpdateMemory() {
@@ -1194,9 +1201,6 @@ document.addEventListener('DOMContentLoaded', () => {
             state.longTermMemories[state.activeCharacterId][state.activeChatId] = summary;
             saveState();
             alert('長期記憶已更新！');
-            if (!promptSettingsModal.classList.contains('hidden')) {
-                buildPromptSettingsUI();
-            }
         } catch (error) {
             if (error.name !== 'AbortError') {
                 alert(`記憶更新失敗: ${error.message}`);
@@ -1211,6 +1215,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===================================================================================
     // 10. 通用工具與新功能函式
     // ===================================================================================
+    
+    function setAppHeight() {
+        const doc = document.documentElement;
+        doc.style.setProperty('--app-height', `${window.innerHeight}px`);
+    }
+
     function setGeneratingState(isGenerating, changeMainButton = true) {
         if (changeMainButton) {
             sendBtn.classList.toggle('is-generating', isGenerating);
@@ -1267,7 +1277,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.chatMetadatas[state.activeCharacterId] = {};
         }
         if (!state.chatMetadatas[state.activeCharacterId][renamingChatId]) {
-            state.chatMetadatas[state.activeCharacterId][renamingChatId] = { name: '', pinned: false, notes: '' };
+            state.chatMetadatas[state.activeCharacterId][renamingChatId] = { name: '', pinned: false, notes: '', userPersonaId: state.activeUserPersonaId };
         }
         
         const metadata = state.chatMetadatas[state.activeCharacterId][renamingChatId];
@@ -1285,7 +1295,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.chatMetadatas[state.activeCharacterId] = {};
         }
         if (!state.chatMetadatas[state.activeCharacterId][chatId]) {
-            state.chatMetadatas[state.activeCharacterId][chatId] = { name: '', pinned: false, notes: '' };
+            state.chatMetadatas[state.activeCharacterId][chatId] = { name: '', pinned: false, notes: '', userPersonaId: state.activeUserPersonaId };
         }
 
         const metadata = state.chatMetadatas[state.activeCharacterId][chatId];
@@ -1442,7 +1452,116 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===================================================================================
-    // 11. 主題切換 (Theme Toggle)
+    // 11. 使用者角色 (User Persona) 邏輯
+    // ===================================================================================
+    function renderUserPersonaList() {
+        userPersonaList.innerHTML = '';
+        state.userPersonas.forEach(persona => {
+            const item = document.createElement('li');
+            item.className = 'persona-item';
+            item.dataset.id = persona.id;
+            item.innerHTML = `
+                <img src="${persona.avatarUrl || DEFAULT_AVATAR}" alt="${persona.name}" class="persona-item-avatar">
+                <span class="persona-item-name">${persona.name}</span>
+                <div class="persona-item-actions">
+                    <button class="icon-btn-sm edit-persona-btn" title="編輯"><i class="fa-solid fa-pencil"></i></button>
+                    <button class="icon-btn-sm delete-persona-btn" title="刪除"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `;
+            item.querySelector('.edit-persona-btn').addEventListener('click', () => openUserPersonaEditor(persona.id));
+            item.querySelector('.delete-persona-btn').addEventListener('click', () => handleDeleteUserPersona(persona.id));
+            userPersonaList.appendChild(item);
+        });
+    }
+
+    function renderActiveUserPersonaSelector() {
+        activeUserPersonaSelect.innerHTML = '';
+        state.userPersonas.forEach(persona => {
+            const option = document.createElement('option');
+            option.value = persona.id;
+            option.textContent = persona.name;
+            activeUserPersonaSelect.appendChild(option);
+        });
+        activeUserPersonaSelect.value = state.activeUserPersonaId;
+    }
+    
+    function renderChatUserPersonaSelector() {
+        chatUserPersonaSelect.innerHTML = '';
+        state.userPersonas.forEach(persona => {
+            const option = document.createElement('option');
+            option.value = persona.id;
+            option.textContent = persona.name;
+            chatUserPersonaSelect.appendChild(option);
+        });
+        const metadata = state.chatMetadatas[state.activeCharacterId]?.[state.activeChatId] || {};
+        chatUserPersonaSelect.value = metadata.userPersonaId || state.activeUserPersonaId;
+    }
+
+    function handleChatPersonaChange(e) {
+        const newPersonaId = e.target.value;
+        if (state.activeCharacterId && state.activeChatId) {
+            state.chatMetadatas[state.activeCharacterId][state.activeChatId].userPersonaId = newPersonaId;
+            saveState();
+            renderChatMessages(); // Re-render messages to show new user avatar
+        }
+    }
+
+    function openUserPersonaEditor(personaId = null) {
+        editingUserPersonaId = personaId;
+        if (personaId) {
+            const persona = state.userPersonas.find(p => p.id === personaId);
+            userPersonaEditorTitle.textContent = '編輯使用者角色';
+            userPersonaAvatarPreview.src = persona.avatarUrl || DEFAULT_AVATAR;
+            userPersonaNameInput.value = persona.name;
+            userPersonaDescriptionInput.value = persona.description || '';
+        } else {
+            userPersonaEditorTitle.textContent = '新增使用者角色';
+            userPersonaAvatarPreview.src = DEFAULT_AVATAR;
+            userPersonaNameInput.value = '';
+            userPersonaDescriptionInput.value = '';
+        }
+        toggleModal('user-persona-editor-modal', true);
+    }
+
+    function handleSaveUserPersona() {
+        const personaData = {
+            name: userPersonaNameInput.value.trim(),
+            avatarUrl: userPersonaAvatarPreview.src,
+            description: userPersonaDescriptionInput.value.trim(),
+        };
+        if (!personaData.name) { alert('角色名稱不能為空！'); return; }
+
+        if (editingUserPersonaId) {
+            const personaIndex = state.userPersonas.findIndex(p => p.id === editingUserPersonaId);
+            state.userPersonas[personaIndex] = { ...state.userPersonas[personaIndex], ...personaData };
+        } else {
+            const newPersona = { id: `user_${Date.now()}`, ...personaData };
+            state.userPersonas.push(newPersona);
+        }
+        saveState();
+        renderUserPersonaList();
+        renderActiveUserPersonaSelector();
+        toggleModal('user-persona-editor-modal', false);
+    }
+
+    function handleDeleteUserPersona(personaId) {
+        if (state.userPersonas.length <= 1) {
+            alert('至少需要保留一個使用者角色。');
+            return;
+        }
+        if (confirm('確定要刪除這個使用者角色嗎？')) {
+            state.userPersonas = state.userPersonas.filter(p => p.id !== personaId);
+            if (state.activeUserPersonaId === personaId) {
+                state.activeUserPersonaId = state.userPersonas[0].id;
+            }
+            saveState();
+            renderUserPersonaList();
+            renderActiveUserPersonaSelector();
+        }
+    }
+
+    // ===================================================================================
+    // 12. 主題切換 (Theme Toggle)
     // ===================================================================================
     function applyTheme() {
         const currentTheme = localStorage.getItem('theme') || 'light';
@@ -1458,7 +1577,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===================================================================================
-    // 12. 啟動應用程式
+    // 13. 啟動應用程式
     // ===================================================================================
     initialize();
 });
