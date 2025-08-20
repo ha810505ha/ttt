@@ -179,6 +179,40 @@ document.addEventListener('DOMContentLoaded', () => {
             'gemini-2.0-flash',
             'gemini-1.5-pro-latest', 'gemini-pro'
         ],
+        openrouter: [
+            // --- Free Models ---
+            'openai/gpt-oss-20b:free',
+            'deepseek/deepseek-r1-0528:free',
+            'moonshotai/kimi-k2:free',
+            'tngtech/deepseek-r1t2-chimera:free',
+            'deepseek/deepseek-chat-v3-0324:free',
+            'meta-llama/llama-3-70b-instruct:free',
+            'mistralai/mixtral-8x7b-instruct:free',
+            // --- Anthropic ---
+            'anthropic/claude-3.5-sonnet-20240620',
+            'anthropic/claude-3.5-sonnet',
+            'anthropic/claude-sonnet-4',
+            'anthropic/claude-opus-4.1',
+            'anthropic/claude-opus-4',
+            'anthropic/claude-3.7-sonnet:thinking',
+            // --- OpenAI ---
+            'openai/gpt-5-chat',
+            'openai/gpt-4.1',
+            'openai/gpt-4o',
+            // --- Google ---
+            'google/gemini-2.5-pro',
+            'google/gemini-2.5-pro-preview',
+            'google/gemini-2.5-pro-preview-05-06',
+            'google/gemini-2.5-flash',
+            'google/gemini-2.5-flash-lite',
+            'google/gemini-2.5-flash-lite-preview-06-17',
+            // --- xAI ---
+            'x-ai/grok-4',
+            'x-ai/grok-3',
+            'x-ai/grok-3-beta',
+            // --- Other ---
+            'gryphe/mythomax-l2-13b'
+        ],
         xai: [
             'grok-4-0709', 'grok-3-beta', 'grok-3-fast-beta', 'grok-3-mini-beta', 'grok-3-mini-fast-beta', 'grok-1'
         ],
@@ -919,14 +953,33 @@ document.addEventListener('DOMContentLoaded', () => {
             top_p: isForSummarization ? 1 : parseFloat(settings.topP),
             max_tokens: isForSummarization ? 1000 : parseInt(settings.maxTokens),
         };
-        if (provider === 'openai' || provider === 'mistral' || provider === 'xai') {
-            baseParams.frequency_penalty = parseFloat(settings.repetitionPenalty);
-        }
+        
         switch (provider) {
-            case "openai": case "mistral": case "xai":
+            case "openai":
+            case "mistral":
+            case "xai":
                 url = provider === 'openai' ? 'https://api.openai.com/v1/chat/completions' : provider === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' : 'https://api.x.ai/v1/chat/completions';
                 headers = { "Content-Type": "application/json", "Authorization": `Bearer ${settings.apiKey}` };
-                body = { ...baseParams, messages: messagePayload };
+                body = { 
+                    ...baseParams, 
+                    messages: messagePayload,
+                    frequency_penalty: parseFloat(settings.repetitionPenalty)
+                };
+                if (body.top_p >= 1) delete body.top_p;
+                break;
+            case "openrouter":
+                url = "https://openrouter.ai/api/v1/chat/completions";
+                headers = { 
+                    "Content-Type": "application/json", 
+                    "Authorization": `Bearer ${settings.apiKey}`,
+                    "HTTP-Referer": "http://localhost", // Replace with your actual site URL
+                    "X-Title": "大冰奶"
+                };
+                body = { 
+                    ...baseParams, 
+                    messages: messagePayload,
+                    repetition_penalty: parseFloat(settings.repetitionPenalty)
+                };
                 if (body.top_p >= 1) delete body.top_p;
                 break;
             case "anthropic":
@@ -952,7 +1005,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function parseResponse(provider, data) {
         try {
             switch (provider) {
-                case "openai": case "mistral": case "xai": return data.choices[0].message.content;
+                case "openai":
+                case "mistral":
+                case "xai":
+                case "openrouter":
+                    return data.choices[0].message.content;
                 case "anthropic": return data.content[0].text;
                 case "google": return data.candidates[0].content.parts[0].text;
                 default: return "⚠️ 無法解析回應";
