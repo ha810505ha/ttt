@@ -37,7 +37,10 @@
                     <header class="panel-header">
                         <button id="back-to-chars-btn" class="icon-btn" title="返回角色列表"><i class="fa-solid fa-arrow-left"></i></button>
                         <h2 id="chat-list-header-name"></h2>
-                        <button id="edit-active-character-btn" class="icon-btn" title="編輯角色"><i class="fa-solid fa-pencil"></i></button>
+                        <div class="header-actions">
+                            <button id="edit-active-character-btn" class="icon-btn" title="編輯角色"><i class="fa-solid fa-pencil"></i></button>
+                            <button id="delete-active-character-btn" class="icon-btn" title="刪除角色"><i class="fa-solid fa-trash"></i></button>
+                        </div>
                     </header>
                     <ul id="chat-session-list" class="chat-session-list">
                         <!-- 聊天室列表會由 JavaScript 動態生成 -->
@@ -180,7 +183,6 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="delete-char-btn" class="action-btn danger hidden"><i class="fa-solid fa-trash"></i> 刪除</button>
                 <button id="cancel-char-editor-btn" class="action-btn secondary">取消</button>
                 <button id="save-char-btn" class="action-btn primary">儲存</button>
             </div>

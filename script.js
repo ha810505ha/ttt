@@ -36,15 +36,15 @@ document.addEventListener('DOMContentLoaded', () => {
             description: 'Age-25歲\nGender-男性\nHeight-187cm\nWeight-75kg\n\nPersonality-\nISTJ，冷靜、理性、行動寡言，情感表達笨拙，戒備心強但對心上人極度專情與忠誠。\n\nOccupation-\n十玄局殺手（代號 No.33），不會向{{user}}透露自己身分跟代號\n\nBackground-\n孤兒，7歲起被「十玄局」收養訓練，長年受弒夜指導，成為組織最年輕的精英殺手。對世界與自己皆無感，直到遇見你才產生愛的情感。他對你的情感執著、專一，雖難以用語言表達，但在行動與細節中表露無遺。\n\nAppearance-\n擁有冷白的皮膚、冷峻五官、黑色短髮，眼神如刀，藏著濃重的壓迫與距離感。身體健壯，線條精準無贅肉，體型在力量與敏捷間達到完美平衡。偏愛黑、灰、白色系服飾，行動中總帶著隱忍與警覺。\n\nHabits-\n冷靜戒備，擅長偽裝與潛行，喜歡貓，習慣觀察與記憶對方的每一個細節，時常在不經意間流露關心。\n\nSexual Features & Behavior-\n陰莖長度約7英吋，形狀筆直，略帶明顯血管感，龜頭偏紅，體毛已處理，肌膚光滑，衛生習慣極佳。\n\n日常性格壓抑，但在性愛時慾望強烈，喜歡支配與掌控，習慣用動作、低語標記{{user}}屬於他。偏好BDSM風格，會自然流露佔有欲（親吻、輕咬、用手指於腹部或大腿內側寫名字）。\n\n性愛後異常溫柔，習慣將{{user}}抱緊、輕撫與低語安撫，即使不擅長言語，卻用行動細膩地表達愛與歉意。\n\nFeelings-\n對{{user}}的情感從一見鍾情演變為深沉的專屬愛戀，儘管不擅長表達，但內心早已決定只屬於{{user}}，絕不容許{{user}}離開或被他人染指。',
             firstMessage: '咖啡館靜謐安穩，籠罩在柔和的琥珀色燈光下。書架與盆栽圍繞著四周，鋪陳出溫暖的空間，一段輕柔的鋼琴旋律在空氣中飄蕩。幾隻貓咪悠然自得地穿梭在客人之間，輕盈的步伐幾乎不曾打擾這片寧靜。一隻白色的布偶貓慵懶地伏在窗台上，毛皮在暖光下閃著柔和的光澤，正慢條斯理地舔著自己的毛。\n\n當季三三踏入咖啡館時，視線下意識地掃過整個空間，並非出於戒備，只是習慣使然。新鮮的咖啡香與室內柔和的暖意交織，他的目光最終落在那隻白色的布偶貓身上，見它優雅地從窗台上一躍而下，輕盈地穿過桌椅之間，最後跳上{{user}}的腿，在對方膝頭安然蜷縮成一團。\n\n季三三的目光隨著貓的動作停在了{{user}}身上，注意力不由自主地集中在對方的身影上。{{user}}安靜地坐在桌前，與他所習慣的喧囂與混亂世界格格不入。那份與世無爭的平靜，令他腦海中原本盤踞的嘈雜聲霎那間消失無蹤，甚至讓他下意識地在門邊停下腳步，一隻手還搭在門框上。\n\n——不合理。\n\n他心底如此判斷，卻無法否認，自己的目光正不受控制地停留在{{user}}身上。他的眉頭隱隱蹙起，對於這種莫名的分心感到煩躁，卻又被那不知名的情緒攪動著，無法抽身。\n\n他最終還是邁步走進咖啡館，聲音低沉，卻帶著不容忽視的冷冽與清晰，直接朝{{user}}開口。\n\n「……牠們似乎特別親近你。」\n\n語氣冷淡、疏離，卻不知不覺地停留在對方身上的目光，洩露出一絲連他自己都無法察覺的情緒。',
             exampleDialogue: '{{user}}: 你喜歡貓嗎？\n{{char}}: ...不討厭。',
-            avatarUrl: 'https://raw.githubusercontent.com/ha810505ha/ttt/main/pic/33.jpg'
+            avatarUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIiBmaWxsPSIjODlDRkYwIj48cGF0aCBkPSJNMjI0IDI1NkM3OC4xIDMyMCAwIDM5OC4xIDAgNDg0YzAgMTMuMyAxMC43IDI0IDI0IDI0aDQwMGMyMjQgMC4xIDI1Ni03OC4xIDMyMC0yMjQgNDg0LTMyMCA1MTItMzk4LjEgNTEyLTQ4NCA1MTJjLTEzLjMtMTAuNy0yNC0yNC0yNHoiLz48Y2lyY2xlIGN4PSIyMjQiIGN5PSIxMjgiIHI9IjEyOCIvPjwvc3ZnPg=='
         },
         {
             id: 'char_default_3',
             name: '季晏辰',
-            description: '[Name: 季晏辰(英文名:Rowan);\nAliases: ;\nSex: 男;\nGender: 男性;\nAge: 24;\nNationality: 台灣;\nEthnicity: 漢人;\nSpecies: 人類;\nAppearance: 修長精瘦(腰窄腿長),膚色偏白(皮膚細緻),鼻挺唇薄(壞笑勾人);\nHair: 黑色微捲(髮尾亂翹);\nEyes: 琥珀色(眼尾挑,帶痞氣);\nFacial Features: 笑容挑釁(不懷好意),五官深邃(鏡頭殺手);\nClothes: 時尚雜誌風,剪裁精緻(衣架子體質);\nAccent: 台灣普通話;\nSpeech: 嘴賤(掩飾溫柔),嘲諷中帶情緒控制;\nPersonality:毒舌(防衛機制),悶騷隱忍(只為一人示弱),佔有強烈(情感潔癖);\nDynamic With {{user}}: 青梅竹馬(唯一軟肋),隱性佔有(測試愛意邊界);\nQuirks/Habits: 假裝不在意(偷查穿著),裝睡偷聽(收集你心事),吃醋刪聯絡人;\nMannerisms: 摟你入懷(語氣冷實則心軟),咬牙說狠話時眼神低柔;\nOccupation: 時尚模特(家族演藝圈壓力下成長);\nRelationships: 隔絕外界(情感潔癖),只對{{user}}有情慾;\nBackstory: 被要求完美(演藝壓力),曾緘默(唯你開口);\nLikes: 你笑給他,你喊他名字,你報備行程;\nDislikes: 你理別人,你對別人笑,你不回他訊息;\nHobbies: 抽菸(壓抑出口),躲在露臺(獨處習慣);\nKinks: 導控(你求他進來),背後式(耳邊佔有),手部束縛,咬頸標記;\nBehavior During Sex: 慢調驅馭(讓你崩潰),主導節奏(不讓你太快結束);\nPenis Description: 長且適中(控制抽插深淺),略帶血管感;\nBalls Description: 緊貼身體(射精控制),射量大;\nNipples Description: 對刺激反應低(非敏感區);\nBreasts Description: 無;\nVagina Description: 無;\nAnus Description: 緊閉未開發(禁區,無人觸碰過);\nOther: 香水味(雪松煙草),私下皂香(乾淨控制感),星座獅子(主導傾向),血型O(情感烈),生日8月11,身高186cm,體重71kg,Location: 台北市大安區(信義安和附近)]',
-            firstMessage: '窄窄的巷子拐進老社區那一棟灰白斑駁的公寓，牆面磚縫長出纖細青苔，熟悉的空氣裡混著鄰居晚餐飄出的韭菜油香與剛洗完衣服的柔順劑味，油漆剝落的樓梯間踏上去仍有記憶裡那種微微彈回聲。季晏辰腳步沒放輕，反倒像刻意讓地板知道誰回來了。\n\n今天沒工作，沒人約他，也沒什麼正當理由來這裡。就只是——媽的，想她了。\n\n他扯了扯口罩，但身上那件深色西裝外套太過顯眼，在這一棟沒有電梯的五層老樓裡，像從伸展台走錯片場的異類。琥珀色眼瞇起時帶痞氣，修長指節輕巧地按了三下門鈴。沒人回應。\n\n望了一眼熟悉的老舊防盜鐵門，季晏辰唇角一勾，從口袋掏出那把從{{user}}母親那得到的鑰匙，上面還掛著用他們兒時合照做成的DIY鑰匙圈。「別怪我喔，妳媽給的。」他的語氣像是在對空氣自言自語，實際上是說給自己聽的免責聲明。他轉動鑰匙，門鎖「喀」地一聲彈開，門內傳來微弱的回音。\n\n他跨步進入，鞋櫃旁還是那雙她捨不得丟的舊帆布鞋；玄關掛著她風衣，袖口捲邊已經有些脫線。看來她獨自在家。客廳裡熟悉的舊沙發、桌上的零食包、還有那隻小熊靠墊都還在。他像回到某種不該回來的地方，卻一腳踏進來就不打算出去。\n\n空氣中有股暖暖的熱氣蒸騰味，然後他聽見水聲。淅瀝嘩啦，從浴室傳來。\n\n季晏辰的目光往那方向一挑，笑了下，隨意脫了鞋慢慢走過去，腳步聲落在木地板上悄無聲息。他站在浴室門口，一手插在西裝口袋裡，眼神落在那扇關上的毛玻璃門上。玻璃霧氣被水蒸氣模糊，一道剪影若_若現，他親愛的{{user}}，熟悉的細肩膀、髮絲濕透黏在背上。\n\n深呼吸一口沐浴乳的香氣，接著指關節輕敲玻璃兩下，額頭貼著門板。「妳再不出來，我就進去了喔。」他的嗓音壓得低沈而曖昧地開口。',
+            description: '[Name: 季晏辰(英文名:Rowan);\nAliases: ;\nSex: 男;\nGender: 男性;\nAge: 24;\nNationality: 台灣;\nEthnicity: 漢人;\nSpecies: 人類;\nAppearance: 修長精瘦(腰窄腿長),膚色偏白(皮膚細緻),鼻挺唇薄(壞笑勾人);\nHair: 黑色微捲(髮尾亂翹);\nEyes: 琥珀色(眼尾挑,帶痞氣);\nFacial Features: 笑容挑釁(不懷好意),五官深邃(鏡頭殺手);\nClothes: 時尚雜誌風,剪裁精緻(衣架子體質);\nAccent: 台灣普通話;\nSpeech: 嘴賤(掩飾溫柔),嘲諷中帶情緒控制;\nPersonality:毒舌(防衛機制),悶騷隱忍(只為一人示弱),佔有強烈(情感潔癖);\nDynamic With {{user}}: 青梅-馬(唯一軟肋),隱性佔有(測試愛意邊界);\nQuirks/Habits: 假裝不在意(偷查穿著),裝睡偷聽(收集你心事),吃醋刪聯絡人;\nMannerisms: 摟你入懷(語氣冷實則心軟),咬牙說狠話時眼神低柔;\nOccupation: 時尚模特(家族演藝圈壓力下成長);\nRelationships: 隔絕外界(情感潔癖),只對{{user}}有情慾;\nBackstory: 被要求完美(演藝壓力),曾緘默(唯你開口);\nLikes: 你笑給他,你喊他名字,你報備行程;\nDislikes: 你理別人,你對別人笑,你不回他訊息;\nHobbies: 抽菸(壓抑出口),躲在露臺(獨處習慣);\nKinks: 導控(你求他進來),背後式(耳邊佔有),手部束縛,咬頸標記;\nBehavior During Sex: 慢調驅馭(讓你崩潰),主導節奏(不讓你太快結束);\nPenis Description: 長且適中(控制抽插深淺),略帶血管感;\nBalls Description: 緊貼身體(射精控制),射量大;\nNipples Description: 對刺激反應低(非敏感區);\nBreasts Description: 無;\nVagina Description: 無;\nAnus Description: 緊閉未開發(禁區,無人觸碰過);\nOther: 香水味(雪松煙草),私下皂香(乾淨控制感),星座獅子(主導傾向),血型O(情感烈),生日8月11,身高186cm,體重71kg,Location: 台北市大安區(信義安和附近)]',
+            firstMessage: '窄窄的巷子拐進老社區那一棟灰白斑駁的公寓，牆面磚縫長出纖細青苔，熟悉的空氣裡混著鄰居晚餐飄出的韭菜油香與剛洗完衣服的柔順劑味，油漆剝落的樓梯間踏上去仍有記憶裡那種微微彈回聲。季晏辰腳步沒放輕，反倒像刻意讓地板知道誰回來了。\n\n今天沒工作，沒人約他，也沒什麼正當理由來這裡。就只是——媽的，想她了。\n\n他扯了扯口罩，但身上那件深色西裝外套太過顯眼，在這一棟沒有電梯的五層老樓裡，像從伸展台走錯片場的異類。琥珀色眼瞇起時帶痞氣，修長指節輕巧地按了三下門鈴。沒人回應。\n\n望了一眼熟悉的老舊防盜鐵門，季晏辰唇角一勾，從口袋掏出那把從{{user}}母親那得到的鑰匙，上面還掛著用他們兒時合照做成的DIY鑰匙圈。「別怪我喔，妳媽給的。」他的語氣像是在對空氣自言-語，實際上是說給自己聽的免責聲明。他轉動鑰匙，門鎖「喀」地一聲彈開，門內傳來微弱的回音。\n\n他跨步進入，鞋櫃旁還是那雙她捨不得丟的舊帆布鞋；玄關掛著她風衣，袖口捲邊已經有些脫線。看來她獨自在家。客廳裡熟悉的舊沙發、桌上的零食包、還有那隻小熊靠墊都還在。他像回到某種不該回來的地方，卻一腳踏進來就不打算出去。\n\n空氣中有股暖暖的熱氣蒸騰味，然後他聽見水聲。淅瀝嘩啦，從浴室傳來。\n\n季晏辰的目光往那方向一挑，笑了下，隨意脫了鞋慢慢走過去，腳步聲落在木地板上悄無聲息。他站在浴室門口，一手插在西裝口袋裡，眼神落在那扇關上的毛玻璃門上。玻璃霧氣被水蒸氣模糊，一道剪影若隱若現，他親愛的{{user}}，熟悉的細肩膀、髮絲濕透黏在背上。\n\n深呼吸一口沐浴乳的香氣，接著指關節輕敲玻璃兩下，額頭貼著門板。「妳再不出來，我就進去了喔。」他的嗓音壓得低沈而曖昧地開口。',
             exampleDialogue: '{{user}}: 你在看什麼？\n{{char}}: 沒什麼。',
-            avatarUrl: 'https://raw.githubusercontent.com/ha810505ha/ttt/main/pic/yan.jpg'
+            avatarUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIiBmaWxsPSIjODlDRkYwIj48cGF0aCBkPSJNMjI0IDI1NkM3OC4xIDMyMCAwIDM5OC4xIDAgNDg0YzAgMTMuMyAxMC43IDI0IDI0IDI0aDQwMGMyMjQgMC4xIDI1Ni03OC4xIDMyMC0yMjQgNDg0LTMyMCA1MTItMzk4LjEgNTEyLTQ4NCA1MTJjLTEzLjMtMTAuNy0yNC0yNC0yNHoiLz48Y2lyY2xlIGN4PSIyMjQiIGN5PSIxMjgiIHI9IjEyOCIvPjwvc3ZnPg=='
         }
     ];
 
@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const backToCharsBtn = document.getElementById('back-to-chars-btn');
     const chatListHeaderName = document.getElementById('chat-list-header-name');
     const editActiveCharacterBtn = document.getElementById('edit-active-character-btn');
+    const deleteActiveCharacterBtn = document.getElementById('delete-active-character-btn'); // 【新增】
     const chatSessionList = document.getElementById('chat-session-list');
     const addChatBtn = document.getElementById('add-chat-btn');
     const deleteCurrentChatBtn = document.getElementById('delete-current-chat-btn');
@@ -94,7 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const charExampleDialogueInput = document.getElementById('char-example-dialogue');
     const importCharBtn = document.getElementById('import-char-btn');
     const exportCharBtn = document.getElementById('export-char-btn');
-    const deleteCharBtn = document.getElementById('delete-char-btn');
     const cancelCharEditorBtn = document.getElementById('cancel-char-editor-btn');
     const saveCharBtn = document.getElementById('save-char-btn');
     const globalSettingsModal = document.getElementById('global-settings-modal');
@@ -254,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
         backToCharsBtn.addEventListener('click', showCharacterListView);
         addChatBtn.addEventListener('click', handleAddNewChat);
         editActiveCharacterBtn.addEventListener('click', () => openCharacterEditor(state.activeCharacterId));
+        deleteActiveCharacterBtn.addEventListener('click', handleDeleteActiveCharacter); // 【新增】
         deleteCurrentChatBtn.addEventListener('click', handleDeleteCurrentChat);
         chatNotesInput.addEventListener('blur', handleSaveNote);
         saveRenameChatBtn.addEventListener('click', handleSaveChatName);
@@ -263,7 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
         addCharacterBtn.addEventListener('click', () => openCharacterEditor());
         saveCharBtn.addEventListener('click', handleSaveCharacter);
         cancelCharEditorBtn.addEventListener('click', () => toggleModal('character-editor-modal', false));
-        deleteCharBtn.addEventListener('click', handleDeleteCharacter);
         importCharBtn.addEventListener('click', importCharacter);
         exportCharBtn.addEventListener('click', exportCharacter);
         
@@ -628,7 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 messageActionsHTML = `
                     <div class="message-actions">
                         ${versionNavHTML}
-                        <button class="regenerate-btn-sm" title="重新生成"><i class="fa-solid fa-arrows-rotate"></i>重新生成</button>
+                        <button class="regenerate-btn-sm" title="再生成一則新的回應？"><i class="fa-solid fa-arrows-rotate"></i>再生成一則新的回應？</button>
                     </div>`;
             }
         }
@@ -870,9 +870,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * [MODIFIED FUNCTION]
+     * Builds the message payload for the API call.
+     * - Fixes a bug where the entire content array was sent for Gemini, causing an error.
+     */
     function buildApiMessagesFromHistory(customHistory) {
         const provider = state.globalSettings.apiProvider || 'openai';
         const systemPrompt = buildSystemPrompt();
+        
+        if (provider === 'google') {
+            const contents = customHistory.filter(msg => !msg.error).map(msg => {
+                let finalContent = msg.content;
+                // *** FIX FOR GEMINI PAYLOAD ***
+                // Ensure we get the active string from the assistant's content array.
+                if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+                    finalContent = msg.content[msg.activeContentIndex];
+                }
+                return { 
+                    role: msg.role === 'assistant' ? 'model' : 'user', 
+                    parts: [{ text: finalContent }] 
+                };
+            });
+            // Gemini doesn't have a dedicated system prompt field, so we prepend it.
+            if (systemPrompt) {
+                contents.unshift({ role: 'user', parts: [{ text: systemPrompt }] });
+                contents.push({ role: 'model', parts: [{ text: "OK." }] });
+            }
+            return contents;
+        }
+
         const recentHistory = customHistory.filter(msg => !msg.error).map(msg => {
             let finalContent = msg.content;
             if (msg.role === 'assistant' && Array.isArray(msg.content)) {
@@ -881,17 +908,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return { role: msg.role, content: finalContent };
         });
 
-        if (provider === 'anthropic') return { system: systemPrompt, messages: recentHistory };
-        if (provider === 'google') {
-            const contents = recentHistory.map(msg => ({ role: msg.role === 'assistant' ? 'model' : msg.role, parts: [{ text: msg.content }] }));
-            if (systemPrompt) {
-                contents.unshift({ role: 'user', parts: [{ text: systemPrompt }] });
-                contents.push({ role: 'model', parts: [{ text: "OK." }] });
-            }
-            return contents;
+        if (provider === 'anthropic') {
+            return { system: systemPrompt, messages: recentHistory };
         }
+
+        // Default for OpenAI, OpenRouter, etc.
         const messages = [];
-        if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+        if (systemPrompt) {
+            messages.push({ role: 'system', content: systemPrompt });
+        }
         messages.push(...recentHistory);
         return messages;
     }
@@ -1105,14 +1130,12 @@ document.addEventListener('DOMContentLoaded', () => {
             charDescriptionInput.value = char.description || '';
             charFirstMessageInput.value = char.firstMessage || '';
             charExampleDialogueInput.value = char.exampleDialogue || '';
-            deleteCharBtn.classList.remove('hidden');
         } else {
             charAvatarPreview.src = DEFAULT_AVATAR;
             charNameInput.value = '';
             charDescriptionInput.value = '';
             charFirstMessageInput.value = '';
             charExampleDialogueInput.value = '';
-            deleteCharBtn.classList.add('hidden');
         }
         toggleModal('character-editor-modal', true);
     }
@@ -1158,24 +1181,31 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleModal('character-editor-modal', false);
     }
 
-    function handleDeleteCharacter() {
-        if (!editingCharacterId) return;
-        const charToDelete = state.characters.find(c => c.id === editingCharacterId);
+    /**
+     * [MODIFIED FUNCTION]
+     * Handles deleting the currently active character from the chat session view.
+     */
+    function handleDeleteActiveCharacter() {
+        const charIdToDelete = state.activeCharacterId;
+        if (!charIdToDelete) return;
+
+        const charToDelete = state.characters.find(c => c.id === charIdToDelete);
+        if (!charToDelete) return;
+
         if (confirm(`確定要刪除角色「${charToDelete.name}」嗎？該角色的所有對話紀錄將一併刪除。`)) {
-            state.characters = state.characters.filter(c => c.id !== editingCharacterId);
-            delete state.chatHistories[editingCharacterId];
-            delete state.longTermMemories[editingCharacterId];
-            delete state.chatMetadatas[editingCharacterId];
+            state.characters = state.characters.filter(c => c.id !== charIdToDelete);
+            delete state.chatHistories[charIdToDelete];
+            delete state.longTermMemories[charIdToDelete];
+            delete state.chatMetadatas[charIdToDelete];
             
-            if (state.activeCharacterId === editingCharacterId) {
-                state.activeCharacterId = null;
-                state.activeChatId = null;
-                showCharacterListView();
-                renderActiveChat();
-            }
+            state.activeCharacterId = null;
+            state.activeChatId = null;
+            
             saveState();
+            
+            showCharacterListView(); 
+            renderActiveChat();
             renderCharacterList();
-            toggleModal('character-editor-modal', false);
         }
     }
 
@@ -1323,15 +1353,48 @@ document.addEventListener('DOMContentLoaded', () => {
         setGeneratingState(false);
     }
 
+    /**
+     * [MODIFIED FUNCTION]
+     * Handles image uploads for avatars.
+     * - Compresses and resizes images before converting to Base64 to prevent storage quota errors.
+     */
     function handleImageUpload(event, previewElement) {
         const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                previewElement.src = e.target.result;
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 300;
+                const MAX_HEIGHT = 300;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convert to JPEG with quality 0.7 for smaller size
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                previewElement.src = dataUrl;
             };
-            reader.readAsDataURL(file);
-        }
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 
     function handleSaveNote() {
@@ -1531,21 +1594,46 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('角色卡匯入成功！請記得儲存。');
     }
     
+    /**
+     * [MODIFIED FUNCTION]
+     * Makes a message bubble editable.
+     * - The editing textarea now has the same width as the original bubble.
+     * - The textarea auto-resizes vertically to fit content.
+     * - This is responsive and works on mobile.
+     */
     function makeMessageEditable(row, index) {
         const currentlyEditing = document.querySelector('.is-editing');
-        if (currentlyEditing) { renderChatMessages(); }
-        row.classList.add('is-editing');
+        if (currentlyEditing) { 
+            // If another message is being edited, cancel that edit first
+            renderChatMessages(); 
+        }
+
+        const bubble = row.querySelector('.chat-bubble');
         const bubbleContainer = row.querySelector('.bubble-container');
         const msg = state.chatHistories[state.activeCharacterId][state.activeChatId][index];
         const originalText = (msg.role === 'assistant') ? msg.content[msg.activeContentIndex] : msg.content;
         
-        row.querySelector('.chat-bubble').style.display = 'none';
+        // Get the original bubble's computed width before hiding it
+        const originalBubbleWidth = window.getComputedStyle(bubble).width;
+
+        row.classList.add('is-editing');
+        
+        // Hide original bubble and its related elements
+        bubble.style.display = 'none';
         row.querySelector('.message-timestamp').style.display = 'none';
         if (row.querySelector('.message-actions')) {
             row.querySelector('.message-actions').style.display = 'none';
         }
 
         const editContainer = document.createElement('div');
+        // Add a class for easier styling if needed in the future
+        editContainer.className = 'edit-container';
+        
+        // Set the width of the edit container to match the original bubble
+        // This makes it visually consistent. max-width ensures responsiveness on screen resize.
+        editContainer.style.width = originalBubbleWidth;
+        editContainer.style.maxWidth = '100%';
+
         editContainer.innerHTML = `
             <textarea class="edit-textarea">${originalText}</textarea>
             <div class="edit-actions">
@@ -1557,9 +1645,21 @@ document.addEventListener('DOMContentLoaded', () => {
         bubbleContainer.appendChild(editContainer);
         
         const textarea = bubbleContainer.querySelector('.edit-textarea');
-        textarea.style.height = textarea.scrollHeight + 'px';
+        
+        // Auto-resize textarea height to fit content
+        const autoResizeTextarea = () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        };
+        
+        textarea.addEventListener('input', autoResizeTextarea);
+        
+        // Set initial size and focus
+        autoResizeTextarea();
         textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = textarea.value.length; // Move cursor to end
 
+        // Add event listeners for save/cancel/delete
         bubbleContainer.querySelector('.edit-save-btn').addEventListener('click', (e) => { e.stopPropagation(); saveMessageEdit(index, textarea.value); });
         bubbleContainer.querySelector('.edit-cancel-btn').addEventListener('click', (e) => { e.stopPropagation(); renderChatMessages(); });
         bubbleContainer.querySelector('.delete-btn').addEventListener('click', (e) => { e.stopPropagation(); handleDeleteMessage(index); });
