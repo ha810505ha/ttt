@@ -142,6 +142,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelMemoryEditorBtn = document.getElementById('cancel-memory-editor-btn');
     const saveMemoryEditorBtn = document.getElementById('save-memory-editor-btn');
 
+    // 【新增】匯出選項元素
+    const exportChatModal = document.getElementById('export-chat-modal');
+    const exportFormatJsonl = document.getElementById('export-format-jsonl');
+    const exportFormatPng = document.getElementById('export-format-png');
+    const exportRangeSelector = document.getElementById('export-range-selector');
+    const exportMessageCountSlider = document.getElementById('export-message-count-slider');
+    const exportRangeLabel = document.getElementById('export-range-label');
+    const cancelExportChatBtn = document.getElementById('cancel-export-chat-btn');
+    const confirmExportChatBtn = document.getElementById('confirm-export-chat-btn');
+
     // ===================================================================================
     // 2. 應用程式狀態 (Application State)
     // ===================================================================================
@@ -306,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
             messageInput.style.height = (messageInput.scrollHeight) + 'px';
         });
 
-        exportCurrentChatBtn.addEventListener('click', exportChat);
+        exportCurrentChatBtn.addEventListener('click', openExportModal);
         chatWindow.addEventListener('click', (e) => {
             if (e.target === chatWindow) {
                 document.querySelectorAll('.message-row.show-actions').forEach(row => row.classList.remove('show-actions'));
@@ -322,9 +332,84 @@ document.addEventListener('DOMContentLoaded', () => {
         viewMemoryBtn.addEventListener('click', openMemoryEditor);
         saveMemoryEditorBtn.addEventListener('click', handleSaveMemory);
         cancelMemoryEditorBtn.addEventListener('click', () => toggleModal('memory-editor-modal', false));
+
+        // 【新增】匯出選項事件
+        exportFormatPng.addEventListener('change', () => exportRangeSelector.classList.remove('hidden'));
+        exportFormatJsonl.addEventListener('change', () => exportRangeSelector.classList.add('hidden'));
+        exportMessageCountSlider.addEventListener('input', (e) => {
+            exportRangeLabel.textContent = `匯出最近的 ${e.target.value} 則訊息`;
+        });
+        confirmExportChatBtn.addEventListener('click', handleConfirmExport);
+        cancelExportChatBtn.addEventListener('click', () => toggleModal('export-chat-modal', false));
     }
     
-    function setupSliderSync(slider, numberInput) {
+    
+/**
+ * Opens the "Export Chat" modal and primes the UI state.
+ */
+function openExportModal() {
+  if (!state.activeCharacterId || !state.activeChatId) {
+    alert('請先選擇角色並開啟一個對話。');
+    return;
+  }
+
+  // default selection -> JSONL
+  if (typeof exportFormatJsonl !== 'undefined' && exportFormatJsonl) exportFormatJsonl.checked = true;
+  if (typeof exportFormatPng !== 'undefined' && exportFormatPng) exportFormatPng.checked = false;
+
+  // hide range selector initially (only for PNG)
+  if (typeof exportRangeSelector !== 'undefined' && exportRangeSelector) {
+    exportRangeSelector.classList.add('hidden');
+  }
+
+  // reset slider bounds/label based on rendered rows
+  const rows = chatWindow ? chatWindow.querySelectorAll('.message-row') : [];
+  const total = rows.length;
+  const defaultCount = Math.min(20, Math.max(1, total || 1));
+
+  if (typeof exportMessageCountSlider !== 'undefined' && exportMessageCountSlider) {
+    exportMessageCountSlider.min = '1';
+    exportMessageCountSlider.max = String(Math.max(1, total || 50));
+    exportMessageCountSlider.value = String(defaultCount);
+  }
+  if (typeof exportRangeLabel !== 'undefined' && exportRangeLabel) {
+    exportRangeLabel.textContent = `匯出最近的 ${defaultCount} 則訊息`;
+  }
+
+  toggleModal('export-chat-modal', true);
+}
+
+/**
+ * Confirms export with the chosen format and triggers JSONL or PNG export.
+ */
+function handleConfirmExport() {
+  if (!state.activeCharacterId || !state.activeChatId) return;
+
+  const isPNG = !!(exportFormatPng && exportFormatPng.checked);
+  if (isPNG) {
+    const rows = chatWindow ? chatWindow.querySelectorAll('.message-row') : [];
+    const total = rows.length;
+
+    if (total === 0) {
+      alert('沒有對話可以匯出。');
+      return;
+    }
+
+    const sliderVal = exportMessageCountSlider ? parseInt(exportMessageCountSlider.value || '20', 10) : 20;
+    const count = Math.max(1, Math.min(total, sliderVal));
+
+    const endIndex = total - 1;
+    const startIndex = Math.max(0, endIndex - (count - 1));
+
+    exportChatAsImage(startIndex, endIndex);
+  } else {
+    exportChatAsJsonl();
+  }
+
+  toggleModal('export-chat-modal', false);
+}
+
+function setupSliderSync(slider, numberInput) {
         slider.addEventListener('input', () => numberInput.value = slider.value);
         numberInput.addEventListener('input', () => slider.value = numberInput.value);
     }
@@ -1054,7 +1139,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { console.error("Error parsing response:", data); return "⚠️ 回應格式錯誤"; }
     }
 
-    function exportChat() {
+    /**
+     * [MODIFIED FUNCTION]
+     * Exports the current chat history as a JSONL file.
+     */
+    function exportChatAsJsonl() {
         if (!state.activeCharacterId || !state.activeChatId) return;
         const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
         if (history.length === 0) { alert('沒有對話可以匯出。'); return; }
@@ -1069,6 +1158,47 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(url);
     }
     
+    /**
+     * [NEW FUNCTION]
+     * Exports a selected range of the current chat history as a PNG image.
+     */
+    function exportChatAsImage(startIndex, endIndex) {
+        if (!state.activeCharacterId || !state.activeChatId) return;
+        const activeChar = state.characters.find(c => c.id === state.activeCharacterId);
+        
+        const allMessageRows = chatWindow.querySelectorAll('.message-row');
+        const elementsToHide = chatWindow.querySelectorAll('.edit-msg-btn, .message-actions');
+        
+        // Hide elements not in the selected range
+        allMessageRows.forEach((row, index) => {
+            if (index < startIndex || index > endIndex) {
+                row.style.display = 'none';
+            }
+        });
+        elementsToHide.forEach(el => el.style.visibility = 'hidden');
+
+        html2canvas(chatWindow, {
+            backgroundColor: getComputedStyle(document.body).getPropertyValue('--background-color'),
+            useCORS: true,
+            onclone: (clonedDoc) => {
+                clonedDoc.body.style.backgroundColor = getComputedStyle(document.body).getPropertyValue('--background-color');
+            }
+        }).then(canvas => {
+            const image = canvas.toDataURL("image/png", 1.0);
+            const a = document.createElement('a');
+            a.href = image;
+            a.download = `${activeChar.name}_${state.activeChatId}_${startIndex}-${endIndex}.png`;
+            a.click();
+        }).catch(err => {
+            console.error('oops, something went wrong!', err);
+            alert('匯出圖片失敗，請查看主控台獲取更多資訊。');
+        }).finally(() => {
+            // Restore visibility of all elements
+            allMessageRows.forEach(row => row.style.display = '');
+            elementsToHide.forEach(el => el.style.visibility = '');
+        });
+    }
+
     // ===================================================================================
     // 7. 角色與聊天室管理 (Character & Chat Management)
     // ===================================================================================
