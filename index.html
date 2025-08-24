@@ -95,7 +95,10 @@
                     <div class="char-info">
                         <img id="chat-header-avatar" src="" alt="頭像" class="chat-avatar-sm">
                         <div class="char-info-details">
-                           <h2 id="chat-header-name"></h2>
+                           <div class="chat-header-name-container">
+                               <h2 id="chat-header-name"></h2>
+                               <span id="chat-header-model-name"></span>
+                           </div>
                            <input type="text" id="chat-notes-input" class="chat-notes-input" placeholder="新增備註...">
                         </div>
                     </div>
@@ -212,8 +215,14 @@
                 </div>
                 <div class="form-group">
                     <label for="api-key">API 金鑰</label>
-                    <input type="password" id="api-key" placeholder="API 金鑰">
+                    <!-- [重要修改] 將輸入框和按鈕包在一個容器中 -->
+                    <div class="api-key-container">
+                        <input type="password" id="api-key" placeholder="API 金鑰">
+                        <button id="test-api-btn" class="action-btn-sm">測試連線</button>
+                    </div>
                 </div>
+                <!-- [重要修改] 新增狀態指示器 -->
+                <div id="api-status-indicator"></div>
 
                 <h4>進階參數</h4>
                 <div class="settings-slider-group">
@@ -330,7 +339,12 @@
         </div>
     </div>
 
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+        <p>圖片生成中，請稍候...</p>
+    </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
