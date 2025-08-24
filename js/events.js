@@ -5,7 +5,7 @@ import * as DOM from './dom.js';
 import * as Handlers from './handlers.js';
 import * as UI from './ui.js';
 import * as Utils from './utils.js';
-import { state, saveState } from './state.js';
+import { state, saveSettings, loadChatDataForCharacter } from './state.js';
 
 /**
  * @description 集中設定所有 DOM 元素的事件監聽器
@@ -27,9 +27,11 @@ export function setupEventListeners() {
     });
 
     // 左側面板導覽
-    DOM.backToCharsBtn.addEventListener('click', () => {
+    DOM.backToCharsBtn.addEventListener('click', async () => {
         UI.showCharacterListView();
-        saveState();
+        state.activeCharacterId = null;
+        state.activeChatId = null;
+        await saveSettings();
     });
     DOM.addChatBtn.addEventListener('click', Handlers.handleAddNewChat);
     DOM.editActiveCharacterBtn.addEventListener('click', () => Handlers.openCharacterEditor(state.activeCharacterId));
@@ -73,7 +75,6 @@ export function setupEventListeners() {
         UI.loadGlobalSettingsToUI();
         UI.toggleModal('global-settings-modal', true);
     });
-    // [重要修改] 為測試連線按鈕綁定事件
     DOM.testApiBtn.addEventListener('click', Handlers.handleTestApiConnection);
     DOM.saveGlobalSettingsBtn.addEventListener('click', Handlers.handleSaveGlobalSettings);
     DOM.cancelGlobalSettingsBtn.addEventListener('click', () => UI.toggleModal('global-settings-modal', false));
@@ -85,9 +86,11 @@ export function setupEventListeners() {
 
     // 提示詞庫
     DOM.promptLibraryBtn.addEventListener('click', UI.showPromptView);
-    DOM.backToMainFromPromptBtn.addEventListener('click', () => {
+    DOM.backToMainFromPromptBtn.addEventListener('click', async () => {
         UI.showCharacterListView();
-        saveState();
+        state.activeCharacterId = null;
+        state.activeChatId = null;
+        await saveSettings();
     });
     DOM.savePromptSettingsBtn.addEventListener('click', Handlers.handleSavePromptSettings);
 
@@ -95,9 +98,9 @@ export function setupEventListeners() {
     DOM.addUserPersonaBtn.addEventListener('click', () => Handlers.openUserPersonaEditor());
     DOM.saveUserPersonaBtn.addEventListener('click', Handlers.handleSaveUserPersona);
     DOM.cancelUserPersonaEditorBtn.addEventListener('click', () => UI.toggleModal('user-persona-editor-modal', false));
-    DOM.activeUserPersonaSelect.addEventListener('change', (e) => {
+    DOM.activeUserPersonaSelect.addEventListener('change', async (e) => {
         state.activeUserPersonaId = e.target.value;
-        saveState();
+        await saveSettings();
     });
     DOM.chatUserPersonaSelect.addEventListener('change', Handlers.handleChatPersonaChange);
     DOM.userPersonaAvatarUpload.addEventListener('change', (e) => Utils.handleImageUpload(e, DOM.userPersonaAvatarPreview));
@@ -118,12 +121,14 @@ export function setupEventListeners() {
     // ================== 事件委派 (處理動態產生的元素) ==================
 
     // 角色列表點擊
-    DOM.characterList.addEventListener('click', (e) => {
+    DOM.characterList.addEventListener('click', async (e) => {
         const charItem = e.target.closest('.character-item');
         if (charItem) {
             const charId = charItem.dataset.id;
+            // [重要修改] 在顯示列表前，先從資料庫載入該角色的對話資料
+            await loadChatDataForCharacter(charId);
             UI.showChatSessionListView(charId);
-            saveState();
+            await saveSettings();
         }
     });
 

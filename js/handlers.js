@@ -2,7 +2,11 @@
 // 這個檔案存放所有的事件處理函式 (event handlers)。
 
 import * as DOM from './dom.js';
-import { state, tempState, saveState } from './state.js';
+import { 
+    state, tempState, saveSettings, saveCharacter, deleteCharacter, saveUserPersona, deleteUserPersona,
+    saveAllChatHistoriesForChar, saveAllLongTermMemoriesForChar, saveAllChatMetadatasForChar,
+    deleteAllChatDataForChar, loadChatDataForCharacter
+} from './state.js';
 import { callApi, buildApiMessages, buildApiMessagesFromHistory, testApiConnection } from './api.js';
 import { 
     renderCharacterList, renderChatSessionList, renderActiveChat, renderChatMessages, 
@@ -12,12 +16,9 @@ import { DEFAULT_AVATAR, DEFAULT_SUMMARY_PROMPT } from './constants.js';
 import { handleImageUpload, exportChatAsJsonl, exportChatAsImage } from './utils.js';
 
 // ===================================================================================
-// [新增] API 連線測試
+// API 連線測試
 // ===================================================================================
 
-/**
- * @description 處理測試 API 連線的按鈕點擊事件
- */
 export async function handleTestApiConnection() {
     const provider = DOM.apiProviderSelect.value;
     const model = DOM.apiModelSelect.value;
@@ -51,11 +52,6 @@ export async function handleTestApiConnection() {
 // 聊天核心邏輯 (Core Chat Logic)
 // ===================================================================================
 
-/**
- * @description 發送訊息或重試發送失敗的訊息
- * @param {Object|null} userMessage - 如果是重試，則為要重試的訊息物件
- * @param {number|null} messageIndex - 如果是重試，則為訊息的索引
- */
 export async function sendMessage(userMessage = null, messageIndex = null) {
     if (!checkApiKey('請先設定 API 金鑰才能開始對話')) return;
     if (!state.activeCharacterId || !state.activeChatId) return;
@@ -78,6 +74,7 @@ export async function sendMessage(userMessage = null, messageIndex = null) {
         currentUserMessageIndex = history.length - 1;
     }
     
+    await saveAllChatHistoriesForChar(state.activeCharacterId);
     renderChatMessages();
     DOM.chatWindow.scrollTop = DOM.chatWindow.scrollHeight;
 
@@ -97,7 +94,8 @@ export async function sendMessage(userMessage = null, messageIndex = null) {
         history.push({ role: 'assistant', content: [aiResponse], activeContentIndex: 0, timestamp: aiTimestamp });
         
         thinkingBubble.remove();
-        saveState();
+        
+        await saveAllChatHistoriesForChar(state.activeCharacterId);
         renderChatMessages();
     } catch (error) {
         thinkingBubble.remove();
@@ -105,7 +103,7 @@ export async function sendMessage(userMessage = null, messageIndex = null) {
             console.error("API 錯誤:", error);
             const errorMessage = `發生錯誤: ${error.message}`;
             history[currentUserMessageIndex].error = errorMessage;
-            saveState();
+            await saveAllChatHistoriesForChar(state.activeCharacterId);
             renderChatMessages();
         } else {
              renderChatMessages();
@@ -115,10 +113,6 @@ export async function sendMessage(userMessage = null, messageIndex = null) {
     }
 }
 
-/**
- * @description 重試發送失敗的使用者訊息
- * @param {number} messageIndex - 訊息索引
- */
 export function retryMessage(messageIndex) {
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
     const messageToRetry = history[messageIndex];
@@ -128,10 +122,6 @@ export function retryMessage(messageIndex) {
     }
 }
 
-/**
- * @description 重新生成 AI 的回應
- * @param {number} messageIndex - AI 訊息在歷史紀錄中的索引
- */
 export async function regenerateResponse(messageIndex) {
     if (!checkApiKey('請先設定 API 金鑰才能重新生成')) return;
     if (!state.activeCharacterId || !state.activeChatId) return;
@@ -160,7 +150,7 @@ export async function regenerateResponse(messageIndex) {
         targetMessage.content.push(aiResponse);
         targetMessage.activeContentIndex = targetMessage.content.length - 1;
 
-        saveState();
+        await saveAllChatHistoriesForChar(state.activeCharacterId);
         renderChatMessages();
     } catch (error) {
          if (error.name !== 'AbortError') {
@@ -175,26 +165,18 @@ export async function regenerateResponse(messageIndex) {
     }
 }
 
-/**
- * @description 切換 AI 回應的不同版本
- * @param {number} messageIndex - 訊息索引
- * @param {number} direction - 方向 (-1 為上一個, 1 為下一個)
- */
-export function switchVersion(messageIndex, direction) {
+export async function switchVersion(messageIndex, direction) {
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
     const msg = history[messageIndex];
     const newIndex = msg.activeContentIndex + direction;
 
     if (newIndex >= 0 && newIndex < msg.content.length) {
         msg.activeContentIndex = newIndex;
-        saveState();
+        await saveAllChatHistoriesForChar(state.activeCharacterId);
         renderChatMessages();
     }
 }
 
-/**
- * @description 中斷正在進行的 API 請求
- */
 export function handleStopGeneration() {
     if (tempState.apiCallController) {
         tempState.apiCallController.abort();
@@ -207,23 +189,16 @@ export function handleStopGeneration() {
 // 聊天與角色管理 (Chat & Character Management)
 // ===================================================================================
 
-/**
- * @description 切換到指定的聊天室
- * @param {string} chatId - 聊天室 ID
- */
-export function switchChat(chatId) {
+export async function switchChat(chatId) {
     if (state.activeChatId === chatId) return;
 
     state.activeChatId = chatId;
-    saveState();
+    await saveSettings();
     renderChatSessionList();
     renderActiveChat();
 }
 
-/**
- * @description 為目前角色開啟一個新的聊天
- */
-export function handleAddNewChat() {
+export async function handleAddNewChat() {
     if (!state.activeCharacterId) return;
     const char = state.characters.find(c => c.id === state.activeCharacterId);
     if (!char) return;
@@ -250,15 +225,15 @@ export function handleAddNewChat() {
     }
     
     state.activeChatId = newChatId;
-    saveState();
+    await saveAllChatHistoriesForChar(state.activeCharacterId);
+    await saveAllChatMetadatasForChar(state.activeCharacterId);
+    await saveSettings();
+    
     renderChatSessionList();
     renderActiveChat();
 }
 
-/**
- * @description 刪除當前對話
- */
-export function handleDeleteCurrentChat() {
+export async function handleDeleteCurrentChat() {
     if (!state.activeCharacterId || !state.activeChatId) return;
     if (confirm('確定要永久刪除這個對話嗎？此操作無法復原。')) {
         delete state.chatHistories[state.activeCharacterId][state.activeChatId];
@@ -267,28 +242,26 @@ export function handleDeleteCurrentChat() {
             delete state.longTermMemories[state.activeCharacterId][state.activeChatId];
         }
         state.activeChatId = null;
-        saveState();
+        
+        await saveAllChatHistoriesForChar(state.activeCharacterId);
+        await saveAllChatMetadatasForChar(state.activeCharacterId);
+        await saveAllLongTermMemoriesForChar(state.activeCharacterId);
+        await saveSettings();
+
         renderChatSessionList();
         renderActiveChat();
     }
 }
 
-/**
- * @description 處理儲存聊天備註
- */
-export function handleSaveNote() {
+export async function handleSaveNote() {
     if (!state.activeCharacterId || !state.activeChatId) return;
     const metadata = state.chatMetadatas[state.activeCharacterId]?.[state.activeChatId];
     if (metadata) {
         metadata.notes = DOM.chatNotesInput.value.trim();
-        saveState();
+        await saveAllChatMetadatasForChar(state.activeCharacterId);
     }
 }
 
-/**
- * @description 開啟重新命名對話的彈窗
- * @param {string} chatId - 聊天室 ID
- */
 export function openRenameModal(chatId) {
     tempState.renamingChatId = chatId;
     const metadata = state.chatMetadatas[state.activeCharacterId]?.[chatId] || {};
@@ -297,33 +270,26 @@ export function openRenameModal(chatId) {
     DOM.renameChatInput.focus();
 }
 
-/**
- * @description 儲存新的對話名稱
- */
-export function handleSaveChatName() {
+export async function handleSaveChatName() {
     if (!tempState.renamingChatId || !state.activeCharacterId) return;
     
     const metadata = state.chatMetadatas[state.activeCharacterId][tempState.renamingChatId];
     if(metadata) {
         metadata.name = DOM.renameChatInput.value.trim();
-        saveState();
+        await saveAllChatMetadatasForChar(state.activeCharacterId);
         renderChatSessionList();
     }
     toggleModal('rename-chat-modal', false);
     tempState.renamingChatId = null;
 }
 
-/**
- * @description 切換對話的釘選狀態
- * @param {string} chatId - 聊天室 ID
- */
-export function handleTogglePinChat(chatId) {
+export async function handleTogglePinChat(chatId) {
     if (!state.activeCharacterId) return;
     
     const metadata = state.chatMetadatas[state.activeCharacterId][chatId];
     if(metadata) {
         metadata.pinned = !metadata.pinned;
-        saveState();
+        await saveAllChatMetadatasForChar(state.activeCharacterId);
         renderChatSessionList();
     }
 }
@@ -332,10 +298,6 @@ export function handleTogglePinChat(chatId) {
 // 角色編輯器 (Character Editor)
 // ===================================================================================
 
-/**
- * @description 開啟角色編輯器 (新增或編輯)
- * @param {string|null} charId - 要編輯的角色 ID，如果為 null 則是新增
- */
 export function openCharacterEditor(charId = null) {
     tempState.editingCharacterId = charId;
     if (charId) {
@@ -357,10 +319,7 @@ export function openCharacterEditor(charId = null) {
     toggleModal('character-editor-modal', true);
 }
 
-/**
- * @description 儲存角色編輯器的變更
- */
-export function handleSaveCharacter() {
+export async function handleSaveCharacter() {
     if (tempState.editingCharacterId && !confirm('儲存後會覆蓋原先內容，是否繼續儲存?')) {
         return;
     }
@@ -376,16 +335,17 @@ export function handleSaveCharacter() {
 
     if (tempState.editingCharacterId) {
         const charIndex = state.characters.findIndex(c => c.id === tempState.editingCharacterId);
-        state.characters[charIndex] = { ...state.characters[charIndex], ...charData };
+        const updatedChar = { ...state.characters[charIndex], ...charData };
+        state.characters[charIndex] = updatedChar;
+        await saveCharacter(updatedChar);
     } else {
         const newChar = { id: `char_${Date.now()}`, ...charData };
         state.characters.push(newChar);
-        state.chatHistories[newChar.id] = {};
-        state.chatMetadatas[newChar.id] = {};
+        await saveCharacter(newChar);
         state.activeCharacterId = newChar.id;
         handleAddNewChat();
     }
-    saveState();
+    
     renderCharacterList();
     if (DOM.leftPanel.classList.contains('show-chats')) {
         const character = state.characters.find(c => c.id === state.activeCharacterId);
@@ -394,10 +354,7 @@ export function handleSaveCharacter() {
     toggleModal('character-editor-modal', false);
 }
 
-/**
- * @description 刪除當前選定的角色
- */
-export function handleDeleteActiveCharacter() {
+export async function handleDeleteActiveCharacter() {
     const charIdToDelete = state.activeCharacterId;
     if (!charIdToDelete) return;
 
@@ -410,10 +367,12 @@ export function handleDeleteActiveCharacter() {
         delete state.longTermMemories[charIdToDelete];
         delete state.chatMetadatas[charIdToDelete];
         
+        await deleteCharacter(charIdToDelete);
+        await deleteAllChatDataForChar(charIdToDelete);
+        
         state.activeCharacterId = null;
         state.activeChatId = null;
-        
-        saveState();
+        await saveSettings();
         
         showCharacterListView(); 
         renderActiveChat();
@@ -425,11 +384,6 @@ export function handleDeleteActiveCharacter() {
 // 訊息編輯與操作 (Message Editing & Actions)
 // ===================================================================================
 
-/**
- * @description 讓指定的訊息變成可編輯狀態
- * @param {HTMLElement} row - 訊息的 DOM 元素
- * @param {number} index - 訊息索引
- */
 export function makeMessageEditable(row, index) {
     const currentlyEditing = document.querySelector('.is-editing');
     if (currentlyEditing) { 
@@ -474,30 +428,21 @@ export function makeMessageEditable(row, index) {
     bubbleContainer.querySelector('.delete-btn').addEventListener('click', (e) => { e.stopPropagation(); handleDeleteMessage(index); });
 }
 
-/**
- * @description 儲存被編輯過的訊息
- * @param {number} index - 訊息索引
- * @param {string} newText - 新的訊息內容
- */
-function saveMessageEdit(index, newText) {
+async function saveMessageEdit(index, newText) {
     const msg = state.chatHistories[state.activeCharacterId][state.activeChatId][index];
     if (msg.role === 'assistant') {
         msg.content[msg.activeContentIndex] = newText.trim();
     } else {
         msg.content = newText.trim();
     }
-    saveState();
+    await saveAllChatHistoriesForChar(state.activeCharacterId);
     renderChatMessages();
 }
 
-/**
- * @description 刪除指定的訊息
- * @param {number} index - 訊息索引
- */
-function handleDeleteMessage(index) {
+async function handleDeleteMessage(index) {
     if (confirm('您確定要永久刪除這則訊息嗎？')) {
         state.chatHistories[state.activeCharacterId][state.activeChatId].splice(index, 1);
-        saveState();
+        await saveAllChatHistoriesForChar(state.activeCharacterId);
         renderChatMessages();
     }
 }
@@ -506,10 +451,7 @@ function handleDeleteMessage(index) {
 // 全域與提示詞設定 (Global & Prompt Settings)
 // ===================================================================================
 
-/**
- * @description 儲存全域設定
- */
-export function handleSaveGlobalSettings() {
+export async function handleSaveGlobalSettings() {
     state.globalSettings = {
         apiProvider: DOM.apiProviderSelect.value,
         apiModel: DOM.apiModelSelect.value,
@@ -520,21 +462,18 @@ export function handleSaveGlobalSettings() {
         contextSize: DOM.contextSizeInput.value,
         maxTokens: DOM.maxTokensValue.value,
     };
-    saveState();
+    await saveSettings();
     toggleModal('global-settings-modal', false);
     renderActiveChat();
 }
 
-/**
- * @description 儲存提示詞設定
- */
-export function handleSavePromptSettings() {
+export async function handleSavePromptSettings() {
     state.promptSettings = {
         scenario: DOM.promptScenarioInput.value.trim(),
         jailbreak: DOM.promptJailbreakInput.value.trim(),
         summarizationPrompt: DOM.promptSummarizationInput.value.trim()
     };
-    saveState();
+    await saveSettings();
     alert('提示詞設定已儲存！');
     showCharacterListView();
 }
@@ -543,10 +482,6 @@ export function handleSavePromptSettings() {
 // 使用者角色 (User Persona)
 // ===================================================================================
 
-/**
- * @description 開啟使用者角色編輯器
- * @param {string|null} personaId - 要編輯的角色 ID，null 為新增
- */
 export function openUserPersonaEditor(personaId = null) {
     tempState.editingUserPersonaId = personaId;
     if (personaId) {
@@ -564,10 +499,7 @@ export function openUserPersonaEditor(personaId = null) {
     toggleModal('user-persona-editor-modal', true);
 }
 
-/**
- * @description 儲存使用者角色
- */
-export function handleSaveUserPersona() {
+export async function handleSaveUserPersona() {
     const personaData = {
         name: DOM.userPersonaNameInput.value.trim(),
         avatarUrl: DOM.userPersonaAvatarPreview.src,
@@ -577,44 +509,40 @@ export function handleSaveUserPersona() {
 
     if (tempState.editingUserPersonaId) {
         const personaIndex = state.userPersonas.findIndex(p => p.id === tempState.editingUserPersonaId);
-        state.userPersonas[personaIndex] = { ...state.userPersonas[personaIndex], ...personaData };
+        const updatedPersona = { ...state.userPersonas[personaIndex], ...personaData };
+        state.userPersonas[personaIndex] = updatedPersona;
+        await saveUserPersona(updatedPersona);
     } else {
         const newPersona = { id: `user_${Date.now()}`, ...personaData };
         state.userPersonas.push(newPersona);
+        await saveUserPersona(newPersona);
     }
-    saveState();
+    
     loadGlobalSettingsToUI();
     toggleModal('user-persona-editor-modal', false);
 }
 
-/**
- * @description 刪除使用者角色
- * @param {string} personaId - 角色 ID
- */
-export function handleDeleteUserPersona(personaId) {
+export async function handleDeleteUserPersona(personaId) {
     if (state.userPersonas.length <= 1) {
         alert('至少需要保留一個使用者角色。');
         return;
     }
     if (confirm('確定要刪除這個使用者角色嗎？')) {
         state.userPersonas = state.userPersonas.filter(p => p.id !== personaId);
+        await deleteUserPersona(personaId);
         if (state.activeUserPersonaId === personaId) {
             state.activeUserPersonaId = state.userPersonas[0].id;
+            await saveSettings();
         }
-        saveState();
         loadGlobalSettingsToUI();
     }
 }
 
-/**
- * @description 處理聊天中切換使用者角色的事件
- * @param {Event} e - change 事件物件
- */
-export function handleChatPersonaChange(e) {
+export async function handleChatPersonaChange(e) {
     const newPersonaId = e.target.value;
     if (state.activeCharacterId && state.activeChatId) {
         state.chatMetadatas[state.activeCharacterId][state.activeChatId].userPersonaId = newPersonaId;
-        saveState();
+        await saveAllChatMetadatasForChar(state.activeCharacterId);
         renderChatMessages();
     }
 }
@@ -623,9 +551,6 @@ export function handleChatPersonaChange(e) {
 // 長期記憶 (Long-term Memory)
 // ===================================================================================
 
-/**
- * @description 開啟長期記憶編輯器
- */
 export function openMemoryEditor() {
     if (!state.activeCharacterId || !state.activeChatId) {
         alert('請先選擇一個對話才能查看記憶。');
@@ -636,24 +561,18 @@ export function openMemoryEditor() {
     toggleModal('memory-editor-modal', true);
 }
 
-/**
- * @description 儲存手動編輯的長期記憶
- */
-export function handleSaveMemory() {
+export async function handleSaveMemory() {
     if (!state.activeCharacterId || !state.activeChatId) return;
 
     if (!state.longTermMemories[state.activeCharacterId]) {
         state.longTermMemories[state.activeCharacterId] = {};
     }
     state.longTermMemories[state.activeCharacterId][state.activeChatId] = DOM.memoryEditorTextarea.value.trim();
-    saveState();
+    await saveAllLongTermMemoriesForChar(state.activeCharacterId);
     toggleModal('memory-editor-modal', false);
     alert('長期記憶已儲存！');
 }
 
-/**
- * @description 透過 API 自動更新長期記憶
- */
 export async function handleUpdateMemory() {
     if (!checkApiKey('請先設定 API 金鑰才能更新記憶')) return;
     if (!state.activeCharacterId || !state.activeChatId) { alert('請先選擇一個對話。'); return; }
@@ -686,7 +605,7 @@ export async function handleUpdateMemory() {
             state.longTermMemories[state.activeCharacterId] = {};
         }
         state.longTermMemories[state.activeCharacterId][state.activeChatId] = summary;
-        saveState();
+        await saveAllLongTermMemoriesForChar(state.activeCharacterId);
         alert('長期記憶已更新！');
     } catch (error) {
         if (error.name !== 'AbortError') {
@@ -703,9 +622,6 @@ export async function handleUpdateMemory() {
 // 匯入/匯出 (Import/Export)
 // ===================================================================================
 
-/**
- * @description 開啟匯出對話的彈窗
- */
 export function openExportModal() {
   if (!state.activeCharacterId || !state.activeChatId) {
     alert('請先選擇角色並開啟一個對話。');
@@ -727,9 +643,6 @@ export function openExportModal() {
   toggleModal('export-chat-modal', true);
 }
 
-/**
- * @description 確認並執行匯出
- */
 export function handleConfirmExport() {
   if (!state.activeCharacterId || !state.activeChatId) return;
 
@@ -751,11 +664,6 @@ export function handleConfirmExport() {
 // 輔助函式 (Helpers)
 // ===================================================================================
 
-/**
- * @description 檢查 API 金鑰是否存在，若否則提示使用者設定
- * @param {string} promptText - 提示文字
- * @returns {boolean} - 是否已設定金鑰
- */
 function checkApiKey(promptText = '請在此填入您的 API 金鑰') {
     if (!state.globalSettings.apiKey) {
         loadGlobalSettingsToUI();
