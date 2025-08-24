@@ -35,16 +35,51 @@ function cleanMessagesForClaude(messages) {
     return cleaned;
 }
 
+/**
+ * @description 估算文字的 token 數量 (此處使用字元長度作為一個粗略的代理)
+ * @param {string} text - 要計算的文字
+ * @returns {number} - 估算的 token 數量
+ */
+function estimateTokens(text = '') {
+    // 對於中文字元，一個更實際的估算可能是長度的 1.5 到 2 倍，但此處為求簡單，暫用長度。
+    return text.length;
+}
 
 /**
- * @description 根據對話歷史和設定，建構準備發送給 API 的訊息 payload
+ * @description 根據 Token 數量上限，從歷史紀錄中建構準備發送給 API 的訊息 payload
  * @returns {Array|Object} 格式化後的訊息
  */
 export function buildApiMessages() {
     if (!state.activeCharacterId || !state.activeChatId) return [];
+
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
-    const contextSize = parseInt(state.globalSettings.contextSize) || 20;
-    const recentHistory = history.slice(-contextSize);
+    // [重要修改] 將預設的上下文 Token 數量改為 30000
+    const maxTokenContext = parseInt(state.globalSettings.contextSize) || 30000;
+    
+    const systemPrompt = buildSystemPrompt();
+    let currentTokenCount = estimateTokens(systemPrompt);
+    
+    const recentHistory = [];
+
+    // 從最新的訊息開始，反向遍歷歷史紀錄
+    for (let i = history.length - 1; i >= 0; i--) {
+        const msg = history[i];
+        const content = (msg.role === 'assistant' && Array.isArray(msg.content))
+            ? msg.content[msg.activeContentIndex]
+            : msg.content;
+        
+        const messageTokens = estimateTokens(content);
+
+        // 如果加入這則訊息不會超過 token 上限
+        if (currentTokenCount + messageTokens <= maxTokenContext) {
+            recentHistory.unshift(msg); // 將訊息加到陣列的開頭
+            currentTokenCount += messageTokens;
+        } else {
+            // 如果超過上限，就停止加入
+            break;
+        }
+    }
+
     return buildApiMessagesFromHistory(recentHistory);
 }
 
@@ -237,7 +272,7 @@ function parseResponse(provider, data) {
 }
 
 /**
- * @description [新增] 專門用於測試 API 連線的函式
+ * @description 專門用於測試 API 連線的函式
  * @param {string} provider - API 供應商
  * @param {string} apiKey - API 金鑰
  * @param {string} model - 模型名稱
@@ -247,7 +282,6 @@ export async function testApiConnection(provider, apiKey, model) {
     const YOUR_CLOUDFLARE_WORKER_URL = 'https://key.d778105.workers.dev/';
     let url = "", headers = {}, body = {};
     
-    // 建立一個極小的測試 payload，將成本降到最低
     const testPayload = [{ role: 'user', content: 'Hello' }];
     
     switch (provider) {

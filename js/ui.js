@@ -1,6 +1,5 @@
 // js/ui.js
 // 這個檔案包含所有與渲染和更新使用者介面 (UI) 相關的函式。
-// 它只負責生成 HTML 結構，不包含任何事件綁定邏輯。
 
 import * as DOM from './dom.js';
 import { state } from './state.js';
@@ -135,10 +134,9 @@ export function renderActiveChat() {
     DOM.chatHeaderName.textContent = activeChar.name;
     DOM.chatNotesInput.value = metadata.notes || '';
     
-    // [重要修改] 更新標頭中的模型名稱
     const currentModel = state.globalSettings.apiModel || '未設定';
     DOM.chatHeaderModelName.textContent = currentModel;
-    DOM.chatHeaderModelName.title = currentModel; // 添加 title 屬性，滑鼠懸停時可看見全名
+    DOM.chatHeaderModelName.title = currentModel;
     
     renderChatUserPersonaSelector();
     renderChatMessages();
@@ -183,7 +181,7 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
     
     const row = document.createElement('div');
     row.className = `message-row ${sender === 'user' ? 'user-row' : 'assistant-row'} ${error ? 'has-error' : ''}`;
-    row.dataset.index = index; // 添加索引方便事件委派
+    row.dataset.index = index;
     
     const formattedTimestamp = new Date(timestamp).toLocaleString('zh-TW', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
@@ -237,7 +235,8 @@ export function loadGlobalSettingsToUI() {
     DOM.topPValue.value = settings.topP || 1;
     DOM.repetitionPenaltySlider.value = settings.repetitionPenalty || 0;
     DOM.repetitionPenaltyValue.value = settings.repetitionPenalty || 0;
-    DOM.contextSizeInput.value = settings.contextSize || 20;
+    // [重要修改] 更新預設的 Token 數量
+    DOM.contextSizeInput.value = settings.contextSize || 30000;
     DOM.maxTokensSlider.value = settings.maxTokens || 1024;
     DOM.maxTokensValue.value = settings.maxTokens || 1024;
     
