@@ -38,7 +38,6 @@ export function setupEventListeners() {
     DOM.deleteActiveCharacterBtn.addEventListener('click', Handlers.handleDeleteActiveCharacter);
 
     // 聊天介面
-    DOM.deleteCurrentChatBtn.addEventListener('click', Handlers.handleDeleteCurrentChat);
     DOM.chatNotesInput.addEventListener('blur', Handlers.handleSaveNote);
     DOM.sendBtn.addEventListener('click', () => {
         if (DOM.sendBtn.classList.contains('is-generating')) {
@@ -47,10 +46,37 @@ export function setupEventListeners() {
             Handlers.sendMessage();
         }
     });
+
+    // [重要修改] 偵測是否為行動裝置
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+    // [重要修改] 為輸入框添加鍵盤事件監聽，以處理 Enter 鍵
+    DOM.messageInput.addEventListener('keydown', (e) => {
+        // 條件：按下 Enter 鍵，且不是在行動裝置上，且沒有同時按住 Shift 鍵
+        if (e.key === 'Enter' && !isMobile && !e.shiftKey) {
+            e.preventDefault(); // 防止預設的換行行為
+            Handlers.sendMessage(); // 呼叫送出訊息的函式
+        }
+    });
+
     DOM.messageInput.addEventListener('input', () => {
         DOM.messageInput.style.height = 'auto';
         DOM.messageInput.style.height = `${DOM.messageInput.scrollHeight}px`;
     });
+
+    DOM.chatOptionsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        DOM.chatOptionsMenu.classList.toggle('hidden');
+    });
+    DOM.exportChatOptionBtn.addEventListener('click', Handlers.openExportModal);
+    DOM.deleteChatOptionBtn.addEventListener('click', Handlers.handleDeleteCurrentChat);
+
+    window.addEventListener('click', () => {
+        if (!DOM.chatOptionsMenu.classList.contains('hidden')) {
+            DOM.chatOptionsMenu.classList.add('hidden');
+        }
+    });
+
 
     // 重新命名彈窗
     DOM.saveRenameChatBtn.addEventListener('click', Handlers.handleSaveChatName);
@@ -106,7 +132,6 @@ export function setupEventListeners() {
     DOM.userPersonaAvatarUpload.addEventListener('change', (e) => Utils.handleImageUpload(e, DOM.userPersonaAvatarPreview));
 
     // 匯出
-    DOM.exportCurrentChatBtn.addEventListener('click', Handlers.openExportModal);
     DOM.exportFormatPng.addEventListener('change', () => DOM.exportRangeSelector.classList.remove('hidden'));
     DOM.exportFormatJsonl.addEventListener('change', () => DOM.exportRangeSelector.classList.add('hidden'));
     DOM.exportMessageCountSlider.addEventListener('input', (e) => {
@@ -125,32 +150,33 @@ export function setupEventListeners() {
         const charItem = e.target.closest('.character-item');
         if (charItem) {
             const charId = charItem.dataset.id;
-            // [重要修改] 在顯示列表前，先從資料庫載入該角色的對話資料
             await loadChatDataForCharacter(charId);
             UI.showChatSessionListView(charId);
+            state.activeCharacterId = charId;
+            state.activeChatId = null; 
             await saveSettings();
         }
     });
 
     // 聊天室列表點擊
-    DOM.chatSessionList.addEventListener('click', (e) => {
+    DOM.chatSessionList.addEventListener('click', async (e) => {
         const sessionItem = e.target.closest('.chat-session-item');
         if (!sessionItem) return;
         const chatId = sessionItem.dataset.id;
 
         if (e.target.closest('.session-item-content')) {
-            Handlers.switchChat(chatId);
+            await Handlers.switchChat(chatId);
             DOM.leftPanel.classList.remove('mobile-visible');
             DOM.mobileOverlay.classList.add('hidden');
         } else if (e.target.closest('.pin-chat-btn')) {
-            Handlers.handleTogglePinChat(chatId);
+            await Handlers.handleTogglePinChat(chatId);
         } else if (e.target.closest('.rename-chat-btn')) {
             Handlers.openRenameModal(chatId);
         }
     });
 
     // 聊天視窗內的點擊
-    DOM.chatWindow.addEventListener('click', (e) => {
+    DOM.chatWindow.addEventListener('click', async (e) => {
         const messageRow = e.target.closest('.message-row');
         if (!messageRow) {
             document.querySelectorAll('.message-row.show-actions').forEach(row => row.classList.remove('show-actions'));
@@ -169,21 +195,21 @@ export function setupEventListeners() {
             Handlers.makeMessageEditable(messageRow, messageIndex);
         }
         else if (e.target.closest('.regenerate-btn-sm')) {
-            Handlers.regenerateResponse(messageIndex);
+            await Handlers.regenerateResponse(messageIndex);
         }
         else if (e.target.closest('.retry-btn-sm')) {
-            Handlers.retryMessage(messageIndex);
+            await Handlers.retryMessage(messageIndex);
         }
         else if (e.target.closest('.version-prev-btn')) {
-            Handlers.switchVersion(messageIndex, -1);
+            await Handlers.switchVersion(messageIndex, -1);
         }
         else if (e.target.closest('.version-next-btn')) {
-            Handlers.switchVersion(messageIndex, 1);
+            await Handlers.switchVersion(messageIndex, 1);
         }
     });
 
     // 設定彈窗內的使用者角色列表點擊
-    DOM.userPersonaList.addEventListener('click', (e) => {
+    DOM.userPersonaList.addEventListener('click', async (e) => {
         const personaItem = e.target.closest('.persona-item');
         if (!personaItem) return;
         const personaId = personaItem.dataset.id;
@@ -191,7 +217,7 @@ export function setupEventListeners() {
         if (e.target.closest('.edit-persona-btn')) {
             Handlers.openUserPersonaEditor(personaId);
         } else if (e.target.closest('.delete-persona-btn')) {
-            Handlers.handleDeleteUserPersona(personaId);
+            await Handlers.handleDeleteUserPersona(personaId);
         }
     });
 }

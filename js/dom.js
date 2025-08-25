@@ -14,7 +14,6 @@ export const editActiveCharacterBtn = document.getElementById('edit-active-chara
 export const deleteActiveCharacterBtn = document.getElementById('delete-active-character-btn');
 export const chatSessionList = document.getElementById('chat-session-list');
 export const addChatBtn = document.getElementById('add-chat-btn');
-export const deleteCurrentChatBtn = document.getElementById('delete-current-chat-btn');
 export const chatNotesInput = document.getElementById('chat-notes-input');
 export const renameChatModal = document.getElementById('rename-chat-modal');
 export const renameChatInput = document.getElementById('rename-chat-input');
@@ -29,7 +28,6 @@ export const chatInterface = document.getElementById('chat-interface');
 export const chatHeaderAvatar = document.getElementById('chat-header-avatar');
 export const chatHeaderName = document.getElementById('chat-header-name');
 export const chatHeaderModelName = document.getElementById('chat-header-model-name');
-export const exportCurrentChatBtn = document.getElementById('export-current-chat-btn');
 export const chatWindow = document.getElementById('chat-window');
 export const messageInput = document.getElementById('message-input');
 export const sendBtn = document.getElementById('send-btn');
@@ -51,7 +49,6 @@ export const globalSettingsModal = document.getElementById('global-settings-moda
 export const apiProviderSelect = document.getElementById('api-provider');
 export const apiModelSelect = document.getElementById('api-model-select');
 export const apiKeyInput = document.getElementById('api-key');
-// [重要修改] 新增測試按鈕和狀態指示器的參照
 export const testApiBtn = document.getElementById('test-api-btn');
 export const apiStatusIndicator = document.getElementById('api-status-indicator');
 export const cancelGlobalSettingsBtn = document.getElementById('cancel-global-settings-btn');
@@ -97,3 +94,9 @@ export const exportRangeLabel = document.getElementById('export-range-label');
 export const cancelExportChatBtn = document.getElementById('cancel-export-chat-btn');
 export const confirmExportChatBtn = document.getElementById('confirm-export-chat-btn');
 export const loadingOverlay = document.getElementById('loading-overlay');
+
+// [重要修改] 新增下拉式選單的參照
+export const chatOptionsBtn = document.getElementById('chat-options-btn');
+export const chatOptionsMenu = document.getElementById('chat-options-menu');
+export const exportChatOptionBtn = document.getElementById('export-chat-option-btn');
+export const deleteChatOptionBtn = document.getElementById('delete-chat-option-btn');

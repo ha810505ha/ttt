@@ -107,8 +107,16 @@
                             <i class="fa-solid fa-user"></i>
                             <select id="chat-user-persona-select"></select>
                         </div>
-                        <button id="delete-current-chat-btn" class="icon-btn" title="刪除目前對話"><i class="fa-solid fa-trash-can"></i></button>
-                        <button id="export-current-chat-btn" class="icon-btn" title="匯出對話紀錄"><i class="fa-solid fa-file-export"></i></button>
+                        <!-- [重要修改] 將原本的兩個按鈕，整合成一個下拉式選單 -->
+                        <div class="chat-options-container">
+                            <button id="chat-options-btn" class="icon-btn" title="更多選項">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                            </button>
+                            <div id="chat-options-menu" class="dropdown-menu hidden">
+                                <button id="export-chat-option-btn"><i class="fa-solid fa-file-export"></i> 匯出聊天紀錄</button>
+                                <button id="delete-chat-option-btn" class="danger"><i class="fa-solid fa-trash-can"></i> 刪除聊天室</button>
+                            </div>
+                        </div>
                     </div>
                 </header>
 
@@ -240,7 +248,6 @@
                 </div>
                 <div class="settings-slider-group">
                     <label for="context-size-input">上下文大小 (Tokens)</label>
-                    <!-- [重要修改] 提高最大值以允許輸入 30000 -->
                     <input type="number" id="context-size-input" class="slider-value" min="512" max="128000" step="256" placeholder="例如: 30000">
                 </div>
                 <div class="settings-slider-group">
