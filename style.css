@@ -42,6 +42,49 @@ body.dark-mode {
     --shadow-color: rgba(0,0,0,0.3);
 }
 
+body.theme-a {
+    --primary-color: #A67F78;
+    --primary-hover-color: #B5958E;
+    --danger-color: #ff8a80;
+    --success-color: #81c784;
+    --secondary-color: #8F8681;
+    --background-color: #E1DCD9;
+    --panel-background: #F5F2F0;
+    --hover-background: #D4CCC9;
+    --active-background: #C8C0BC;
+    --assistant-bubble-color: #F5F2F0;
+    --user-bubble-color: #F5F2F0;
+    --border-color: #D4CCC9;
+    --text-color: #32435F;
+    --text-light-color: #8F8681;
+    --pin-active-color: #A67F78;
+    --input-background: #E1DCD9;
+    --modal-background: #F5F2F0;
+    --shadow-color: rgba(50, 67, 95, 0.1);
+}
+
+/* [新增] 主題 B 的配色 */
+body.theme-b {
+    --primary-color: #EBC57C; /* 柔和金 */
+    --primary-hover-color: #F0D199;
+    --danger-color: #e57373;
+    --success-color: #a5d6a7;
+    --secondary-color: #9C8F96; /* 灰紫 */
+    --background-color: #F4F6F8; /* 淺灰藍背景 */
+    --panel-background: #FFFFFF;
+    --hover-background: #E9EEF2;
+    --active-background: #DDE5EB;
+    --assistant-bubble-color: #FFFFFF;
+    --user-bubble-color: #FFFFFF;
+    --border-color: #A6C2CE; /* 淺藍灰 */
+    --text-color: #6B799E; /* 灰藍紫 */
+    --text-light-color: #9C8F96; /* 灰紫 */
+    --pin-active-color: #EBC57C;
+    --input-background: #F4F6F8;
+    --modal-background: #FFFFFF;
+    --shadow-color: rgba(107, 121, 158, 0.1);
+}
+
 
 * {
     box-sizing: border-box;
@@ -225,12 +268,20 @@ body {
     font-size: 16px;
     flex-shrink: 0;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 4px 10px rgba(137, 207, 240, 0.4);
+    box-shadow: 0 4px 10px rgba(166, 127, 120, 0.4);
 }
 .add-character-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(137, 207, 240, 0.5);
+    box-shadow: 0 6px 12px rgba(166, 127, 120, 0.5);
 }
+body.theme-b .add-character-btn {
+    color: var(--text-color);
+    box-shadow: 0 4px 10px rgba(235, 197, 124, 0.4);
+}
+body.theme-b .add-character-btn:hover {
+    box-shadow: 0 6px 12px rgba(235, 197, 124, 0.5);
+}
+
 
 /* --- 提示詞庫視圖 --- */
 .prompt-view-body {
@@ -252,7 +303,10 @@ body {
 .prompt-view-body .form-group textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(137, 207, 240, 0.3);
+    box-shadow: 0 0 0 2px rgba(166, 127, 120, 0.3);
+}
+body.theme-b .prompt-view-body .form-group textarea:focus {
+    box-shadow: 0 0 0 2px rgba(235, 197, 124, 0.3);
 }
 
 /* --- 右側聊天面板 --- */
@@ -263,7 +317,7 @@ body {
     justify-content: center;
     align-items: center;
     text-align: center;
-    color: #aaa;
+    color: var(--text-light-color);
 }
 .welcome-screen i {
     font-size: 60px;
@@ -616,8 +670,12 @@ body {
 #message-input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(137, 207, 240, 0.3);
+    box-shadow: 0 0 0 2px rgba(166, 127, 120, 0.3);
 }
+body.theme-b #message-input:focus {
+    box-shadow: 0 0 0 2px rgba(235, 197, 124, 0.3);
+}
+
 #send-btn {
     background-color: var(--primary-color);
     color: white;
@@ -631,6 +689,10 @@ body {
     transition: background-color 0.2s ease;
     margin-bottom: 2px;
 }
+body.theme-b #send-btn {
+    color: var(--text-color);
+}
+
 #send-btn:hover {
     background-color: var(--primary-hover-color);
 }
@@ -686,7 +748,9 @@ body {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .action-btn-sm { padding: 8px 16px; font-size: 14px; }
-.action-btn.primary { background-color: var(--primary-color); color: white; box-shadow: 0 2px 5px rgba(137, 207, 240, 0.4); }
+.action-btn.primary { background-color: var(--primary-color); color: white; box-shadow: 0 2px 5px rgba(166, 127, 120, 0.4); }
+body.theme-b .action-btn.primary { color: var(--text-color); box-shadow: 0 2px 5px rgba(235, 197, 124, 0.4); }
+
 .action-btn.primary:hover { background-color: var(--primary-hover-color); transform: translateY(-1px); }
 .action-btn.secondary { background-color: #eee; color: #555; }
 .action-btn.secondary:hover { background-color: #ddd; }
@@ -695,6 +759,10 @@ body {
 
 body.dark-mode .action-btn.secondary { background-color: #424242; color: #eee; }
 body.dark-mode .action-btn.secondary:hover { background-color: #555; }
+body.theme-a .action-btn.secondary { background-color: #D4CCC9; color: #32435F; }
+body.theme-a .action-btn.secondary:hover { background-color: #C8C0BC; }
+body.theme-b .action-btn.secondary { background-color: #A6C2CE; color: var(--text-color); }
+body.theme-b .action-btn.secondary:hover { background-color: #BBD0DA; }
 
 
 /* --- 彈出視窗 (Modal) 樣式 --- */
@@ -819,8 +887,14 @@ body.dark-mode .action-btn.secondary:hover { background-color: #555; }
 .modal-body textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(137, 207, 240, 0.3);
+    box-shadow: 0 0 0 2px rgba(166, 127, 120, 0.3);
 }
+body.theme-b .modal-body input:focus, 
+body.theme-b .modal-body select:focus, 
+body.theme-b .modal-body textarea:focus {
+    box-shadow: 0 0 0 2px rgba(235, 197, 124, 0.3);
+}
+
 .modal-body textarea { min-height: 100px; resize: vertical; }
 
 .avatar-upload-label { cursor: pointer; display: block; }
@@ -1201,12 +1275,14 @@ input[type="range"]::-moz-range-thumb {
     text-overflow: ellipsis;
     max-width: 100px;
 }
-/* --- [新增] 設定彈出視窗的分頁樣式 --- */
+
+/* --- 設定彈出視窗的分頁樣式 --- */
 .settings-tabs {
     display: flex;
     border-bottom: 1px solid var(--border-color);
     padding: 0 20px;
     flex-shrink: 0;
+    flex-wrap: wrap;
 }
 
 .tab-btn {
@@ -1253,7 +1329,8 @@ input[type="range"]::-moz-range-thumb {
 #global-settings-modal .modal-content h4 {
     padding-top: 10px;
 }
-/* --- [新增] API 設定檔管理區塊樣式 --- */
+
+/* --- API 設定檔管理區塊樣式 --- */
 .api-preset-manager {
     background-color: var(--input-background);
     border-radius: 12px;

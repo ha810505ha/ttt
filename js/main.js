@@ -32,22 +32,21 @@ function setupMarkdownRenderer() {
  * @description 初始化應用程式
  */
 async function initialize() {
-    // [修改] 立即從 localStorage 應用主題，以避免畫面閃爍
     applyTheme();
     setupMarkdownRenderer();
     
     // =======================================================================
     // [重要] Firebase 初始化
     // =======================================================================
-    // 請將您從 Firebase 控制台複製的 firebaseConfig 物件，完整地貼到下面來取代它
+    // [已更新] 使用您提供的正確設定
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_AUTH_DOMAIN",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_STORAGE_BUCKET",
-      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-      appId: "YOUR_APP_ID",
-      measurementId: "YOUR_MEASUREMENT_ID"
+      apiKey: "AIzaSyBKfM5fvlEr72B1aXGNwW9dmpuTMHvInaI",
+      authDomain: "icechat-1f28c.firebaseapp.com",
+      projectId: "icechat-1f28c",
+      storageBucket: "icechat-1f28c.firebasestorage.app",
+      messagingSenderId: "146757831481",
+      appId: "1:146757831481:web:7c7a786134eb4e4cccf6e8",
+      measurementId: "G-M93QNY87PM"
     };
 
     // 初始化 Firebase
@@ -64,10 +63,8 @@ async function initialize() {
             state.currentUser = user; // 更新全域狀態中的使用者資訊
             console.log("使用者狀態已變更:", user ? user.displayName : '已登出');
             
-            // 載入資料庫中的狀態
             await loadStateFromDB();
             
-            // [新增] 從載入的設定中再次應用主題，確保與資料庫同步
             if (state.globalSettings.theme) {
                 applyTheme(state.globalSettings.theme);
             }

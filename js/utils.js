@@ -15,12 +15,23 @@ export function setAppHeight() {
 
 /**
  * @description 應用目前儲存的主題
- * @param {string} [theme] - 'light' 或 'dark'。如果未提供，則從 localStorage 讀取。
+ * @param {string} [theme] - 'light', 'dark', 'a', 或 'b'。如果未提供，則從 localStorage 讀取。
  */
 export function applyTheme(theme) {
     const themeToApply = theme || localStorage.getItem('theme') || 'light';
-    // [修改] 根據主題名稱設定 body 的 class
-    document.body.className = themeToApply === 'dark' ? 'dark-mode' : '';
+    
+    // [修改] 先移除所有可能的主題 class，再加入對應的 class
+    document.body.classList.remove('dark-mode', 'theme-a', 'theme-b');
+
+    if (themeToApply === 'dark') {
+        document.body.classList.add('dark-mode');
+    } else if (themeToApply === 'a') {
+        document.body.classList.add('theme-a');
+    } else if (themeToApply === 'b') {
+        document.body.classList.add('theme-b');
+    }
+    // 'light' 模式不需要額外的 class
+
     localStorage.setItem('theme', themeToApply);
 }
 
@@ -116,7 +127,6 @@ export function importCharacter() {
             };
             reader.readAsText(file, 'UTF-8');
         } else if (file.type === 'image/png') {
-            // ... (PNG 匯入邏輯保持不變)
             alert('PNG 匯入功能正在開發中！');
         } else { 
             alert('不支援的檔案格式。請選擇 .json 或 .png 檔案。'); 
