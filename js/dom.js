@@ -81,18 +81,9 @@ export const memoryEditorModal = document.getElementById('memory-editor-modal');
 export const memoryEditorTextarea = document.getElementById('memory-editor-textarea');
 export const cancelMemoryEditorBtn = document.getElementById('cancel-memory-editor-btn');
 export const saveMemoryEditorBtn = document.getElementById('save-memory-editor-btn');
-export const exportChatModal = document.getElementById('export-chat-modal');
-export const exportFormatJsonl = document.getElementById('export-format-jsonl');
-export const exportFormatPng = document.getElementById('export-format-png');
-export const exportRangeSelector = document.getElementById('export-range-selector');
-export const exportMessageCountSlider = document.getElementById('export-message-count-slider');
-export const exportRangeLabel = document.getElementById('export-range-label');
-export const cancelExportChatBtn = document.getElementById('cancel-export-chat-btn');
-export const confirmExportChatBtn = document.getElementById('confirm-export-chat-btn');
 export const loadingOverlay = document.getElementById('loading-overlay');
 export const chatOptionsBtn = document.getElementById('chat-options-btn');
 export const chatOptionsMenu = document.getElementById('chat-options-menu');
-export const exportChatOptionBtn = document.getElementById('export-chat-option-btn');
 export const deleteChatOptionBtn = document.getElementById('delete-chat-option-btn');
 export const userProfileArea = document.getElementById('user-profile-area');
 export const loginBtn = document.getElementById('login-btn');
@@ -113,7 +104,20 @@ export const themeSelect = document.getElementById('theme-select');
 export const promptModeSelect = document.getElementById('prompt-mode-select');
 export const customPromptsContainer = document.getElementById('custom-prompts-container');
 
-// [新增] API 設定檔相關
+// API 設定檔相關
 export const apiPresetSelect = document.getElementById('api-preset-select');
 export const saveApiPresetBtn = document.getElementById('save-api-preset-btn');
 export const deleteApiPresetBtn = document.getElementById('delete-api-preset-btn');
+
+// 截圖與匯出相關
+export const exportChatOptionBtn = document.getElementById('export-chat-option-btn');
+export const exportChatModal = document.getElementById('export-chat-modal');
+export const exportFormatJsonl = document.getElementById('export-format-jsonl');
+export const exportFormatPng = document.getElementById('export-format-png');
+export const cancelExportChatBtn = document.getElementById('cancel-export-chat-btn');
+export const confirmExportChatBtn = document.getElementById('confirm-export-chat-btn');
+export const screenshotToolbar = document.getElementById('screenshot-toolbar');
+export const cancelScreenshotBtn = document.getElementById('cancel-screenshot-btn');
+export const screenshotInfoText = document.getElementById('screenshot-info-text');
+export const generateScreenshotBtn = document.getElementById('generate-screenshot-btn');
+export const messageInputContainer = document.querySelector('.message-input-container');

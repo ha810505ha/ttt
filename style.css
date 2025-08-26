@@ -1361,3 +1361,64 @@ input[type="range"]::-moz-range-thumb {
     color: white;
     background-color: var(--danger-color);
 }
+/* --- [新增] 匯出圖片選擇模式樣式 --- */
+.chat-window.export-selection-mode .message-row {
+    cursor: pointer;
+    border-radius: 12px;
+    transition: background-color 0.2s ease;
+}
+
+.chat-window.export-selection-mode .message-row:hover {
+    background-color: var(--hover-background);
+}
+
+.message-row.export-selected {
+    background-color: var(--active-background) !important;
+    box-shadow: 0 0 0 2px var(--primary-color) inset;
+}
+
+#export-selection-info p {
+    margin: 5px 0;
+    font-size: 14px;
+    color: var(--text-light-color);
+}
+
+#export-selection-info #export-range-display {
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+/* --- [新增] 匯出圖片選擇模式樣式 --- */
+.chat-window.screenshot-mode .message-row {
+    cursor: pointer;
+    border-radius: 12px;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    padding: 5px; /* 增加點擊區域 */
+    margin-bottom: 15px;
+}
+
+.chat-window.screenshot-mode .message-row:hover {
+    background-color: var(--hover-background);
+}
+
+.message-row.selected {
+    background-color: var(--active-background) !important;
+    box-shadow: 0 0 0 2px var(--primary-color) inset;
+}
+
+/* --- [新增] 截圖工具列樣式 --- */
+.screenshot-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: var(--panel-background);
+    border-radius: 22px;
+    border: 1px solid var(--border-color);
+}
+
+.screenshot-toolbar span {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-light-color);
+}

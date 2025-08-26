@@ -14,15 +14,12 @@ import {
     renderApiPresetsDropdown, loadApiPresetToUI
 } from './ui.js';
 import { DEFAULT_AVATAR, DEFAULT_SUMMARY_PROMPT, DEFAULT_SCENARIO_PROMPT, DEFAULT_JAILBREAK_PROMPT } from './constants.js';
-import { handleImageUpload, exportChatAsJsonl, exportChatAsImage, applyTheme } from './utils.js';
+import { handleImageUpload, exportChatAsJsonl, applyTheme, importCharacter, exportCharacter } from './utils.js';
 
 // ===================================================================================
 // 使用者認證 (Authentication)
 // ===================================================================================
 
-/**
- * @description 處理使用者登入
- */
 export function handleLogin() {
     const provider = new firebase.auth.GoogleAuthProvider();
     firebase.auth().signInWithPopup(provider).catch(error => {
@@ -31,9 +28,6 @@ export function handleLogin() {
     });
 }
 
-/**
- * @description 處理使用者登出
- */
 export function handleLogout() {
     firebase.auth().signOut().catch(error => {
         console.error("登出失敗:", error);
@@ -93,7 +87,7 @@ export async function handleSaveApiPreset() {
     state.apiPresets.push(newPreset);
     await saveSettings();
     renderApiPresetsDropdown();
-    DOM.apiPresetSelect.value = newPreset.id; // 自動選中剛儲存的
+    DOM.apiPresetSelect.value = newPreset.id;
     alert(`設定檔 "${presetName}" 已儲存！`);
 }
 
@@ -115,14 +109,12 @@ export async function handleDeleteApiPreset() {
         state.apiPresets = state.apiPresets.filter(p => p.id !== presetId);
         await saveSettings();
         renderApiPresetsDropdown();
-        // 清空表單
         DOM.apiProviderSelect.value = 'official_gemini';
         DOM.apiKeyInput.value = '';
         UI.updateModelDropdown();
         alert(`設定檔 "${presetToDelete.name}" 已刪除。`);
     }
 }
-
 
 // ===================================================================================
 // 聊天核心邏輯 (Core Chat Logic)
@@ -528,7 +520,6 @@ async function handleDeleteMessage(index) {
 // ===================================================================================
 
 export async function handleSaveGlobalSettings() {
-    // 儲存 API 和參數設定
     state.globalSettings = {
         apiProvider: DOM.apiProviderSelect.value,
         apiModel: DOM.apiModelSelect.value,
@@ -698,45 +689,112 @@ export async function handleUpdateMemory() {
 }
 
 // ===================================================================================
-// 匯入/匯出 (Import/Export)
+// 匯入/匯出與截圖
 // ===================================================================================
 
 export function openExportModal() {
-  if (!state.activeCharacterId || !state.activeChatId) {
-    alert('請先選擇角色並開啟一個對話。');
-    return;
-  }
-
-  DOM.exportFormatJsonl.checked = true;
-  DOM.exportFormatPng.checked = false;
-  DOM.exportRangeSelector.classList.add('hidden');
-
-  const total = DOM.chatWindow.querySelectorAll('.message-row').length;
-  const defaultCount = Math.min(20, Math.max(1, total || 1));
-
-  DOM.exportMessageCountSlider.min = '1';
-  DOM.exportMessageCountSlider.max = String(Math.max(1, total || 50));
-  DOM.exportMessageCountSlider.value = String(defaultCount);
-  DOM.exportRangeLabel.textContent = `匯出最近的 ${defaultCount} 則訊息`;
-
-  toggleModal('export-chat-modal', true);
+    if (!state.activeCharacterId || !state.activeChatId) {
+        alert('請先選擇角色並開啟一個對話。');
+        return;
+    }
+    toggleModal('export-chat-modal', true);
 }
 
 export function handleConfirmExport() {
-  if (!state.activeCharacterId || !state.activeChatId) return;
+    if (!state.activeCharacterId || !state.activeChatId) return;
 
-  if (DOM.exportFormatPng.checked) {
-    const total = DOM.chatWindow.querySelectorAll('.message-row').length;
-    if (total === 0) { alert('沒有對話可以匯出。'); return; }
+    if (DOM.exportFormatPng.checked) {
+        toggleModal('export-chat-modal', false);
+        handleToggleScreenshotMode(); // 進入截圖模式
+    } else {
+        exportChatAsJsonl();
+        toggleModal('export-chat-modal', false);
+    }
+}
 
-    const count = parseInt(DOM.exportMessageCountSlider.value, 10);
-    const endIndex = total - 1;
-    const startIndex = Math.max(0, endIndex - (count - 1));
-    exportChatAsImage(startIndex, endIndex);
-  } else {
-    exportChatAsJsonl();
-  }
-  toggleModal('export-chat-modal', false);
+export function handleToggleScreenshotMode() {
+    tempState.isScreenshotMode = !tempState.isScreenshotMode;
+    
+    DOM.chatWindow.classList.toggle('screenshot-mode', tempState.isScreenshotMode);
+    DOM.messageInputContainer.classList.toggle('hidden', tempState.isScreenshotMode);
+    DOM.screenshotToolbar.classList.toggle('hidden', !tempState.isScreenshotMode);
+
+    if (!tempState.isScreenshotMode) {
+        tempState.selectedMessageIndices = [];
+        renderChatMessages();
+    } else {
+        DOM.screenshotInfoText.textContent = `已選擇 0 則訊息`;
+    }
+}
+
+export function handleSelectMessage(index) {
+    if (!tempState.isScreenshotMode) return;
+
+    const selectedIndex = tempState.selectedMessageIndices.indexOf(index);
+    if (selectedIndex > -1) {
+        tempState.selectedMessageIndices.splice(selectedIndex, 1);
+    } else {
+        tempState.selectedMessageIndices.push(index);
+    }
+    
+    DOM.screenshotInfoText.textContent = `已選擇 ${tempState.selectedMessageIndices.length} 則訊息`;
+    const messageRow = DOM.chatWindow.querySelector(`.message-row[data-index="${index}"]`);
+    if (messageRow) {
+        messageRow.classList.toggle('selected');
+    }
+}
+
+export async function handleGenerateScreenshot() {
+    if (tempState.selectedMessageIndices.length === 0) {
+        alert('請先選擇至少一則訊息！');
+        return;
+    }
+
+    DOM.loadingOverlay.classList.remove('hidden');
+    
+    const screenshotContainer = document.createElement('div');
+    screenshotContainer.style.backgroundColor = getComputedStyle(DOM.chatWindow).backgroundColor;
+    screenshotContainer.style.padding = '20px';
+    screenshotContainer.style.width = `${DOM.chatWindow.clientWidth}px`;
+    screenshotContainer.style.position = 'absolute';
+    screenshotContainer.style.left = '-9999px';
+    screenshotContainer.style.top = '0';
+
+    const sortedIndices = [...tempState.selectedMessageIndices].sort((a, b) => a - b);
+    
+    sortedIndices.forEach(index => {
+        const originalMessageNode = DOM.chatWindow.querySelector(`.message-row[data-index="${index}"]`);
+        if (originalMessageNode) {
+            const clonedMessageNode = originalMessageNode.cloneNode(true);
+            clonedMessageNode.classList.remove('selected');
+            screenshotContainer.appendChild(clonedMessageNode);
+        }
+    });
+
+    document.body.appendChild(screenshotContainer);
+
+    try {
+        const canvas = await html2canvas(screenshotContainer, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: null,
+        });
+
+        const image = canvas.toDataURL('image/png', 1.0);
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
+        link.download = `chat-screenshot-${timestamp}.png`;
+        link.href = image;
+        link.click();
+
+    } catch (error) {
+        console.error('截圖生成失敗:', error);
+        alert('抱歉，生成截圖時發生錯誤。');
+    } finally {
+        document.body.removeChild(screenshotContainer);
+        DOM.loadingOverlay.classList.add('hidden');
+        handleToggleScreenshotMode();
+    }
 }
 
 // ===================================================================================

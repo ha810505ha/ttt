@@ -20,7 +20,6 @@ export function setAppHeight() {
 export function applyTheme(theme) {
     const themeToApply = theme || localStorage.getItem('theme') || 'light';
     
-    // [修改] 先移除所有可能的主題 class，再加入對應的 class
     document.body.classList.remove('dark-mode', 'theme-a', 'theme-b');
 
     if (themeToApply === 'dark') {
@@ -30,7 +29,6 @@ export function applyTheme(theme) {
     } else if (themeToApply === 'b') {
         document.body.classList.add('theme-b');
     }
-    // 'light' 模式不需要額外的 class
 
     localStorage.setItem('theme', themeToApply);
 }
@@ -105,29 +103,114 @@ export function exportCharacter() {
 }
 
 /**
- * @description 觸發檔案選擇器以匯入角色卡
+ * @description 觸發檔案選擇器並處理角色卡的匯入流程。
+ * 支援 .json 和 .png 格式。
  */
 export function importCharacter() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json,.png';
+
     input.onchange = (event) => {
         const file = event.target.files[0];
         if (!file) return;
 
+        const reader = new FileReader();
+        
         if (file.type === 'application/json' || file.name.endsWith('.json')) {
-            const reader = new FileReader();
             reader.onload = (e) => { 
                 try { 
                     const jsonData = JSON.parse(e.target.result);
                     populateEditorWithCharData(jsonData); 
                 } catch (error) { 
                     alert('匯入失敗，JSON 檔案格式錯誤。'); 
+                    console.error('JSON Import error:', error); 
                 } 
             };
-            reader.readAsText(file, 'UTF-8');
+            reader.readAsText(file, 'UTF-8'); 
+        
         } else if (file.type === 'image/png') {
-            alert('PNG 匯入功能正在開發中！');
+            let fileAsDataURL = '';
+            const readerForDataURL = new FileReader();
+            readerForDataURL.onload = (e) => {
+                fileAsDataURL = e.target.result;
+            };
+            readerForDataURL.readAsDataURL(file);
+
+            reader.onload = (e) => {
+                try {
+                    const arrayBuffer = e.target.result;
+                    const dataView = new DataView(arrayBuffer);
+                    
+                    if (dataView.getUint32(0) !== 0x89504E47 || dataView.getUint32(4) !== 0x0D0A1A0A) {
+                        throw new Error('不是有效的 PNG 檔案。');
+                    }
+                    
+                    let offset = 8;
+                    let characterDataFound = false;
+                    
+                    while (offset < arrayBuffer.byteLength) {
+                        const length = dataView.getUint32(offset);
+                        const type = new TextDecoder("ascii").decode(new Uint8Array(arrayBuffer, offset + 4, 4));
+                        const chunkData = new Uint8Array(arrayBuffer, offset + 8, length);
+                        
+                        if (type === 'tEXt' || type === 'iTXt') {
+                            const nullSeparatorIndex = chunkData.indexOf(0);
+                            if (nullSeparatorIndex === -1) {
+                                offset += 12 + length;
+                                continue;
+                            }
+                            const keyword = new TextDecoder("ascii").decode(chunkData.slice(0, nullSeparatorIndex));
+
+                            if (keyword === 'chara') {
+                                let textPayloadOffset = nullSeparatorIndex + 1;
+                                
+                                if (type === 'iTXt') {
+                                    if (chunkData[textPayloadOffset] === 0 || chunkData[textPayloadOffset] === 1) { 
+                                         textPayloadOffset++; 
+                                         textPayloadOffset++; 
+                                         while(chunkData[textPayloadOffset] !== 0 && textPayloadOffset < chunkData.length) textPayloadOffset++; 
+                                         textPayloadOffset++;
+                                         while(chunkData[textPayloadOffset] !== 0 && textPayloadOffset < chunkData.length) textPayloadOffset++; 
+                                         textPayloadOffset++;
+                                    }
+                                }
+
+                                const base64Data = new TextDecoder("ascii").decode(chunkData.slice(textPayloadOffset));
+                                
+                                const decodedJsonString = new TextDecoder().decode(
+                                    Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
+                                );
+                                
+                                const jsonData = JSON.parse(decodedJsonString);
+                                populateEditorWithCharData(jsonData, fileAsDataURL);
+                                characterDataFound = true;
+                                break;
+                            }
+                        } else if (type === 'zTXt') {
+                            const nullSeparatorIndex = chunkData.indexOf(0);
+                            if (nullSeparatorIndex !== -1) {
+                                const keyword = new TextDecoder("ascii").decode(chunkData.slice(0, nullSeparatorIndex));
+                                if (keyword === 'chara') {
+                                      alert('偵測到壓縮格式(zTXt)的角色卡，目前版本尚不支援解壓縮。');
+                                      characterDataFound = true; 
+                                      break;
+                                }
+                            }
+                        }
+                        
+                        offset += 12 + length;
+                    }
+
+                    if (!characterDataFound) { 
+                        alert('在這張 PNG 圖片中找不到可識別的角色卡資料。'); 
+                    }
+                } catch (error) { 
+                    alert('匯入 PNG 失敗，檔案可能已損壞、格式不符或不包含角色資料。'); 
+                    console.error('PNG Import error:', error); 
+                }
+            };
+            reader.readAsArrayBuffer(file);
         } else { 
             alert('不支援的檔案格式。請選擇 .json 或 .png 檔案。'); 
         }
@@ -136,9 +219,9 @@ export function importCharacter() {
 }
 
 /**
- * @description 將匯入的角色資料填入編輯器
- * @param {Object} importedData - 匯入的 JSON 物件
- * @param {string|null} imageBase64 - 如果是從 PNG 匯入，則為圖片的 base64 字串
+ * @description 將從角色卡解析出的資料填入角色編輯器中。
+ * @param {object} importedData - 解析後的 JSON 物件。
+ * @param {string|null} imageBase64 - 如果是從 PNG 匯入，則傳入圖片的 Base64 字串。
  */
 function populateEditorWithCharData(importedData, imageBase64 = null) {
     const data = importedData.data || importedData;
@@ -147,6 +230,7 @@ function populateEditorWithCharData(importedData, imageBase64 = null) {
     DOM.charDescriptionInput.value = data.description || data.personality || '';
     DOM.charFirstMessageInput.value = data.first_mes || data.firstMessage || '';
     DOM.charExampleDialogueInput.value = data.mes_example || data.exampleDialogue || '';
+    
     DOM.charAvatarPreview.src = imageBase64 || data.character_avatar || DEFAULT_AVATAR;
     
     alert('角色卡匯入成功！請記得儲存。');
@@ -169,54 +253,4 @@ export function exportChatAsJsonl() {
     a.download = `${activeChar.name}_${state.activeChatId}.jsonl`;
     a.click();
     URL.revokeObjectURL(url);
-}
-
-/**
- * @description 匯出對話為 PNG 圖片
- * @param {number} startIndex - 開始匯出的訊息索引
- * @param {number} endIndex - 結束匯出的訊息索引
- */
-export function exportChatAsImage(startIndex, endIndex) {
-    if (!state.activeCharacterId || !state.activeChatId) return;
-    const activeChar = state.characters.find(c => c.id === state.activeCharacterId);
-    
-    DOM.loadingOverlay.classList.remove('hidden');
-
-    const allMessageRows = DOM.chatWindow.querySelectorAll('.message-row');
-    const elementsToHide = DOM.chatWindow.querySelectorAll('.edit-msg-btn, .message-actions');
-    
-    allMessageRows.forEach((row, index) => {
-        if (index < startIndex || index > endIndex) {
-            row.style.display = 'none';
-        }
-    });
-    elementsToHide.forEach(el => el.style.visibility = 'hidden');
-
-    const originalChatWindowStyle = {
-        height: DOM.chatWindow.style.height,
-        overflowY: DOM.chatWindow.style.overflowY
-    };
-    DOM.chatWindow.style.height = 'auto';
-    DOM.chatWindow.style.overflowY = 'visible';
-    
-    setTimeout(() => {
-        html2canvas(DOM.chatWindow, {
-            backgroundColor: getComputedStyle(document.body).getPropertyValue('--background-color'),
-            useCORS: true,
-        }).then(canvas => {
-            const a = document.createElement('a');
-            a.href = canvas.toDataURL("image/png", 1.0);
-            a.download = `${activeChar.name}_${state.activeChatId}.png`;
-            a.click();
-        }).catch(err => {
-            console.error('匯出圖片失敗!', err);
-            alert('匯出圖片失敗，請查看主控台獲取更多資訊。');
-        }).finally(() => {
-            allMessageRows.forEach(row => row.style.display = '');
-            elementsToHide.forEach(el => el.style.visibility = '');
-            DOM.chatWindow.style.height = originalChatWindowStyle.height;
-            DOM.chatWindow.style.overflowY = originalChatWindowStyle.overflowY;
-            DOM.loadingOverlay.classList.add('hidden');
-        });
-    }, 150);
 }

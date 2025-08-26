@@ -121,6 +121,11 @@
                             <i id="stop-icon" class="fa-solid fa-square hidden"></i>
                         </button>
                     </div>
+                    <div id="screenshot-toolbar" class="screenshot-toolbar hidden">
+                        <button id="cancel-screenshot-btn" class="action-btn secondary">取消</button>
+                        <span id="screenshot-info-text">已選擇 0 則訊息</span>
+                        <button id="generate-screenshot-btn" class="action-btn primary">生成圖片</button>
+                    </div>
                 </div>
             </div>
         </main>
@@ -307,7 +312,6 @@
                             <option value="light">亮色模式</option>
                             <option value="dark">暗色模式</option>
                             <option value="a">主題A</option>
-                            <!-- [新增] 主題B 選項 -->
                             <option value="b">主題B</option>
                         </select>
                     </div>
@@ -364,6 +368,7 @@
         </div>
     </div>
 
+    <!-- [新增] 匯出選項彈出視窗 -->
     <div id="export-chat-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h2>匯出聊天紀錄</h2>
@@ -377,15 +382,10 @@
                         <label for="export-format-png">PNG 圖片</label>
                     </div>
                 </div>
-                <div id="export-range-selector" class="form-group hidden">
-                    <label for="export-message-count-slider" id="export-range-label">匯出最近的 20 則訊息</label>
-                    <input type="range" id="export-message-count-slider" min="2" max="50" value="20">
-                    <small>最多可選擇 50 則訊息。</small>
-                </div>
             </div>
             <div class="modal-footer">
                 <button id="cancel-export-chat-btn" class="action-btn secondary">取消</button>
-                <button id="confirm-export-chat-btn" class="action-btn primary">匯出</button>
+                <button id="confirm-export-chat-btn" class="action-btn primary">繼續</button>
             </div>
         </div>
     </div>

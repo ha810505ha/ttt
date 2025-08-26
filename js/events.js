@@ -5,7 +5,7 @@ import * as DOM from './dom.js';
 import * as Handlers from './handlers.js';
 import * as UI from './ui.js';
 import * as Utils from './utils.js';
-import { state, saveSettings, loadChatDataForCharacter } from './state.js';
+import { state, tempState, saveSettings, loadChatDataForCharacter } from './state.js';
 
 /**
  * @description 集中設定所有 DOM 元素的事件監聽器
@@ -13,11 +13,9 @@ import { state, saveSettings, loadChatDataForCharacter } from './state.js';
 export function setupEventListeners() {
     // ================== 靜態元素事件綁定 ==================
 
-    // 使用者認證
     DOM.loginBtn.addEventListener('click', Handlers.handleLogin);
     DOM.logoutBtn.addEventListener('click', Handlers.handleLogout);
     
-    // 手機版選單
     DOM.menuToggleBtn.addEventListener('click', () => {
         DOM.leftPanel.classList.toggle('mobile-visible');
         DOM.mobileOverlay.classList.toggle('hidden');
@@ -27,7 +25,6 @@ export function setupEventListeners() {
         DOM.mobileOverlay.classList.add('hidden');
     });
 
-    // 左側面板導覽
     DOM.backToCharsBtn.addEventListener('click', async () => {
         UI.showCharacterListView();
         state.activeCharacterId = null;
@@ -38,7 +35,6 @@ export function setupEventListeners() {
     DOM.editActiveCharacterBtn.addEventListener('click', () => Handlers.openCharacterEditor(state.activeCharacterId));
     DOM.deleteActiveCharacterBtn.addEventListener('click', Handlers.handleDeleteActiveCharacter);
 
-    // 聊天介面
     DOM.chatNotesInput.addEventListener('blur', Handlers.handleSaveNote);
     DOM.sendBtn.addEventListener('click', () => {
         if (DOM.sendBtn.classList.contains('is-generating')) {
@@ -66,7 +62,6 @@ export function setupEventListeners() {
         e.stopPropagation();
         DOM.chatOptionsMenu.classList.toggle('hidden');
     });
-    DOM.exportChatOptionBtn.addEventListener('click', Handlers.openExportModal);
     DOM.deleteChatOptionBtn.addEventListener('click', Handlers.handleDeleteCurrentChat);
 
     window.addEventListener('click', () => {
@@ -75,17 +70,14 @@ export function setupEventListeners() {
         }
     });
 
-    // 重新命名彈窗
     DOM.saveRenameChatBtn.addEventListener('click', Handlers.handleSaveChatName);
     DOM.cancelRenameChatBtn.addEventListener('click', () => UI.toggleModal('rename-chat-modal', false));
 
-    // 記憶體相關
     DOM.updateMemoryBtn.addEventListener('click', Handlers.handleUpdateMemory);
     DOM.viewMemoryBtn.addEventListener('click', Handlers.openMemoryEditor);
     DOM.saveMemoryEditorBtn.addEventListener('click', Handlers.handleSaveMemory);
     DOM.cancelMemoryEditorBtn.addEventListener('click', () => UI.toggleModal('memory-editor-modal', false));
 
-    // 角色編輯器
     DOM.addCharacterBtn.addEventListener('click', () => Handlers.openCharacterEditor());
     DOM.saveCharBtn.addEventListener('click', Handlers.handleSaveCharacter);
     DOM.cancelCharEditorBtn.addEventListener('click', () => UI.toggleModal('character-editor-modal', false));
@@ -93,7 +85,6 @@ export function setupEventListeners() {
     DOM.exportCharBtn.addEventListener('click', Utils.exportCharacter);
     DOM.charAvatarUpload.addEventListener('change', (e) => Utils.handleImageUpload(e, DOM.charAvatarPreview));
 
-    // 全域設定
     DOM.globalSettingsBtn.addEventListener('click', () => {
         UI.loadGlobalSettingsToUI();
         UI.toggleModal('global-settings-modal', true);
@@ -107,37 +98,29 @@ export function setupEventListeners() {
     Utils.setupSliderSync(DOM.maxTokensSlider, DOM.maxTokensValue);
     DOM.apiProviderSelect.addEventListener('change', UI.updateModelDropdown);
 
-    // [新增] API 設定檔事件
     DOM.saveApiPresetBtn.addEventListener('click', Handlers.handleSaveApiPreset);
     DOM.apiPresetSelect.addEventListener('change', Handlers.handleLoadApiPreset);
     DOM.deleteApiPresetBtn.addEventListener('click', Handlers.handleDeleteApiPreset);
 
-    // 設定視窗內的分頁切換邏輯
     DOM.settingsTabsContainer.addEventListener('click', (e) => {
         const tabButton = e.target.closest('.tab-btn');
         if (!tabButton) return;
-
         const tabId = tabButton.dataset.tab;
-        
         DOM.settingsTabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         tabButton.classList.add('active');
-
         DOM.globalSettingsModal.querySelectorAll('.tab-content').forEach(content => {
             content.classList.toggle('active', content.id === tabId);
         });
     });
 
-    // 主題下拉選單即時預覽
     DOM.themeSelect.addEventListener('change', (e) => {
         Utils.applyTheme(e.target.value);
     });
 
-    // 提示詞模式下拉選單切換
     DOM.promptModeSelect.addEventListener('change', (e) => {
         DOM.customPromptsContainer.classList.toggle('hidden', e.target.value === 'default');
     });
 
-    // 使用者角色 (Persona)
     DOM.addUserPersonaBtn.addEventListener('click', () => Handlers.openUserPersonaEditor());
     DOM.saveUserPersonaBtn.addEventListener('click', Handlers.handleSaveUserPersona);
     DOM.cancelUserPersonaEditorBtn.addEventListener('click', () => UI.toggleModal('user-persona-editor-modal', false));
@@ -148,21 +131,17 @@ export function setupEventListeners() {
     DOM.chatUserPersonaSelect.addEventListener('change', Handlers.handleChatPersonaChange);
     DOM.userPersonaAvatarUpload.addEventListener('change', (e) => Utils.handleImageUpload(e, DOM.userPersonaAvatarPreview));
 
-    // 匯出
-    DOM.exportFormatPng.addEventListener('change', () => DOM.exportRangeSelector.classList.remove('hidden'));
-    DOM.exportFormatJsonl.addEventListener('change', () => DOM.exportRangeSelector.classList.add('hidden'));
-    DOM.exportMessageCountSlider.addEventListener('input', (e) => {
-        DOM.exportRangeLabel.textContent = `匯出最近的 ${e.target.value} 則訊息`;
-    });
+    // 匯出與截圖
+    DOM.exportChatOptionBtn.addEventListener('click', Handlers.openExportModal);
     DOM.confirmExportChatBtn.addEventListener('click', Handlers.handleConfirmExport);
     DOM.cancelExportChatBtn.addEventListener('click', () => UI.toggleModal('export-chat-modal', false));
+    DOM.cancelScreenshotBtn.addEventListener('click', Handlers.handleToggleScreenshotMode);
+    DOM.generateScreenshotBtn.addEventListener('click', Handlers.handleGenerateScreenshot);
 
-    // 視窗大小變更
     window.addEventListener('resize', Utils.setAppHeight);
 
     // ================== 事件委派 (處理動態產生的元素) ==================
 
-    // 角色列表點擊
     DOM.characterList.addEventListener('click', async (e) => {
         const charItem = e.target.closest('.character-item');
         if (charItem) {
@@ -175,12 +154,10 @@ export function setupEventListeners() {
         }
     });
 
-    // 聊天室列表點擊
     DOM.chatSessionList.addEventListener('click', async (e) => {
         const sessionItem = e.target.closest('.chat-session-item');
         if (!sessionItem) return;
         const chatId = sessionItem.dataset.id;
-
         if (e.target.closest('.session-item-content')) {
             await Handlers.switchChat(chatId);
             DOM.leftPanel.classList.remove('mobile-visible');
@@ -192,15 +169,21 @@ export function setupEventListeners() {
         }
     });
 
-    // 聊天視窗內的點擊
     DOM.chatWindow.addEventListener('click', async (e) => {
         const messageRow = e.target.closest('.message-row');
         if (!messageRow) {
-            document.querySelectorAll('.message-row.show-actions').forEach(row => row.classList.remove('show-actions'));
+            if (!tempState.isScreenshotMode) {
+                document.querySelectorAll('.message-row.show-actions').forEach(row => row.classList.remove('show-actions'));
+            }
             return;
         }
         
         const messageIndex = parseInt(messageRow.dataset.index, 10);
+
+        if (tempState.isScreenshotMode) {
+            Handlers.handleSelectMessage(messageIndex);
+            return;
+        }
 
         if (e.target.closest('.chat-bubble')) {
             document.querySelectorAll('.message-row.show-actions').forEach(otherRow => {
@@ -225,12 +208,10 @@ export function setupEventListeners() {
         }
     });
 
-    // 設定彈窗內的使用者角色列表點擊
     DOM.userPersonaList.addEventListener('click', async (e) => {
         const personaItem = e.target.closest('.persona-item');
         if (!personaItem) return;
         const personaId = personaItem.dataset.id;
-
         if (e.target.closest('.edit-persona-btn')) {
             Handlers.openUserPersonaEditor(personaId);
         } else if (e.target.closest('.delete-persona-btn')) {

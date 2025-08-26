@@ -1,6 +1,6 @@
 // js/ui.js
 import * as DOM from './dom.js';
-import { state } from './state.js';
+import { state, tempState } from './state.js';
 import { DEFAULT_AVATAR, MODELS, DEFAULT_SUMMARY_PROMPT, DEFAULT_SCENARIO_PROMPT, DEFAULT_JAILBREAK_PROMPT } from './constants.js';
 
 /**
@@ -165,13 +165,6 @@ export function renderChatMessages() {
 
 /**
  * @description 在聊天視窗中顯示單一訊息
- * @param {string} text - 訊息內容
- * @param {string} sender - 'user' 或 'assistant'
- * @param {string} timestamp - ISO 格式的時間戳
- * @param {number} index - 訊息在歷史紀錄中的索引
- * @param {boolean} isNew - 是否為新訊息 (用於捲動)
- * @param {string|null} error - 錯誤訊息
- * @returns {HTMLElement} 建立的訊息元素
  */
 export function displayMessage(text, sender, timestamp, index, isNew, error = null) {
     const metadata = state.chatMetadatas[state.activeCharacterId]?.[state.activeChatId] || {};
@@ -186,6 +179,10 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
     const row = document.createElement('div');
     row.className = `message-row ${sender === 'user' ? 'user-row' : 'assistant-row'} ${error ? 'has-error' : ''}`;
     row.dataset.index = index;
+
+    if (tempState.isScreenshotMode && tempState.selectedMessageIndices.includes(index)) {
+        row.classList.add('selected');
+    }
     
     const formattedTimestamp = new Date(timestamp).toLocaleString('zh-TW', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
@@ -248,10 +245,8 @@ export function loadGlobalSettingsToUI() {
     renderUserPersonaList();
     renderActiveUserPersonaSelector();
     loadPromptSettingsToUI();
-    // [新增] 渲染 API 設定檔下拉選單
     renderApiPresetsDropdown();
 
-    // 重置到第一個分頁
     DOM.settingsTabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     DOM.globalSettingsModal.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     DOM.settingsTabsContainer.querySelector('[data-tab="api-settings-tab"]').classList.add('active');
@@ -259,7 +254,7 @@ export function loadGlobalSettingsToUI() {
 }
 
 /**
- * @description 根據選擇的 API 供應商更新模型下拉選單，並控制 API 金鑰輸入框的顯示
+ * @description 根據選擇的 API 供應商更新模型下拉選單
  */
 export function updateModelDropdown() {
     const provider = DOM.apiProviderSelect.value;
@@ -278,12 +273,7 @@ export function updateModelDropdown() {
         DOM.apiModelSelect.value = models[0];
     }
 
-    if (provider === 'official_gemini') {
-        DOM.apiKeyFormGroup.classList.add('hidden');
-        DOM.apiStatusIndicator.style.display = 'none';
-    } else {
-        DOM.apiKeyFormGroup.classList.remove('hidden');
-    }
+    DOM.apiKeyFormGroup.classList.toggle('hidden', provider === 'official_gemini');
 }
 
 /**
@@ -358,7 +348,7 @@ export function renderChatUserPersonaSelector() {
 }
 
 /**
- * @description [新增] 渲染 API 設定檔下拉選單
+ * @description 渲染 API 設定檔下拉選單
  */
 export function renderApiPresetsDropdown() {
     DOM.apiPresetSelect.innerHTML = '<option value="">選擇要載入的設定檔...</option>';
@@ -371,29 +361,25 @@ export function renderApiPresetsDropdown() {
 }
 
 /**
- * @description [新增] 將指定的 API 設定檔載入到 UI
- * @param {string} presetId - 設定檔 ID
+ * @description 將指定的 API 設定檔載入到 UI
  */
 export function loadApiPresetToUI(presetId) {
     const preset = state.apiPresets.find(p => p.id === presetId);
     if (!preset) return;
 
     DOM.apiProviderSelect.value = preset.provider;
-    updateModelDropdown(); // 更新模型列表
+    updateModelDropdown();
     
-    // 等待模型列表渲染完成後再設定值
     setTimeout(() => {
         DOM.apiModelSelect.value = preset.model;
     }, 0);
 
     DOM.apiKeyInput.value = preset.apiKey;
-    DOM.apiStatusIndicator.style.display = 'none'; // 載入後隱藏狀態
+    DOM.apiStatusIndicator.style.display = 'none';
 }
 
 /**
  * @description 切換彈出視窗的顯示或隱藏
- * @param {string} modalId - 彈出視窗的 ID
- * @param {boolean} show - true 為顯示，false 為隱藏
  */
 export function toggleModal(modalId, show) {
     document.getElementById(modalId).classList.toggle('hidden', !show);
@@ -401,8 +387,6 @@ export function toggleModal(modalId, show) {
 
 /**
  * @description 設定應用程式是否處於「生成中」的狀態
- * @param {boolean} isGenerating - 是否正在生成
- * @param {boolean} changeMainButton - 是否要改變主發送按鈕的狀態
  */
 export function setGeneratingState(isGenerating, changeMainButton = true) {
     if (changeMainButton) {
