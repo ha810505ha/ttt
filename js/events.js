@@ -13,8 +13,9 @@ import { state, saveSettings, loadChatDataForCharacter } from './state.js';
 export function setupEventListeners() {
     // ================== 靜態元素事件綁定 ==================
 
-    // 主題切換
-    DOM.themeToggleBtn.addEventListener('click', Utils.toggleTheme);
+    // 使用者認證
+    DOM.loginBtn.addEventListener('click', Handlers.handleLogin);
+    DOM.logoutBtn.addEventListener('click', Handlers.handleLogout);
     
     // 手機版選單
     DOM.menuToggleBtn.addEventListener('click', () => {
@@ -47,15 +48,12 @@ export function setupEventListeners() {
         }
     });
 
-    // [重要修改] 偵測是否為行動裝置
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
-    // [重要修改] 為輸入框添加鍵盤事件監聽，以處理 Enter 鍵
     DOM.messageInput.addEventListener('keydown', (e) => {
-        // 條件：按下 Enter 鍵，且不是在行動裝置上，且沒有同時按住 Shift 鍵
         if (e.key === 'Enter' && !isMobile && !e.shiftKey) {
-            e.preventDefault(); // 防止預設的換行行為
-            Handlers.sendMessage(); // 呼叫送出訊息的函式
+            e.preventDefault();
+            Handlers.sendMessage();
         }
     });
 
@@ -76,7 +74,6 @@ export function setupEventListeners() {
             DOM.chatOptionsMenu.classList.add('hidden');
         }
     });
-
 
     // 重新命名彈窗
     DOM.saveRenameChatBtn.addEventListener('click', Handlers.handleSaveChatName);
@@ -110,15 +107,35 @@ export function setupEventListeners() {
     Utils.setupSliderSync(DOM.maxTokensSlider, DOM.maxTokensValue);
     DOM.apiProviderSelect.addEventListener('change', UI.updateModelDropdown);
 
-    // 提示詞庫
-    DOM.promptLibraryBtn.addEventListener('click', UI.showPromptView);
-    DOM.backToMainFromPromptBtn.addEventListener('click', async () => {
-        UI.showCharacterListView();
-        state.activeCharacterId = null;
-        state.activeChatId = null;
-        await saveSettings();
+    // [新增] API 設定檔事件
+    DOM.saveApiPresetBtn.addEventListener('click', Handlers.handleSaveApiPreset);
+    DOM.apiPresetSelect.addEventListener('change', Handlers.handleLoadApiPreset);
+    DOM.deleteApiPresetBtn.addEventListener('click', Handlers.handleDeleteApiPreset);
+
+    // 設定視窗內的分頁切換邏輯
+    DOM.settingsTabsContainer.addEventListener('click', (e) => {
+        const tabButton = e.target.closest('.tab-btn');
+        if (!tabButton) return;
+
+        const tabId = tabButton.dataset.tab;
+        
+        DOM.settingsTabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        tabButton.classList.add('active');
+
+        DOM.globalSettingsModal.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.toggle('active', content.id === tabId);
+        });
     });
-    DOM.savePromptSettingsBtn.addEventListener('click', Handlers.handleSavePromptSettings);
+
+    // 主題下拉選單即時預覽
+    DOM.themeSelect.addEventListener('change', (e) => {
+        Utils.applyTheme(e.target.value);
+    });
+
+    // 提示詞模式下拉選單切換
+    DOM.promptModeSelect.addEventListener('change', (e) => {
+        DOM.customPromptsContainer.classList.toggle('hidden', e.target.value === 'default');
+    });
 
     // 使用者角色 (Persona)
     DOM.addUserPersonaBtn.addEventListener('click', () => Handlers.openUserPersonaEditor());

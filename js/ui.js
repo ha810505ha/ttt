@@ -1,15 +1,46 @@
 // js/ui.js
-// 這個檔案包含所有與渲染和更新使用者介面 (UI) 相關的函式。
-
 import * as DOM from './dom.js';
 import { state } from './state.js';
-import { DEFAULT_AVATAR, MODELS, DEFAULT_SUMMARY_PROMPT } from './constants.js';
+import { DEFAULT_AVATAR, MODELS, DEFAULT_SUMMARY_PROMPT, DEFAULT_SCENARIO_PROMPT, DEFAULT_JAILBREAK_PROMPT } from './constants.js';
+
+/**
+ * @description 根據登入狀態更新使用者個人資料區域的 UI
+ */
+export function renderUserProfile() {
+    if (state.currentUser) {
+        DOM.loginBtn.classList.add('hidden');
+        DOM.userInfo.classList.remove('hidden');
+        DOM.userAvatar.src = state.currentUser.photoURL || DEFAULT_AVATAR;
+        DOM.userName.textContent = state.currentUser.displayName || '使用者';
+    } else {
+        DOM.loginBtn.classList.remove('hidden');
+        DOM.userInfo.classList.add('hidden');
+    }
+}
+
+/**
+ * @description 渲染左側的角色列表
+ */
+export function renderCharacterList() {
+    renderUserProfile();
+    DOM.characterList.innerHTML = '';
+    state.characters.forEach(char => {
+        const item = document.createElement('li');
+        item.className = 'character-item';
+        item.dataset.id = char.id;
+        item.innerHTML = `
+            <img src="${char.avatarUrl || DEFAULT_AVATAR}" alt="${char.name}" class="char-item-avatar">
+            <span class="char-item-name">${char.name}</span>
+        `;
+        DOM.characterList.appendChild(item);
+    });
+}
 
 /**
  * @description 顯示角色列表視圖
  */
 export function showCharacterListView() {
-    DOM.leftPanel.classList.remove('show-chats', 'show-prompts');
+    DOM.leftPanel.classList.remove('show-chats');
     DOM.leftPanel.classList.remove('mobile-visible');
     DOM.mobileOverlay.classList.add('hidden');
     state.activeCharacterId = null;
@@ -29,7 +60,6 @@ export function showChatSessionListView(charId) {
         }
         
         DOM.leftPanel.classList.add('show-chats');
-        DOM.leftPanel.classList.remove('show-prompts');
         DOM.chatListHeaderName.textContent = character.name;
         renderChatSessionList();
     } catch (error) {
@@ -37,32 +67,6 @@ export function showChatSessionListView(charId) {
         alert("載入聊天室列表時發生錯誤，請檢查主控台。");
         DOM.leftPanel.classList.remove('show-chats');
     }
-}
-
-/**
- * @description 顯示提示詞庫視圖
- */
-export function showPromptView() {
-    DOM.leftPanel.classList.add('show-prompts');
-    DOM.leftPanel.classList.remove('show-chats');
-    loadPromptSettingsToUI();
-}
-
-/**
- * @description 渲染左側的角色列表
- */
-export function renderCharacterList() {
-    DOM.characterList.innerHTML = '';
-    state.characters.forEach(char => {
-        const item = document.createElement('li');
-        item.className = 'character-item';
-        item.dataset.id = char.id;
-        item.innerHTML = `
-            <img src="${char.avatarUrl || DEFAULT_AVATAR}" alt="${char.name}" class="char-item-avatar">
-            <span class="char-item-name">${char.name}</span>
-        `;
-        DOM.characterList.appendChild(item);
-    });
 }
 
 /**
@@ -225,7 +229,7 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
  */
 export function loadGlobalSettingsToUI() {
     const settings = state.globalSettings;
-    DOM.apiProviderSelect.value = settings.apiProvider || 'openai';
+    DOM.apiProviderSelect.value = settings.apiProvider || 'official_gemini';
     updateModelDropdown(); 
     DOM.apiModelSelect.value = settings.apiModel || (MODELS[DOM.apiProviderSelect.value] ? MODELS[DOM.apiProviderSelect.value][0] : '');
     DOM.apiKeyInput.value = settings.apiKey || '';
@@ -235,17 +239,27 @@ export function loadGlobalSettingsToUI() {
     DOM.topPValue.value = settings.topP || 1;
     DOM.repetitionPenaltySlider.value = settings.repetitionPenalty || 0;
     DOM.repetitionPenaltyValue.value = settings.repetitionPenalty || 0;
-    // [重要修改] 更新預設的 Token 數量
     DOM.contextSizeInput.value = settings.contextSize || 30000;
     DOM.maxTokensSlider.value = settings.maxTokens || 1024;
     DOM.maxTokensValue.value = settings.maxTokens || 1024;
     
+    DOM.themeSelect.value = settings.theme || 'light';
+
     renderUserPersonaList();
     renderActiveUserPersonaSelector();
+    loadPromptSettingsToUI();
+    // [新增] 渲染 API 設定檔下拉選單
+    renderApiPresetsDropdown();
+
+    // 重置到第一個分頁
+    DOM.settingsTabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    DOM.globalSettingsModal.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    DOM.settingsTabsContainer.querySelector('[data-tab="api-settings-tab"]').classList.add('active');
+    DOM.apiSettingsTab.classList.add('active');
 }
 
 /**
- * @description 根據選擇的 API 供應商更新模型下拉選單
+ * @description 根據選擇的 API 供應商更新模型下拉選單，並控制 API 金鑰輸入框的顯示
  */
 export function updateModelDropdown() {
     const provider = DOM.apiProviderSelect.value;
@@ -263,6 +277,13 @@ export function updateModelDropdown() {
     } else if (models.length > 0) {
         DOM.apiModelSelect.value = models[0];
     }
+
+    if (provider === 'official_gemini') {
+        DOM.apiKeyFormGroup.classList.add('hidden');
+        DOM.apiStatusIndicator.style.display = 'none';
+    } else {
+        DOM.apiKeyFormGroup.classList.remove('hidden');
+    }
 }
 
 /**
@@ -270,8 +291,19 @@ export function updateModelDropdown() {
  */
 export function loadPromptSettingsToUI() {
     const prompts = state.promptSettings;
-    DOM.promptScenarioInput.value = prompts.scenario || '';
-    DOM.promptJailbreakInput.value = prompts.jailbreak || '';
+    const promptMode = prompts.mode || 'default';
+    DOM.promptModeSelect.value = promptMode;
+
+    DOM.customPromptsContainer.classList.toggle('hidden', promptMode === 'default');
+
+    if (promptMode === 'custom') {
+        DOM.promptScenarioInput.value = prompts.scenario || '';
+        DOM.promptJailbreakInput.value = prompts.jailbreak || '';
+    } else {
+        DOM.promptScenarioInput.value = DEFAULT_SCENARIO_PROMPT;
+        DOM.promptJailbreakInput.value = DEFAULT_JAILBREAK_PROMPT;
+    }
+    
     DOM.promptSummarizationInput.value = prompts.summarizationPrompt || DEFAULT_SUMMARY_PROMPT;
 }
 
@@ -323,6 +355,39 @@ export function renderChatUserPersonaSelector() {
     });
     const metadata = state.chatMetadatas[state.activeCharacterId]?.[state.activeChatId] || {};
     DOM.chatUserPersonaSelect.value = metadata.userPersonaId || state.activeUserPersonaId;
+}
+
+/**
+ * @description [新增] 渲染 API 設定檔下拉選單
+ */
+export function renderApiPresetsDropdown() {
+    DOM.apiPresetSelect.innerHTML = '<option value="">選擇要載入的設定檔...</option>';
+    state.apiPresets.forEach(preset => {
+        const option = document.createElement('option');
+        option.value = preset.id;
+        option.textContent = preset.name;
+        DOM.apiPresetSelect.appendChild(option);
+    });
+}
+
+/**
+ * @description [新增] 將指定的 API 設定檔載入到 UI
+ * @param {string} presetId - 設定檔 ID
+ */
+export function loadApiPresetToUI(presetId) {
+    const preset = state.apiPresets.find(p => p.id === presetId);
+    if (!preset) return;
+
+    DOM.apiProviderSelect.value = preset.provider;
+    updateModelDropdown(); // 更新模型列表
+    
+    // 等待模型列表渲染完成後再設定值
+    setTimeout(() => {
+        DOM.apiModelSelect.value = preset.model;
+    }, 0);
+
+    DOM.apiKeyInput.value = preset.apiKey;
+    DOM.apiStatusIndicator.style.display = 'none'; // 載入後隱藏狀態
 }
 
 /**

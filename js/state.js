@@ -6,11 +6,14 @@ import * as db from './db.js';
 
 // 應用程式的核心狀態物件
 export let state = {
+    currentUser: null,
     characters: [],
     chatHistories: {}, 
     longTermMemories: {},
     chatMetadatas: {}, 
     userPersonas: [],
+    // [新增] 用於儲存 API 設定檔
+    apiPresets: [], 
     activeUserPersonaId: null,
     activeCharacterId: null,
     activeChatId: null,
@@ -38,6 +41,8 @@ export async function loadStateFromDB() {
         state.activeUserPersonaId = settingsData.activeUserPersonaId || null;
         state.activeCharacterId = settingsData.activeCharacterId || null;
         state.activeChatId = settingsData.activeChatId || null;
+        // [新增] 載入儲存的 API 設定檔
+        state.apiPresets = settingsData.apiPresets || [];
     }
 
     // 獲取所有列表資料
@@ -80,7 +85,7 @@ export async function loadChatDataForCharacter(charId) {
 }
 
 // ===================================================================================
-// [新] 資料儲存函式 (取代舊的 saveState)
+// 資料儲存函式
 // ===================================================================================
 
 /**
@@ -94,6 +99,8 @@ export function saveSettings() {
         activeUserPersonaId: state.activeUserPersonaId,
         activeCharacterId: state.activeCharacterId,
         activeChatId: state.activeChatId,
+        // [新增] 儲存 API 設定檔
+        apiPresets: state.apiPresets,
     };
     return db.put('keyValueStore', settingsData);
 }

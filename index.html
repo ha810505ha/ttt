@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- 引入 Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -18,10 +22,18 @@
                 <!-- 角色列表視圖 -->
                 <div id="character-view" class="panel-view active">
                     <header class="panel-header">
+                        <div id="user-profile-area">
+                            <button id="login-btn" class="action-btn-sm">
+                                <i class="fa-brands fa-google"></i> 登入
+                            </button>
+                            <div id="user-info" class="hidden">
+                                <img id="user-avatar" src="" alt="User Avatar">
+                                <span id="user-name"></span>
+                                <button id="logout-btn" class="icon-btn-sm" title="登出"><i class="fa-solid fa-right-from-bracket"></i></button>
+                            </div>
+                        </div>
                         <h2>角色列表</h2>
                         <div class="header-actions">
-                            <button id="theme-toggle-btn" class="icon-btn" title="切換模式"><i class="fa-solid fa-moon"></i></button>
-                            <button id="prompt-library-btn" class="icon-btn" title="提示詞庫"><i class="fa-solid fa-book-bookmark"></i></button>
                             <button id="global-settings-btn" class="icon-btn" title="全域設定"><i class="fa-solid fa-gear"></i></button>
                         </div>
                     </header>
@@ -48,32 +60,6 @@
                     </ul>
                     <button id="add-chat-btn" class="add-character-btn">
                         <i class="fa-solid fa-plus"></i> 開啟新聊天
-                    </button>
-                </div>
-
-                <!-- 提示詞庫視圖 -->
-                <div id="prompt-view" class="panel-view">
-                     <header class="panel-header">
-                        <button id="back-to-main-from-prompt-btn" class="icon-btn" title="返回"><i class="fa-solid fa-arrow-left"></i></button>
-                        <h2>提示詞庫</h2>
-                        <div class="placeholder-div"></div>
-                    </header>
-                    <div class="prompt-view-body">
-                        <div class="form-group">
-                            <label for="prompt-scenario">場景 (Scenario)</label>
-                            <textarea id="prompt-scenario" placeholder="例如：這是一個發生在奇幻世界的對話..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="prompt-jailbreak">越獄提示 (Jailbreak)</label>
-                            <textarea id="prompt-jailbreak" placeholder="輸入特定的越獄或角色扮演提示..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="prompt-summarization">長期記憶生成提示</label>
-                            <textarea id="prompt-summarization" placeholder="請將以下對話的關鍵事實..."></textarea>
-                        </div>
-                    </div>
-                    <button id="save-prompt-settings-btn" class="add-character-btn">
-                        <i class="fa-solid fa-save"></i> 儲存提示詞
                     </button>
                 </div>
             </div>
@@ -107,7 +93,6 @@
                             <i class="fa-solid fa-user"></i>
                             <select id="chat-user-persona-select"></select>
                         </div>
-                        <!-- [重要修改] 將原本的兩個按鈕，整合成一個下拉式選單 -->
                         <div class="chat-options-container">
                             <button id="chat-options-btn" class="icon-btn" title="更多選項">
                                 <i class="fa-solid fa-ellipsis-vertical"></i>
@@ -204,73 +189,131 @@
     <div id="global-settings-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h2>全域設定</h2>
+            <div id="settings-tabs-container" class="settings-tabs">
+                <button class="tab-btn active" data-tab="api-settings-tab"><i class="fa-solid fa-key"></i> API 設定</button>
+                <button class="tab-btn" data-tab="user-settings-tab"><i class="fa-solid fa-users"></i> 使用者設定</button>
+                <button class="tab-btn" data-tab="prompt-settings-tab"><i class="fa-solid fa-book-bookmark"></i> 提示詞庫</button>
+                <button class="tab-btn" data-tab="theme-settings-tab"><i class="fa-solid fa-palette"></i> 主題設定</button>
+            </div>
             <div class="modal-body">
-                <h3>API 設定</h3>
-                <div class="form-group">
-                    <label for="api-provider">API 供應商</label>
-                    <select id="api-provider">
-                        <option value="openai">OpenAI</option>
-                        <option value="anthropic">Claude (Anthropic)</option>
-                        <option value="google">Gemini (Google)</option>
-                        <option value="openrouter">OpenRouter</option>
-                        <option value="xai">Grok (xAI)</option>
-                        <option value="mistral">Mistral</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="api-model-select">模型型號</label>
-                    <select id="api-model-select"></select>
-                </div>
-                <div class="form-group">
-                    <label for="api-key">API 金鑰</label>
-                    <div class="api-key-container">
-                        <input type="password" id="api-key" placeholder="API 金鑰">
-                        <button id="test-api-btn" class="action-btn-sm">測試連線</button>
+                <!-- API 設定分頁 -->
+                <div id="api-settings-tab" class="tab-content active">
+                    <!-- [新增] API 設定檔管理區塊 -->
+                    <div class="api-preset-manager">
+                        <h4>API 設定檔</h4>
+                        <div class="preset-controls">
+                            <select id="api-preset-select">
+                                <option value="">選擇要載入的設定檔...</option>
+                            </select>
+                            <button id="delete-api-preset-btn" class="icon-btn-sm danger" title="刪除選取的設定檔"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                        <button id="save-api-preset-btn" class="action-btn-sm"><i class="fa-solid fa-save"></i> 儲存目前設定為新設定檔</button>
                     </div>
-                </div>
-                <div id="api-status-indicator"></div>
-
-                <h4>進階參數</h4>
-                <div class="settings-slider-group">
-                    <label for="temperature-slider">溫度 (Temperature)</label>
-                    <input type="range" id="temperature-slider" min="0" max="2" step="0.1">
-                    <input type="number" id="temperature-value" class="slider-value" min="0" max="2" step="0.1">
-                </div>
-                <div class="settings-slider-group">
-                    <label for="top-p-slider">Top P</label>
-                    <input type="range" id="top-p-slider" min="0" max="1" step="0.01">
-                    <input type="number" id="top-p-value" class="slider-value" min="0" max="1" step="0.01">
-                </div>
-                <div class="settings-slider-group">
-                    <label for="repetition-penalty-slider">重複懲罰</label>
-                    <input type="range" id="repetition-penalty-slider" min="0" max="2" step="0.01">
-                    <input type="number" id="repetition-penalty-value" class="slider-value" min="0" max="2" step="0.01">
-                </div>
-                <div class="settings-slider-group">
-                    <label for="context-size-input">上下文大小 (Tokens)</label>
-                    <input type="number" id="context-size-input" class="slider-value" min="512" max="128000" step="256" placeholder="例如: 30000">
-                </div>
-                <div class="settings-slider-group">
-                    <label for="max-tokens-slider">最大回應長度</label>
-                    <input type="range" id="max-tokens-slider" min="50" max="4096" step="1">
-                    <input type="number" id="max-tokens-value" class="slider-value" min="50" max="4096" step="1">
-                </div>
-
-                <h3>使用者角色管理</h3>
-                <div id="user-persona-management-area">
+                    
                     <div class="form-group">
-                        <label for="active-user-persona-select">預設使用者角色</label>
-                        <select id="active-user-persona-select"></select>
+                        <label for="api-provider">API 供應商</label>
+                        <select id="api-provider">
+                            <option value="official_gemini">官方免費模型 (Gemini)</option>
+                            <option value="openai">OpenAI (自訂)</option>
+                            <option value="anthropic">Claude (自訂)</option>
+                            <option value="google">Gemini (自訂)</option>
+                            <option value="openrouter">OpenRouter (自訂)</option>
+                            <option value="xai">Grok (自訂)</option>
+                            <option value="mistral">Mistral (自訂)</option>
+                        </select>
                     </div>
-                    <ul id="user-persona-list" class="persona-list">
-                        <!-- 使用者角色列表 -->
-                    </ul>
+                    <div class="form-group">
+                        <label for="api-model-select">模型型號</label>
+                        <select id="api-model-select"></select>
+                    </div>
+                    <div id="api-key-form-group" class="form-group">
+                        <label for="api-key">API 金鑰</label>
+                        <div class="api-key-container">
+                            <input type="password" id="api-key" placeholder="API 金鑰">
+                            <button id="test-api-btn" class="action-btn-sm">測試連線</button>
+                        </div>
+                    </div>
+                    <div id="api-status-indicator"></div>
+
+                    <h4>進階參數</h4>
+                    <div class="settings-slider-group">
+                        <label for="temperature-slider">溫度</label>
+                        <input type="range" id="temperature-slider" min="0" max="2" step="0.1">
+                        <input type="number" id="temperature-value" class="slider-value" min="0" max="2" step="0.1">
+                    </div>
+                    <div class="settings-slider-group">
+                        <label for="top-p-slider">Top P</label>
+                        <input type="range" id="top-p-slider" min="0" max="1" step="0.01">
+                        <input type="number" id="top-p-value" class="slider-value" min="0" max="1" step="0.01">
+                    </div>
+                    <div class="settings-slider-group">
+                        <label for="repetition-penalty-slider">重複懲罰</label>
+                        <input type="range" id="repetition-penalty-slider" min="0" max="2" step="0.01">
+                        <input type="number" id="repetition-penalty-value" class="slider-value" min="0" max="2" step="0.01">
+                    </div>
+                    <div class="settings-slider-group">
+                        <label for="context-size-input">上下文大小</label>
+                        <input type="number" id="context-size-input" class="slider-value" min="512" max="128000" step="256" placeholder="例如: 30000">
+                    </div>
+                    <div class="settings-slider-group">
+                        <label for="max-tokens-slider">最大回應</label>
+                        <input type="range" id="max-tokens-slider" min="50" max="4096" step="1">
+                        <input type="number" id="max-tokens-value" class="slider-value" min="50" max="4096" step="1">
+                    </div>
                 </div>
-                <button id="add-user-persona-btn" class="action-btn-sm"><i class="fa-solid fa-plus"></i> 新增角色</button>
+                <!-- 使用者設定分頁 -->
+                <div id="user-settings-tab" class="tab-content">
+                    <h3>使用者角色管理</h3>
+                    <div id="user-persona-management-area">
+                        <div class="form-group">
+                            <label for="active-user-persona-select">預設使用者角色</label>
+                            <select id="active-user-persona-select"></select>
+                        </div>
+                        <ul id="user-persona-list" class="persona-list">
+                            <!-- 使用者角色列表 -->
+                        </ul>
+                    </div>
+                    <button id="add-user-persona-btn" class="action-btn-sm"><i class="fa-solid fa-plus"></i> 新增角色</button>
+                </div>
+                <!-- 提示詞庫分頁 -->
+                <div id="prompt-settings-tab" class="tab-content">
+                    <div class="form-group">
+                        <label for="prompt-mode-select">提示詞模式</label>
+                        <select id="prompt-mode-select">
+                            <option value="default">預設提示詞</option>
+                            <option value="custom">自訂</option>
+                        </select>
+                    </div>
+                    <div id="custom-prompts-container" class="hidden">
+                        <div class="form-group">
+                            <label for="prompt-scenario">場景 (Scenario)</label>
+                            <textarea id="prompt-scenario" placeholder="例如：這是一個發生在奇幻世界的對話..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="prompt-jailbreak">越獄提示 (Jailbreak)</label>
+                            <textarea id="prompt-jailbreak" placeholder="輸入特定的越獄或角色扮演提示..."></textarea>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="prompt-summarization">長期記憶生成提示</label>
+                        <textarea id="prompt-summarization" placeholder="請將以下對話的關鍵事實..."></textarea>
+                    </div>
+                </div>
+                <!-- 主題設定分頁內容 -->
+                <div id="theme-settings-tab" class="tab-content">
+                    <h3>主題設定</h3>
+                    <div class="form-group">
+                        <label for="theme-select">選擇應用程式主題</label>
+                        <select id="theme-select">
+                            <option value="light">亮色模式</option>
+                            <option value="dark">暗色模式</option>
+                        </select>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button id="cancel-global-settings-btn" class="action-btn secondary">取消</button>
-                <button id="save-global-settings-btn" class="action-btn primary">儲存</button>
+                <button id="save-global-settings-btn" class="action-btn primary">儲存設定</button>
             </div>
         </div>
     </div>

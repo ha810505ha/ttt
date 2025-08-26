@@ -2,12 +2,10 @@
 // 這個檔案專門用來選取所有會用到的 HTML 元素，並將它們匯出。
 
 export const mobileOverlay = document.getElementById('mobile-overlay');
-export const themeToggleBtn = document.getElementById('theme-toggle-btn');
 export const menuToggleBtn = document.getElementById('menu-toggle-btn');
 export const leftPanel = document.getElementById('left-panel');
 export const characterView = document.getElementById('character-view');
 export const chatSessionView = document.getElementById('chat-session-view');
-export const promptView = document.getElementById('prompt-view');
 export const backToCharsBtn = document.getElementById('back-to-chars-btn');
 export const chatListHeaderName = document.getElementById('chat-list-header-name');
 export const editActiveCharacterBtn = document.getElementById('edit-active-character-btn');
@@ -51,6 +49,7 @@ export const apiModelSelect = document.getElementById('api-model-select');
 export const apiKeyInput = document.getElementById('api-key');
 export const testApiBtn = document.getElementById('test-api-btn');
 export const apiStatusIndicator = document.getElementById('api-status-indicator');
+export const apiKeyFormGroup = document.getElementById('api-key-form-group');
 export const cancelGlobalSettingsBtn = document.getElementById('cancel-global-settings-btn');
 export const saveGlobalSettingsBtn = document.getElementById('save-global-settings-btn');
 export const temperatureSlider = document.getElementById('temperature-slider');
@@ -62,12 +61,9 @@ export const repetitionPenaltyValue = document.getElementById('repetition-penalt
 export const contextSizeInput = document.getElementById('context-size-input');
 export const maxTokensSlider = document.getElementById('max-tokens-slider');
 export const maxTokensValue = document.getElementById('max-tokens-value');
-export const promptLibraryBtn = document.getElementById('prompt-library-btn');
-export const backToMainFromPromptBtn = document.getElementById('back-to-main-from-prompt-btn');
 export const promptScenarioInput = document.getElementById('prompt-scenario');
 export const promptJailbreakInput = document.getElementById('prompt-jailbreak');
 export const promptSummarizationInput = document.getElementById('prompt-summarization');
-export const savePromptSettingsBtn = document.getElementById('save-prompt-settings-btn');
 export const userPersonaEditorModal = document.getElementById('user-persona-editor-modal');
 export const userPersonaEditorTitle = document.getElementById('user-persona-editor-title');
 export const userPersonaAvatarUpload = document.getElementById('user-persona-avatar-upload');
@@ -94,9 +90,30 @@ export const exportRangeLabel = document.getElementById('export-range-label');
 export const cancelExportChatBtn = document.getElementById('cancel-export-chat-btn');
 export const confirmExportChatBtn = document.getElementById('confirm-export-chat-btn');
 export const loadingOverlay = document.getElementById('loading-overlay');
-
-// [重要修改] 新增下拉式選單的參照
 export const chatOptionsBtn = document.getElementById('chat-options-btn');
 export const chatOptionsMenu = document.getElementById('chat-options-menu');
 export const exportChatOptionBtn = document.getElementById('export-chat-option-btn');
 export const deleteChatOptionBtn = document.getElementById('delete-chat-option-btn');
+export const userProfileArea = document.getElementById('user-profile-area');
+export const loginBtn = document.getElementById('login-btn');
+export const userInfo = document.getElementById('user-info');
+export const userAvatar = document.getElementById('user-avatar');
+export const userName = document.getElementById('user-name');
+export const logoutBtn = document.getElementById('logout-btn');
+
+// 設定分頁相關
+export const settingsTabsContainer = document.getElementById('settings-tabs-container');
+export const apiSettingsTab = document.getElementById('api-settings-tab');
+export const userSettingsTab = document.getElementById('user-settings-tab');
+export const promptSettingsTab = document.getElementById('prompt-settings-tab');
+export const themeSettingsTab = document.getElementById('theme-settings-tab');
+export const themeSelect = document.getElementById('theme-select');
+
+// 提示詞庫相關
+export const promptModeSelect = document.getElementById('prompt-mode-select');
+export const customPromptsContainer = document.getElementById('custom-prompts-container');
+
+// [新增] API 設定檔相關
+export const apiPresetSelect = document.getElementById('api-preset-select');
+export const saveApiPresetBtn = document.getElementById('save-api-preset-btn');
+export const deleteApiPresetBtn = document.getElementById('delete-api-preset-btn');

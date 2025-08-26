@@ -35,13 +35,13 @@ function cleanMessagesForClaude(messages) {
     return cleaned;
 }
 
+
 /**
  * @description 估算文字的 token 數量 (此處使用字元長度作為一個粗略的代理)
  * @param {string} text - 要計算的文字
  * @returns {number} - 估算的 token 數量
  */
 function estimateTokens(text = '') {
-    // 對於中文字元，一個更實際的估算可能是長度的 1.5 到 2 倍，但此處為求簡單，暫用長度。
     return text.length;
 }
 
@@ -53,7 +53,6 @@ export function buildApiMessages() {
     if (!state.activeCharacterId || !state.activeChatId) return [];
 
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
-    // [重要修改] 將預設的上下文 Token 數量改為 30000
     const maxTokenContext = parseInt(state.globalSettings.contextSize) || 30000;
     
     const systemPrompt = buildSystemPrompt();
@@ -61,7 +60,6 @@ export function buildApiMessages() {
     
     const recentHistory = [];
 
-    // 從最新的訊息開始，反向遍歷歷史紀錄
     for (let i = history.length - 1; i >= 0; i--) {
         const msg = history[i];
         const content = (msg.role === 'assistant' && Array.isArray(msg.content))
@@ -70,12 +68,10 @@ export function buildApiMessages() {
         
         const messageTokens = estimateTokens(content);
 
-        // 如果加入這則訊息不會超過 token 上限
         if (currentTokenCount + messageTokens <= maxTokenContext) {
-            recentHistory.unshift(msg); // 將訊息加到陣列的開頭
+            recentHistory.unshift(msg);
             currentTokenCount += messageTokens;
         } else {
-            // 如果超過上限，就停止加入
             break;
         }
     }
@@ -89,7 +85,7 @@ export function buildApiMessages() {
  * @returns {Array|Object} 格式化後的訊息
  */
 export function buildApiMessagesFromHistory(customHistory) {
-    const provider = state.globalSettings.apiProvider || 'openai';
+    const provider = state.globalSettings.apiProvider || 'official_gemini';
     const systemPrompt = buildSystemPrompt();
     
     const recentHistory = customHistory.filter(msg => !msg.error).map(msg => {
@@ -99,13 +95,9 @@ export function buildApiMessagesFromHistory(customHistory) {
         }
         return { role: msg.role, content: finalContent };
     });
-
-    if (provider === 'anthropic') {
-        const cleanedMessages = cleanMessagesForClaude(recentHistory);
-        return { system: systemPrompt, messages: cleanedMessages };
-    }
     
-    if (provider === 'google') {
+    // [重要修正] 確保官方模型和自訂 Gemini 都使用正確的格式
+    if (provider === 'google' || provider === 'official_gemini') {
         const contents = recentHistory.map(msg => ({ 
             role: msg.role === 'assistant' ? 'model' : 'user', 
             parts: [{ text: msg.content }] 
@@ -115,6 +107,11 @@ export function buildApiMessagesFromHistory(customHistory) {
             contents.push({ role: 'model', parts: [{ text: "OK." }] });
         }
         return contents;
+    }
+
+    if (provider === 'anthropic') {
+        const cleanedMessages = cleanMessagesForClaude(recentHistory);
+        return { system: systemPrompt, messages: cleanedMessages };
     }
 
     const messages = [];
@@ -164,7 +161,7 @@ function buildSystemPrompt() {
 /**
  * @description 呼叫後端大型語言模型 API
  * @param {Array|Object} messagePayload - 準備發送的訊息
- * @param {boolean} isForSummarization - 是否為生成摘要的呼叫 (會使用不同的參數)
+ * @param {boolean} isForSummarization - 是否為生成摘要的呼叫
  * @returns {Promise<string>} AI 回應的文字
  */
 export async function callApi(messagePayload, isForSummarization = false) {
@@ -172,11 +169,50 @@ export async function callApi(messagePayload, isForSummarization = false) {
     const signal = tempState.apiCallController.signal;
 
     const settings = state.globalSettings;
-    const provider = settings.apiProvider || 'openai';
-    if (!settings.apiKey) throw new Error('尚未設定 API 金鑰。');
+    const provider = settings.apiProvider || 'official_gemini';
     
-    const YOUR_CLOUDFLARE_WORKER_URL = 'https://key.d778105.workers.dev/';
+    if (provider === 'official_gemini') {
+        return callOfficialApi(messagePayload, signal);
+    } else {
+        if (!settings.apiKey) throw new Error('尚未設定 API 金鑰。');
+        return callProxyApi(provider, settings.apiKey, messagePayload, isForSummarization, signal);
+    }
+}
 
+/**
+ * @description 呼叫我們的安全後端 (使用官方金鑰)
+ */
+async function callOfficialApi(messagePayload, signal) {
+    const YOUR_WORKER_URL = 'https://key.d778105.workers.dev/';
+    const url = YOUR_WORKER_URL + 'chat';
+
+    const settings = state.globalSettings;
+    const body = {
+        model: settings.apiModel,
+        messages: messagePayload,
+    };
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API 錯誤 (${response.status}): ${errorText}`);
+    }
+    const data = await response.json();
+    return parseResponse('google', data);
+}
+
+/**
+ * @description 呼叫代理伺服器 (使用使用者自訂金鑰)
+ */
+async function callProxyApi(provider, apiKey, messagePayload, isForSummarization, signal) {
+    const YOUR_WORKER_URL = 'https://key.d778105.workers.dev/';
+    const settings = state.globalSettings;
     let url = "", headers = {}, body = {};
     const baseParams = {
         model: settings.apiModel,
@@ -184,71 +220,46 @@ export async function callApi(messagePayload, isForSummarization = false) {
         top_p: isForSummarization ? 1 : parseFloat(settings.topP),
         max_tokens: isForSummarization ? 1000 : parseInt(settings.maxTokens),
     };
-    
+
     switch (provider) {
         case "openai":
         case "mistral":
         case "xai":
             let baseUrl = provider === 'openai' ? 'https://api.openai.com/v1/chat/completions' : provider === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' : 'https://api.x.ai/v1/chat/completions';
-            url = YOUR_CLOUDFLARE_WORKER_URL + baseUrl;
-            headers = { "Content-Type": "application/json", "Authorization": `Bearer ${settings.apiKey}` };
-            body = { 
-                ...baseParams, 
-                messages: messagePayload,
-                frequency_penalty: parseFloat(settings.repetitionPenalty)
-            };
-            if (body.top_p >= 1) delete body.top_p;
+            url = YOUR_WORKER_URL + baseUrl;
+            headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
+            body = { ...baseParams, messages: messagePayload, frequency_penalty: parseFloat(settings.repetitionPenalty) };
             break;
         case "openrouter":
             url = "https://openrouter.ai/api/v1/chat/completions";
-            headers = { 
-                "Content-Type": "application/json", 
-                "Authorization": `Bearer ${settings.apiKey}`,
-                "HTTP-Referer": "http://localhost",
-                "X-Title": "大冰奶"
-            };
-            body = { 
-                ...baseParams, 
-                messages: messagePayload,
-                repetition_penalty: parseFloat(settings.repetitionPenalty)
-            };
-            if (body.top_p >= 1) delete body.top_p;
+            headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
+            body = { ...baseParams, messages: messagePayload, repetition_penalty: parseFloat(settings.repetitionPenalty) };
             break;
         case "anthropic":
-            url = YOUR_CLOUDFLARE_WORKER_URL + "https://api.anthropic.com/v1/messages";
-            headers = { 
-                "Content-Type": "application/json", 
-                "x-api-key": settings.apiKey, 
-                "anthropic-version": "2023-06-01" 
-            };
+            url = YOUR_WORKER_URL + "https://api.anthropic.com/v1/messages";
+            headers = { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" };
             body = { ...baseParams, system: messagePayload.system, messages: messagePayload.messages };
-            if (body.top_p >= 1) delete body.top_p;
             break;
         case "google":
-            url = YOUR_CLOUDFLARE_WORKER_URL + `https://generativelanguage.googleapis.com/v1beta/models/${settings.apiModel}:generateContent?key=${settings.apiKey}`;
+            url = YOUR_WORKER_URL + `https://generativelanguage.googleapis.com/v1beta/models/${settings.apiModel}:generateContent?key=${apiKey}`;
             headers = { "Content-Type": "application/json" };
             body = { contents: messagePayload, generationConfig: { temperature: baseParams.temperature, topP: baseParams.topP, maxOutputTokens: baseParams.max_tokens } };
-            if (body.generationConfig.topP >= 1) delete body.generationConfig.topP;
             break;
         default: throw new Error("不支援的 API 供應商: " + provider);
     }
     
     const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal });
-    
     if (!response.ok) { 
         const errorText = await response.text(); 
         throw new Error(`API 錯誤 (${response.status}): ${errorText}`); 
     }
-    
     const data = await response.json();
     return parseResponse(provider, data);
 }
 
+
 /**
- * @description 解析不同 API 供應商的回應，並回傳文字內容
- * @param {string} provider - API 供應商名稱
- * @param {Object} data - API 回傳的 JSON 物件
- * @returns {string} 解析後的文字
+ * @description 解析不同 API 供應商的回應
  */
 function parseResponse(provider, data) {
     try {
@@ -273,10 +284,6 @@ function parseResponse(provider, data) {
 
 /**
  * @description 專門用於測試 API 連線的函式
- * @param {string} provider - API 供應商
- * @param {string} apiKey - API 金鑰
- * @param {string} model - 模型名稱
- * @returns {Promise<boolean>} - 連線成功則回傳 true，否則拋出錯誤
  */
 export async function testApiConnection(provider, apiKey, model) {
     const YOUR_CLOUDFLARE_WORKER_URL = 'https://key.d778105.workers.dev/';

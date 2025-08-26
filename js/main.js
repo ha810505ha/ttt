@@ -1,7 +1,7 @@
 // js/main.js
 // 這是應用程式的主要進入點
 
-import { loadStateFromDB } from './state.js';
+import { loadStateFromDB, state } from './state.js';
 import { openDB } from './db.js';
 import { applyTheme, setAppHeight } from './utils.js';
 import { renderCharacterList, renderActiveChat } from './ui.js';
@@ -29,32 +29,60 @@ function setupMarkdownRenderer() {
 }
 
 /**
- * @description 初始化應用程式，載入狀態、設定主題、渲染畫面並綁定事件監聽器
+ * @description 初始化應用程式
  */
 async function initialize() {
+    // [修改] 立即從 localStorage 應用主題，以避免畫面閃爍
+    applyTheme();
     setupMarkdownRenderer();
     
+    // =======================================================================
+    // [重要] Firebase 初始化
+    // =======================================================================
+    // 請將您從 Firebase 控制台複製的 firebaseConfig 物件，完整地貼到下面來取代它
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID",
+      measurementId: "YOUR_MEASUREMENT_ID"
+    };
+
+    // 初始化 Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    // =======================================================================
+
     try {
-        // [重要修改] 等待 IndexedDB 資料庫成功打開
         await openDB();
         console.log("資料庫已成功連接。");
 
-        // [重要修改] 從 IndexedDB 異步載入所有資料
-        await loadStateFromDB();
-        console.log("應用程式狀態已從資料庫載入。");
+        // 監聽使用者登入狀態的變化
+        auth.onAuthStateChanged(async (user) => {
+            state.currentUser = user; // 更新全域狀態中的使用者資訊
+            console.log("使用者狀態已變更:", user ? user.displayName : '已登出');
+            
+            // 載入資料庫中的狀態
+            await loadStateFromDB();
+            
+            // [新增] 從載入的設定中再次應用主題，確保與資料庫同步
+            if (state.globalSettings.theme) {
+                applyTheme(state.globalSettings.theme);
+            }
 
-        applyTheme();
-        renderCharacterList();
-        renderActiveChat();
+            renderCharacterList();
+            renderActiveChat();
+        });
+
         setupEventListeners();
         setAppHeight();
         
     } catch (error) {
         console.error("應用程式初始化失敗:", error);
-        // 可以在此處向使用者顯示一個錯誤訊息
-        document.body.innerHTML = "應用程式載入失敗，請檢查主控台或嘗試清除網站資料。";
+        document.body.innerHTML = "應用程式載入失敗，請檢查主控台。";
     }
 }
 
-// 當整個頁面載入完成後，啟動應用程式
 document.addEventListener('DOMContentLoaded', initialize);

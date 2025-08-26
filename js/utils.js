@@ -3,7 +3,7 @@
 
 import * as DOM from './dom.js';
 import { tempState, state } from './state.js';
-import { DEFAULT_AVATAR } from './constants.js'; // <-- 修正：加入了這個 import
+import { DEFAULT_AVATAR } from './constants.js';
 
 /**
  * @description 設定 --app-height CSS 變數，以解決行動裝置瀏覽器高度問題
@@ -15,21 +15,13 @@ export function setAppHeight() {
 
 /**
  * @description 應用目前儲存的主題
+ * @param {string} [theme] - 'light' 或 'dark'。如果未提供，則從 localStorage 讀取。
  */
-export function applyTheme() {
-    const currentTheme = localStorage.getItem('theme') || 'light';
-    document.body.className = currentTheme + '-mode';
-    DOM.themeToggleBtn.innerHTML = currentTheme === 'light' ? '<i class="fa-solid fa-moon"></i>' : '<i class="fa-solid fa-sun"></i>';
-}
-
-/**
- * @description 切換亮色/暗色主題
- */
-export function toggleTheme() {
-    let currentTheme = localStorage.getItem('theme') || 'light';
-    currentTheme = currentTheme === 'light' ? 'dark' : 'light';
-    localStorage.setItem('theme', currentTheme);
-    applyTheme();
+export function applyTheme(theme) {
+    const themeToApply = theme || localStorage.getItem('theme') || 'light';
+    // [修改] 根據主題名稱設定 body 的 class
+    document.body.className = themeToApply === 'dark' ? 'dark-mode' : '';
+    localStorage.setItem('theme', themeToApply);
 }
 
 /**

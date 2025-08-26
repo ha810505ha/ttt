@@ -10,13 +10,39 @@ import {
 import { callApi, buildApiMessages, buildApiMessagesFromHistory, testApiConnection } from './api.js';
 import { 
     renderCharacterList, renderChatSessionList, renderActiveChat, renderChatMessages, 
-    displayMessage, toggleModal, setGeneratingState, showCharacterListView, loadGlobalSettingsToUI
+    displayMessage, toggleModal, setGeneratingState, showCharacterListView, loadGlobalSettingsToUI,
+    renderApiPresetsDropdown, loadApiPresetToUI
 } from './ui.js';
-import { DEFAULT_AVATAR, DEFAULT_SUMMARY_PROMPT } from './constants.js';
-import { handleImageUpload, exportChatAsJsonl, exportChatAsImage } from './utils.js';
+import { DEFAULT_AVATAR, DEFAULT_SUMMARY_PROMPT, DEFAULT_SCENARIO_PROMPT, DEFAULT_JAILBREAK_PROMPT } from './constants.js';
+import { handleImageUpload, exportChatAsJsonl, exportChatAsImage, applyTheme } from './utils.js';
 
 // ===================================================================================
-// API 連線測試
+// 使用者認證 (Authentication)
+// ===================================================================================
+
+/**
+ * @description 處理使用者登入
+ */
+export function handleLogin() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider).catch(error => {
+        console.error("Google 登入失敗:", error);
+        alert(`登入失敗: ${error.message}`);
+    });
+}
+
+/**
+ * @description 處理使用者登出
+ */
+export function handleLogout() {
+    firebase.auth().signOut().catch(error => {
+        console.error("登出失敗:", error);
+        alert(`登出失敗: ${error.message}`);
+    });
+}
+
+// ===================================================================================
+// API 連線與設定檔
 // ===================================================================================
 
 export async function handleTestApiConnection() {
@@ -24,14 +50,16 @@ export async function handleTestApiConnection() {
     const model = DOM.apiModelSelect.value;
     const apiKey = DOM.apiKeyInput.value.trim();
 
-    if (!apiKey) {
+    if (provider !== 'official_gemini' && !apiKey) {
         DOM.apiStatusIndicator.className = 'error';
         DOM.apiStatusIndicator.textContent = '請先輸入 API 金鑰！';
+        DOM.apiStatusIndicator.style.display = 'block';
         return;
     }
 
     DOM.apiStatusIndicator.className = 'testing';
     DOM.apiStatusIndicator.textContent = '測試中...';
+    DOM.apiStatusIndicator.style.display = 'block';
     DOM.testApiBtn.disabled = true;
 
     try {
@@ -44,6 +72,54 @@ export async function handleTestApiConnection() {
         DOM.apiStatusIndicator.textContent = `連線失敗: ${error.message}`;
     } finally {
         DOM.testApiBtn.disabled = false;
+    }
+}
+
+export async function handleSaveApiPreset() {
+    const presetName = prompt('請為這個 API 設定檔命名：');
+    if (!presetName || presetName.trim() === '') {
+        alert('名稱不能為空！');
+        return;
+    }
+
+    const newPreset = {
+        id: `preset_${Date.now()}`,
+        name: presetName.trim(),
+        provider: DOM.apiProviderSelect.value,
+        model: DOM.apiModelSelect.value,
+        apiKey: DOM.apiKeyInput.value.trim(),
+    };
+
+    state.apiPresets.push(newPreset);
+    await saveSettings();
+    renderApiPresetsDropdown();
+    DOM.apiPresetSelect.value = newPreset.id; // 自動選中剛儲存的
+    alert(`設定檔 "${presetName}" 已儲存！`);
+}
+
+export function handleLoadApiPreset() {
+    const presetId = DOM.apiPresetSelect.value;
+    if (!presetId) return;
+    loadApiPresetToUI(presetId);
+}
+
+export async function handleDeleteApiPreset() {
+    const presetId = DOM.apiPresetSelect.value;
+    if (!presetId) {
+        alert('請先從下拉選單中選擇一個要刪除的設定檔。');
+        return;
+    }
+
+    const presetToDelete = state.apiPresets.find(p => p.id === presetId);
+    if (confirm(`確定要刪除設定檔 "${presetToDelete.name}" 嗎？`)) {
+        state.apiPresets = state.apiPresets.filter(p => p.id !== presetId);
+        await saveSettings();
+        renderApiPresetsDropdown();
+        // 清空表單
+        DOM.apiProviderSelect.value = 'official_gemini';
+        DOM.apiKeyInput.value = '';
+        UI.updateModelDropdown();
+        alert(`設定檔 "${presetToDelete.name}" 已刪除。`);
     }
 }
 
@@ -452,6 +528,7 @@ async function handleDeleteMessage(index) {
 // ===================================================================================
 
 export async function handleSaveGlobalSettings() {
+    // 儲存 API 和參數設定
     state.globalSettings = {
         apiProvider: DOM.apiProviderSelect.value,
         apiModel: DOM.apiModelSelect.value,
@@ -461,21 +538,23 @@ export async function handleSaveGlobalSettings() {
         repetitionPenalty: DOM.repetitionPenaltyValue.value,
         contextSize: DOM.contextSizeInput.value,
         maxTokens: DOM.maxTokensValue.value,
+        theme: DOM.themeSelect.value,
     };
-    await saveSettings();
-    toggleModal('global-settings-modal', false);
-    renderActiveChat();
-}
-
-export async function handleSavePromptSettings() {
+    
+    const promptMode = DOM.promptModeSelect.value;
     state.promptSettings = {
-        scenario: DOM.promptScenarioInput.value.trim(),
-        jailbreak: DOM.promptJailbreakInput.value.trim(),
+        mode: promptMode,
+        scenario: promptMode === 'custom' ? DOM.promptScenarioInput.value.trim() : DEFAULT_SCENARIO_PROMPT,
+        jailbreak: promptMode === 'custom' ? DOM.promptJailbreakInput.value.trim() : DEFAULT_JAILBREAK_PROMPT,
         summarizationPrompt: DOM.promptSummarizationInput.value.trim()
     };
+
+    applyTheme(state.globalSettings.theme);
     await saveSettings();
-    alert('提示詞設定已儲存！');
-    showCharacterListView();
+    
+    toggleModal('global-settings-modal', false);
+    renderActiveChat();
+    alert('所有設定已儲存！');
 }
 
 // ===================================================================================
@@ -591,7 +670,7 @@ export async function handleUpdateMemory() {
         
         const provider = state.globalSettings.apiProvider || 'openai';
         let summaryMessages;
-        if (provider === 'google') {
+        if (provider === 'google' || provider === 'official_gemini') {
             summaryMessages = [{ role: 'user', parts: [{ text: summaryPrompt }] }];
         } else if (provider === 'anthropic') {
             summaryMessages = { system: 'You are a summarization expert.', messages: [{ role: 'user', content: summaryPrompt }] };
@@ -665,6 +744,9 @@ export function handleConfirmExport() {
 // ===================================================================================
 
 function checkApiKey(promptText = '請在此填入您的 API 金鑰') {
+    if (state.globalSettings.apiProvider === 'official_gemini') {
+        return true;
+    }
     if (!state.globalSettings.apiKey) {
         loadGlobalSettingsToUI();
         toggleModal('global-settings-modal', true);
