@@ -214,7 +214,12 @@ async function callProxyApi(provider, apiKey, messagePayload, isForSummarization
             break;
         case "anthropic":
             url = YOUR_WORKER_URL + "https://api.anthropic.com/v1/messages";
-            headers = { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" };
+            headers = { 
+                "Content-Type": "application/json", 
+                "x-api-key": apiKey, 
+                "anthropic-version": "2023-06-01",
+                "anthropic-dangerous-direct-browser-access": "true"
+            };
             body = { ...baseParams, system: messagePayload.system, messages: messagePayload.messages };
             break;
         case "google":
@@ -253,7 +258,7 @@ function parseResponse(provider, data) {
             case "mistral":
             case "xai":
             case "openrouter":
-            case "official_gemini": // [MODIFIED] Worker 回傳的格式與 OpenAI 相同
+            case "official_gemini":
                 return data.choices[0].message.content;
             case "anthropic": 
                 return data.content[0].text;
@@ -293,7 +298,12 @@ export async function testApiConnection(provider, apiKey, model) {
             break;
         case "anthropic":
             url = YOUR_CLOUDFLARE_WORKER_URL + "https://api.anthropic.com/v1/messages";
-            headers = { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" };
+            headers = { 
+                "Content-Type": "application/json", 
+                "x-api-key": apiKey, 
+                "anthropic-version": "2023-06-01",
+                "anthropic-dangerous-direct-browser-access": "true"
+            };
             body = { model, messages: testPayload, max_tokens: 5 };
             break;
         case "google":
