@@ -11,8 +11,7 @@ import { state, tempState, saveSettings, loadChatDataForCharacter } from './stat
  * @description 集中設定所有 DOM 元素的事件監聽器
  */
 export function setupEventListeners() {
-    // ================== 靜態元素事件綁定 ==================
-
+    // ... (其他靜態元素事件綁定保持不變) ...
     DOM.loginBtn.addEventListener('click', Handlers.handleLogin);
     DOM.logoutBtn.addEventListener('click', Handlers.handleLogout);
     
@@ -148,7 +147,6 @@ export function setupEventListeners() {
         Utils.applyTheme(e.target.value);
     });
     
-    // 新的提示詞庫事件監聽器
     DOM.importPromptSetBtn.addEventListener('click', Handlers.handleImportPromptSet);
     DOM.deletePromptSetBtn.addEventListener('click', Handlers.handleDeletePromptSet);
     DOM.promptSetSelect.addEventListener('change', Handlers.handleSwitchPromptSet);
@@ -175,18 +173,13 @@ export function setupEventListeners() {
     });
     DOM.deletePromptEditorBtn.addEventListener('click', Handlers.handleDeletePromptItem);
 
-    // [MODIFIED] 提示詞列表拖曳排序的事件監聽器 (完整版)
-    let draggedPromptIdentifier = null;
+    let draggedIdentifier = null;
 
-    // 輔助函式：根據滑鼠 Y 座標，找出應該插入在哪個元素之前
     function getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('.prompt-item:not(.dragging)')];
-
+        const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging)')];
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
-            // 計算滑鼠位置與元素中線的距離
             const offset = y - box.top - box.height / 2;
-            // 如果滑鼠在元素上半部 (offset < 0)，且比之前找到的更接近，就更新目標
             if (offset < 0 && offset > closest.offset) {
                 return { offset: offset, element: child };
             } else {
@@ -195,46 +188,91 @@ export function setupEventListeners() {
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
+    // [ADDED] 提示詞列表拖曳
     DOM.promptList.addEventListener('dragstart', (e) => {
         const target = e.target.closest('.prompt-item');
-        // [FIX] 簡化判斷條件，只要是從 prompt-item 開始拖曳即可
         if (target) {
-            // 但如果使用者點擊的是按鈕或開關，則不啟動拖曳
             if (e.target.closest('.edit-prompt-btn') || e.target.closest('.prompt-item-toggle')) {
-                e.preventDefault();
-                return;
+                e.preventDefault(); return;
             }
-            draggedPromptIdentifier = target.dataset.identifier;
+            draggedIdentifier = target.dataset.identifier;
             e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => {
-                target.classList.add('dragging');
-            }, 0);
+            setTimeout(() => target.classList.add('dragging'), 0);
         }
     });
 
     DOM.promptList.addEventListener('dragend', () => {
-        const draggedElement = document.querySelector('.prompt-item.dragging');
-        if (draggedElement) {
-            draggedElement.classList.remove('dragging');
-        }
-        draggedPromptIdentifier = null;
+        const draggedElement = DOM.promptList.querySelector('.dragging');
+        if (draggedElement) draggedElement.classList.remove('dragging');
+        draggedIdentifier = null;
     });
 
-    DOM.promptList.addEventListener('dragover', (e) => {
-        e.preventDefault(); 
-    });
+    DOM.promptList.addEventListener('dragover', (e) => e.preventDefault());
 
     DOM.promptList.addEventListener('drop', (e) => {
         e.preventDefault();
-        const draggedId = draggedPromptIdentifier;
-        if (!draggedId) return;
-
-        // 使用輔助函式找到正確的插入位置
+        if (!draggedIdentifier) return;
         const afterElement = getDragAfterElement(DOM.promptList, e.clientY);
         const targetIdentifier = afterElement ? afterElement.dataset.identifier : null;
-        
-        // 呼叫 handler 進行排序
-        Handlers.handlePromptDropSort(draggedId, targetIdentifier);
+        Handlers.handlePromptDropSort(draggedIdentifier, targetIdentifier);
+    });
+
+    // [ADDED] 角色列表拖曳
+    DOM.characterList.addEventListener('dragstart', (e) => {
+        const target = e.target.closest('.character-item');
+        if (target) {
+            if (e.target.closest('.love-char-btn')) {
+                e.preventDefault(); return;
+            }
+            draggedIdentifier = target.dataset.id;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => target.classList.add('dragging'), 0);
+        }
+    });
+
+    DOM.characterList.addEventListener('dragend', () => {
+        const draggedElement = DOM.characterList.querySelector('.dragging');
+        if (draggedElement) draggedElement.classList.remove('dragging');
+        draggedIdentifier = null;
+    });
+
+    DOM.characterList.addEventListener('dragover', (e) => e.preventDefault());
+
+    DOM.characterList.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!draggedIdentifier) return;
+        const afterElement = getDragAfterElement(DOM.characterList, e.clientY);
+        const targetIdentifier = afterElement ? afterElement.dataset.id : null;
+        Handlers.handleCharacterDropSort(draggedIdentifier, targetIdentifier);
+    });
+
+    // [ADDED] 聊天室列表拖曳
+    DOM.chatSessionList.addEventListener('dragstart', (e) => {
+        const target = e.target.closest('.chat-session-item');
+        if (target) {
+            if (e.target.closest('.session-item-actions')) {
+                e.preventDefault(); return;
+            }
+            draggedIdentifier = target.dataset.id;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => target.classList.add('dragging'), 0);
+        }
+    });
+
+    DOM.chatSessionList.addEventListener('dragend', () => {
+        const draggedElement = DOM.chatSessionList.querySelector('.dragging');
+        if (draggedElement) draggedElement.classList.remove('dragging');
+        draggedIdentifier = null;
+    });
+
+    DOM.chatSessionList.addEventListener('dragover', (e) => e.preventDefault());
+
+    DOM.chatSessionList.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (!draggedIdentifier) return;
+        const afterElement = getDragAfterElement(DOM.chatSessionList, e.clientY);
+        const targetIdentifier = afterElement ? afterElement.dataset.id : null;
+        Handlers.handleChatSessionDropSort(draggedIdentifier, targetIdentifier);
     });
 
 
@@ -288,8 +326,15 @@ export function setupEventListeners() {
 
     DOM.characterList.addEventListener('click', async (e) => {
         const charItem = e.target.closest('.character-item');
-        if (charItem) {
-            const charId = charItem.dataset.id;
+        if (!charItem) return;
+
+        const charId = charItem.dataset.id;
+        
+        if (e.target.closest('.love-char-btn')) {
+            // 如果點擊的是愛心按鈕
+            await Handlers.handleToggleCharacterLove(charId);
+        } else {
+            // 否則，視為切換角色
             await loadChatDataForCharacter(charId);
             UI.showChatSessionListView(charId);
             state.activeCharacterId = charId;

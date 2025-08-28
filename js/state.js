@@ -31,7 +31,6 @@ export let tempState = {
     apiCallController: null,
     isScreenshotMode: false,
     selectedMessageIndices: [],
-    // [ADDED] 新增一個屬性來追蹤正在編輯的提示詞
     editingPromptIdentifier: null, 
 };
 
@@ -52,6 +51,24 @@ export async function loadStateFromDB() {
     state.characters = await db.getAll('characters');
     state.userPersonas = await db.getAll('userPersonas');
     state.promptSets = await db.getAll('promptSets');
+
+    // [MODIFIED] 初始化或遷移角色資料，加入 loved 和 order 屬性
+    let charMigrationNeeded = false;
+    state.characters.forEach((char, index) => {
+        if (char.loved === undefined) {
+            char.loved = false;
+            charMigrationNeeded = true;
+        }
+        if (char.order === undefined) {
+            char.order = index;
+            charMigrationNeeded = true;
+        }
+    });
+    if (charMigrationNeeded) {
+        await db.put('characters', ...state.characters); // 一次性儲存所有更新
+        console.log("資料遷移完成: 角色已新增 'loved' 和 'order' 屬性。");
+    }
+
 
     if (state.characters.length === 0) {
         for (const char of defaultCharacters) {
@@ -100,7 +117,6 @@ export async function loadStateFromDB() {
 
 /**
  * @description 載入指定角色的所有對話相關資料
- * @param {string} charId - 角色 ID
  */
 export async function loadChatDataForCharacter(charId) {
     const histories = await db.get('chatHistories', charId);
@@ -110,6 +126,21 @@ export async function loadChatDataForCharacter(charId) {
     state.chatHistories[charId] = histories ? histories.data : {};
     state.longTermMemories[charId] = memories ? memories.data : {};
     state.chatMetadatas[charId] = metadatas ? metadatas.data : {};
+
+    // [ADDED] 初始化聊天室的 order 屬性
+    if (state.chatMetadatas[charId]) {
+        let metaMigrationNeeded = false;
+        Object.values(state.chatMetadatas[charId]).forEach((meta, index) => {
+            if (meta.order === undefined) {
+                meta.order = index;
+                metaMigrationNeeded = true;
+            }
+        });
+        if (metaMigrationNeeded) {
+            await saveAllChatMetadatasForChar(charId);
+            console.log(`資料遷移完成: 角色 ${charId} 的聊天室已新增 'order' 屬性。`);
+        }
+    }
 }
 
 // ===================================================================================

@@ -327,7 +327,7 @@ export async function handleAddNewChat() {
         state.chatMetadatas[state.activeCharacterId] = {};
     }
     state.chatHistories[state.activeCharacterId][newChatId] = [];
-    state.chatMetadatas[state.activeCharacterId][newChatId] = { name: '', pinned: false, notes: '', userPersonaId: state.activeUserPersonaId };
+    state.chatMetadatas[state.activeCharacterId][newChatId] = { name: '', pinned: false, notes: '', userPersonaId: state.activeUserPersonaId, order: Object.keys(state.chatMetadatas[state.activeCharacterId]).length };
 
     if (char.firstMessage && Array.isArray(char.firstMessage) && char.firstMessage.length > 0) {
         const nonEmptyMessages = char.firstMessage.filter(m => m.trim() !== '');
@@ -464,7 +464,7 @@ export async function handleSaveCharacter() {
         state.characters[charIndex] = updatedChar;
         await saveCharacter(updatedChar);
     } else {
-        const newChar = { id: `char_${Date.now()}`, ...charData };
+        const newChar = { id: `char_${Date.now()}`, loved: false, order: state.characters.length, ...charData };
         state.characters.push(newChar);
         await saveCharacter(newChar);
         state.activeCharacterId = newChar.id;
@@ -505,6 +505,89 @@ export async function handleDeleteActiveCharacter() {
     }
 }
 
+/**
+ * @description [ADDED] 處理角色喜愛狀態的切換
+ * @param {string} charId - 角色 ID
+ */
+export async function handleToggleCharacterLove(charId) {
+    const char = state.characters.find(c => c.id === charId);
+    if (char) {
+        char.loved = !char.loved;
+        await saveCharacter(char);
+        renderCharacterList();
+    }
+}
+
+/**
+ * @description [ADDED] 處理角色列表的拖曳排序
+ * @param {string} draggedId - 被拖曳的角色 ID
+ * @param {string|null} targetId - 目標位置的角色 ID
+ */
+export async function handleCharacterDropSort(draggedId, targetId) {
+    const draggedItem = state.characters.find(c => c.id === draggedId);
+    if (!draggedItem) return;
+
+    // 複製一份排序前的陣列以計算新順序
+    const sortedChars = [...state.characters].sort((a, b) => {
+        if (a.loved !== b.loved) return a.loved ? -1 : 1;
+        return (a.order || 0) - (b.order || 0);
+    });
+
+    const originalIndex = sortedChars.findIndex(c => c.id === draggedId);
+    sortedChars.splice(originalIndex, 1);
+
+    const targetIndex = targetId ? sortedChars.findIndex(c => c.id === targetId) : sortedChars.length;
+    sortedChars.splice(targetIndex, 0, draggedItem);
+
+    // 為所有角色重新指派 order 值
+    for (let i = 0; i < sortedChars.length; i++) {
+        const charToUpdate = state.characters.find(c => c.id === sortedChars[i].id);
+        if(charToUpdate) {
+            charToUpdate.order = i;
+            await saveCharacter(charToUpdate); // 逐一儲存
+        }
+    }
+    renderCharacterList();
+}
+
+/**
+ * @description [ADDED] 處理聊天室列表的拖曳排序
+ * @param {string} draggedId - 被拖曳的聊天室 ID
+ * @param {string|null} targetId - 目標位置的聊天室 ID
+ */
+export async function handleChatSessionDropSort(draggedId, targetId) {
+    const metadatas = state.chatMetadatas[state.activeCharacterId];
+    if (!metadatas) return;
+
+    const draggedItem = metadatas[draggedId];
+    if (!draggedItem) return;
+
+    const sortedSessions = Object.values(metadatas).sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        return (a.order || 0) - (b.order || 0);
+    });
+
+    const originalIndex = sortedSessions.findIndex(s => s.id === draggedId);
+    if (originalIndex > -1) {
+        sortedSessions.splice(originalIndex, 1);
+    }
+    
+    const targetIndex = targetId ? sortedSessions.findIndex(s => s.id === targetId) : sortedSessions.length;
+    sortedSessions.splice(targetIndex, 0, draggedItem);
+
+    for (let i = 0; i < sortedSessions.length; i++) {
+        const sessionToUpdate = metadatas[sortedSessions[i].id];
+        if (sessionToUpdate) {
+            sessionToUpdate.order = i;
+        }
+    }
+    
+    await saveAllChatMetadatasForChar(state.activeCharacterId);
+    renderChatSessionList();
+}
+
+
+// ... (其他 handlers 保持不變) ...
 export function makeMessageEditable(row, index) {
     const currentlyEditing = document.querySelector('.is-editing');
     if (currentlyEditing) { 
@@ -589,10 +672,6 @@ export async function handleSaveGlobalSettings() {
     alert('所有設定已儲存！');
 }
 
-// ===================================================================================
-// 新的提示詞庫處理函式
-// ===================================================================================
-
 export function handleImportPromptSet() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -668,10 +747,6 @@ export async function handleTogglePromptEnabled(identifier) {
     }
 }
 
-/**
- * @description [MODIFIED] 開啟提示詞編輯器，並載入角色
- * @param {string} identifier - 要編輯的提示詞的唯一 ID
- */
 export function openPromptEditor(identifier) {
     const activeSet = PromptManager.getActivePromptSet();
     const prompt = activeSet.prompts.find(p => p.identifier === identifier);
@@ -682,14 +757,11 @@ export function openPromptEditor(identifier) {
 
     tempState.editingPromptIdentifier = identifier;
     DOM.promptEditorNameInput.value = prompt.name;
-    DOM.promptEditorRoleSelect.value = prompt.role || 'system'; // 載入角色，預設為 system
+    DOM.promptEditorRoleSelect.value = prompt.role || 'system';
     DOM.promptEditorContentInput.value = prompt.content;
     toggleModal('prompt-editor-modal', true);
 }
 
-/**
- * @description [MODIFIED] 儲存對提示詞的修改，包含角色
- */
 export async function handleSavePrompt() {
     const identifier = tempState.editingPromptIdentifier;
     if (!identifier) return;
@@ -698,7 +770,7 @@ export async function handleSavePrompt() {
     const prompt = activeSet.prompts.find(p => p.identifier === identifier);
     if (prompt) {
         prompt.name = DOM.promptEditorNameInput.value.trim();
-        prompt.role = DOM.promptEditorRoleSelect.value; // 儲存角色
+        prompt.role = DOM.promptEditorRoleSelect.value;
         prompt.content = DOM.promptEditorContentInput.value;
         await savePromptSet(activeSet);
         renderPromptList();
@@ -744,8 +816,6 @@ export async function handlePromptDropSort(draggedIdentifier, targetIdentifier) 
     renderPromptList();
 }
 
-
-// ... (其他 handlers 保持不變) ...
 export function openUserPersonaEditor(personaId = null) {
     tempState.editingUserPersonaId = personaId;
     if (personaId) {

@@ -1568,3 +1568,58 @@ input[type="range"]::-moz-range-thumb {
     color: var(--text-light-color); /* 讓圖示顏色更明顯 */
     margin-right: 10px;
 }
+/* --- [ADDED] Character & Chat Drag Sort Styles --- */
+
+.character-item, .chat-session-item {
+    cursor: grab; /* 讓整個項目都顯示可拖曳的手型圖示 */
+}
+
+.character-item.dragging, .chat-session-item.dragging {
+    opacity: 0.5;
+    background: var(--active-background);
+}
+
+.drag-handle {
+    color: var(--border-color);
+    margin-right: 10px;
+    transition: color 0.2s;
+}
+
+.character-item:hover .drag-handle, .chat-session-item:hover .drag-handle {
+    color: var(--text-light-color);
+}
+
+.char-item-actions {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    padding-left: 10px;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.character-item:hover .char-item-actions {
+    visibility: visible;
+    opacity: 1;
+}
+
+.love-char-btn {
+    color: var(--text-light-color);
+}
+
+.love-char-btn.loved {
+    color: #ff8fab; /* A nice pink color for the heart */
+}
+
+.character-item.loved {
+    box-shadow: 0 0 0 2px #ff8fab;
+    border-color: #ff8fab;
+}
+
+.char-item-content {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    overflow: hidden;
+}
