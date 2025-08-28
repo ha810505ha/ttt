@@ -148,6 +148,7 @@ export function setupEventListeners() {
         Utils.applyTheme(e.target.value);
     });
     
+    // 新的提示詞庫事件監聽器
     DOM.importPromptSetBtn.addEventListener('click', Handlers.handleImportPromptSet);
     DOM.deletePromptSetBtn.addEventListener('click', Handlers.handleDeletePromptSet);
     DOM.promptSetSelect.addEventListener('change', Handlers.handleSwitchPromptSet);
@@ -172,8 +173,69 @@ export function setupEventListeners() {
         UI.toggleModal('prompt-editor-modal', false);
         tempState.editingPromptIdentifier = null;
     });
-    // [ADDED] 提示詞編輯器中刪除按鈕的事件綁定
     DOM.deletePromptEditorBtn.addEventListener('click', Handlers.handleDeletePromptItem);
+
+    // [MODIFIED] 提示詞列表拖曳排序的事件監聽器 (完整版)
+    let draggedPromptIdentifier = null;
+
+    // 輔助函式：根據滑鼠 Y 座標，找出應該插入在哪個元素之前
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.prompt-item:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            // 計算滑鼠位置與元素中線的距離
+            const offset = y - box.top - box.height / 2;
+            // 如果滑鼠在元素上半部 (offset < 0)，且比之前找到的更接近，就更新目標
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    DOM.promptList.addEventListener('dragstart', (e) => {
+        const target = e.target.closest('.prompt-item');
+        // [FIX] 簡化判斷條件，只要是從 prompt-item 開始拖曳即可
+        if (target) {
+            // 但如果使用者點擊的是按鈕或開關，則不啟動拖曳
+            if (e.target.closest('.edit-prompt-btn') || e.target.closest('.prompt-item-toggle')) {
+                e.preventDefault();
+                return;
+            }
+            draggedPromptIdentifier = target.dataset.identifier;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => {
+                target.classList.add('dragging');
+            }, 0);
+        }
+    });
+
+    DOM.promptList.addEventListener('dragend', () => {
+        const draggedElement = document.querySelector('.prompt-item.dragging');
+        if (draggedElement) {
+            draggedElement.classList.remove('dragging');
+        }
+        draggedPromptIdentifier = null;
+    });
+
+    DOM.promptList.addEventListener('dragover', (e) => {
+        e.preventDefault(); 
+    });
+
+    DOM.promptList.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const draggedId = draggedPromptIdentifier;
+        if (!draggedId) return;
+
+        // 使用輔助函式找到正確的插入位置
+        const afterElement = getDragAfterElement(DOM.promptList, e.clientY);
+        const targetIdentifier = afterElement ? afterElement.dataset.identifier : null;
+        
+        // 呼叫 handler 進行排序
+        Handlers.handlePromptDropSort(draggedId, targetIdentifier);
+    });
 
 
     DOM.addUserPersonaBtn.addEventListener('click', () => Handlers.openUserPersonaEditor());

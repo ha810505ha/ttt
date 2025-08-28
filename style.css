@@ -1538,4 +1538,33 @@ input[type="range"]::-moz-range-thumb {
         gap: 10px;
         flex-shrink: 0;
     }
-    
+        /* --- [ADDED] Styles for Prompt Drag & Drop --- */
+    .prompt-drag-handle {
+        cursor: grab;
+        color: var(--border-color);
+        margin-right: 10px;
+        transition: color 0.2s;
+    }
+
+    .prompt-item:hover .prompt-drag-handle {
+        color: var(--text-light-color);
+    }
+
+    .prompt-item.dragging {
+        opacity: 0.5;
+        background: var(--active-background);
+    }
+    /* --- [FIX] Prompt Drag & Drop Styles --- */
+.prompt-item {
+    cursor: grab; /* 讓整個項目都顯示可拖曳的手型圖示 */
+}
+
+.prompt-item.dragging {
+    opacity: 0.5;
+    background: var(--active-background);
+}
+
+.prompt-drag-handle {
+    color: var(--text-light-color); /* 讓圖示顏色更明顯 */
+    margin-right: 10px;
+}

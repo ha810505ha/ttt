@@ -668,6 +668,10 @@ export async function handleTogglePromptEnabled(identifier) {
     }
 }
 
+/**
+ * @description [MODIFIED] 開啟提示詞編輯器，並載入角色
+ * @param {string} identifier - 要編輯的提示詞的唯一 ID
+ */
 export function openPromptEditor(identifier) {
     const activeSet = PromptManager.getActivePromptSet();
     const prompt = activeSet.prompts.find(p => p.identifier === identifier);
@@ -678,10 +682,14 @@ export function openPromptEditor(identifier) {
 
     tempState.editingPromptIdentifier = identifier;
     DOM.promptEditorNameInput.value = prompt.name;
+    DOM.promptEditorRoleSelect.value = prompt.role || 'system'; // 載入角色，預設為 system
     DOM.promptEditorContentInput.value = prompt.content;
     toggleModal('prompt-editor-modal', true);
 }
 
+/**
+ * @description [MODIFIED] 儲存對提示詞的修改，包含角色
+ */
 export async function handleSavePrompt() {
     const identifier = tempState.editingPromptIdentifier;
     if (!identifier) return;
@@ -690,6 +698,7 @@ export async function handleSavePrompt() {
     const prompt = activeSet.prompts.find(p => p.identifier === identifier);
     if (prompt) {
         prompt.name = DOM.promptEditorNameInput.value.trim();
+        prompt.role = DOM.promptEditorRoleSelect.value; // 儲存角色
         prompt.content = DOM.promptEditorContentInput.value;
         await savePromptSet(activeSet);
         renderPromptList();
@@ -699,9 +708,6 @@ export async function handleSavePrompt() {
     tempState.editingPromptIdentifier = null;
 }
 
-/**
- * @description [ADDED] 刪除單個提示詞條目
- */
 export async function handleDeletePromptItem() {
     const identifier = tempState.editingPromptIdentifier;
     if (!identifier) return;
@@ -718,6 +724,28 @@ export async function handleDeletePromptItem() {
     }
 }
 
+export async function handlePromptDropSort(draggedIdentifier, targetIdentifier) {
+    const activeSet = PromptManager.getActivePromptSet();
+    if (!activeSet || !activeSet.prompts) return;
+
+    const draggedItem = activeSet.prompts.find(p => p.identifier === draggedIdentifier);
+    if (!draggedItem) return;
+
+    const originalIndex = activeSet.prompts.findIndex(p => p.identifier === draggedIdentifier);
+    activeSet.prompts.splice(originalIndex, 1);
+
+    const targetIndex = targetIdentifier 
+        ? activeSet.prompts.findIndex(p => p.identifier === targetIdentifier)
+        : activeSet.prompts.length;
+
+    activeSet.prompts.splice(targetIndex, 0, draggedItem);
+
+    await savePromptSet(activeSet);
+    renderPromptList();
+}
+
+
+// ... (其他 handlers 保持不變) ...
 export function openUserPersonaEditor(personaId = null) {
     tempState.editingUserPersonaId = personaId;
     if (personaId) {

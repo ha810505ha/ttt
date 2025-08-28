@@ -50,23 +50,23 @@ export function getActivePromptSet() {
 
 
 /**
- * @description 根據當前角色、使用者、記憶和啟用的提示詞，建構最終的系統提示 (System Prompt)
- * @returns {string} 組合好的系統提示字串
+ * @description [MODIFIED] 根據啟用的提示詞，建構要前置於對話歷史的訊息陣列
+ * @returns {Array<Object>} - 包含 {role, content} 物件的陣列
  */
-export function buildSystemPrompt() {
-    if (!state.activeCharacterId || !state.activeChatId) return "";
-    
+export function buildPrefixMessages() {
     const activePromptSet = getActivePromptSet();
-    if (!activePromptSet || !activePromptSet.prompts) return "";
+    if (!activePromptSet || !activePromptSet.prompts) return [];
 
-    // 僅篩選出 role 為 'system' 且已啟用的提示詞
-    const enabledSystemPrompts = activePromptSet.prompts.filter(p => p.enabled && p.role === 'system');
+    const enabledPrompts = activePromptSet.prompts.filter(p => p.enabled);
     
-    const promptContents = enabledSystemPrompts.map(p => {
-        return replacePlaceholders(p.content);
+    const prefixMessages = enabledPrompts.map(p => {
+        return {
+            role: p.role || 'system', // 預設為 system
+            content: replacePlaceholders(p.content)
+        };
     });
 
-    return promptContents.join('\n\n').trim();
+    return prefixMessages;
 }
 
 /**
@@ -87,13 +87,11 @@ function replacePlaceholders(text) {
     const memory = state.longTermMemories[state.activeCharacterId]?.[state.activeChatId] || '無';
 
     let result = text;
-    // 替換核心變數
     result = result.replace(/{{char}}/g, char.name || 'char');
     result = result.replace(/{{user}}/g, user.name || 'user');
     
-    // 替換結構化變數
     result = result.replace(/{{personality}}/g, char.description || '');
-    result = result.replace(/{{scenario}}/g, char.exampleDialogue || ''); // 暫用對話範例填充場景
+    result = result.replace(/{{scenario}}/g, char.exampleDialogue || ''); 
     result = result.replace(/{{memory}}/g, memory);
 
     return result;
@@ -108,7 +106,6 @@ export function getPromptContentByIdentifier(identifier) {
     const activePromptSet = getActivePromptSet();
     const prompt = activePromptSet.prompts.find(p => p.identifier === identifier && p.enabled);
     if (!prompt) {
-        // 如果在當前設定檔找不到，則嘗試從預設設定檔中尋找，以確保核心功能(如記憶)正常
         const defaultPrompt = DEFAULT_PROMPT_SET.prompts.find(p => p.identifier === identifier);
         return defaultPrompt ? defaultPrompt.content : null;
     }

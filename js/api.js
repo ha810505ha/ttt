@@ -16,21 +16,20 @@ function cleanMessagesForClaude(messages) {
     for (const msg of messages) {
         if (!msg.content) continue;
 
-        if (msg.role === lastRole) {
-            if (msg.role === 'user' && cleaned.length > 0) {
-                cleaned[cleaned.length - 1].content += `\n\n${msg.content}`;
-            }
-            else if (msg.role === 'assistant' && cleaned.length > 0) {
-                cleaned[cleaned.length - 1] = msg;
-            }
+        // 將 assistant 角色統一，以處理 prompt 注入的 assistant 訊息
+        const currentRole = msg.role === 'assistant' ? 'assistant' : 'user';
+
+        if (currentRole === lastRole && cleaned.length > 0) {
+             cleaned[cleaned.length - 1].content += `\n\n${msg.content}`;
         } else {
-            cleaned.push(msg);
-            lastRole = msg.role;
+            cleaned.push({ role: currentRole, content: msg.content });
+            lastRole = currentRole;
         }
     }
 
+    // 確保第一則訊息是 user
     if (cleaned.length > 0 && cleaned[0].role !== 'user') {
-        cleaned.shift();
+       cleaned.unshift({role: 'user', content: '(對話開始)'});
     }
 
     return cleaned;
@@ -43,7 +42,7 @@ function cleanMessagesForClaude(messages) {
  * @returns {number} - 估算的 token 數量
  */
 function estimateTokens(text = '') {
-    return text.length;
+    return (text || '').length;
 }
 
 /**
@@ -56,8 +55,9 @@ export function buildApiMessages() {
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
     const maxTokenContext = parseInt(state.globalSettings.contextSize) || 30000;
     
-    const systemPrompt = PromptManager.buildSystemPrompt();
-    let currentTokenCount = estimateTokens(systemPrompt);
+    // [MODIFIED] 取得由提示詞組成的訊息前綴
+    const prefixMessages = PromptManager.buildPrefixMessages();
+    let currentTokenCount = prefixMessages.reduce((sum, msg) => sum + estimateTokens(msg.content), 0);
     
     const recentHistory = [];
 
@@ -77,17 +77,18 @@ export function buildApiMessages() {
         }
     }
 
-    return buildApiMessagesFromHistory(recentHistory);
+    // [MODIFIED] 將提示詞前綴和對話歷史結合後再格式化
+    return buildApiMessagesFromHistory(recentHistory, prefixMessages);
 }
 
 /**
  * @description 從指定的歷史紀錄片段建構 API payload
  * @param {Array} customHistory - 用於建構 payload 的對話歷史陣列
+ * @param {Array} prefixMessages - 由提示詞組成的訊息前綴
  * @returns {Array|Object} 格式化後的訊息
  */
-export function buildApiMessagesFromHistory(customHistory) {
+export function buildApiMessagesFromHistory(customHistory, prefixMessages = []) {
     const provider = state.globalSettings.apiProvider || 'official_gemini';
-    const systemPrompt = PromptManager.buildSystemPrompt();
     
     const recentHistory = customHistory.filter(msg => !msg.error).map(msg => {
         let finalContent = msg.content;
@@ -96,39 +97,59 @@ export function buildApiMessagesFromHistory(customHistory) {
         }
         return { role: msg.role, content: finalContent };
     });
-    
-    if (provider === 'google') {
-        const contents = recentHistory.map(msg => ({ 
-            role: msg.role === 'assistant' ? 'model' : 'user', 
-            parts: [{ text: msg.content }] 
-        }));
-        return {
-            contents,
-            systemInstruction: {
-                parts: [{ text: systemPrompt }]
+
+    // [MODIFIED] 核心邏輯：將提示詞前綴和真實對話歷史結合
+    const combinedMessages = [...prefixMessages, ...recentHistory];
+
+    // --- 根據不同 API 供應商的格式要求進行調整 ---
+
+    if (provider === 'google' || provider === 'anthropic') {
+        // 這兩家 API 要求一個獨立的 system prompt 和嚴格交錯的 user/assistant 歷史
+        const systemPrompts = combinedMessages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+        const chatMessages = combinedMessages.filter(m => m.role !== 'system');
+
+        if (provider === 'google') {
+            const contents = chatMessages.map(msg => ({ 
+                role: msg.role === 'assistant' ? 'model' : 'user', 
+                parts: [{ text: msg.content }] 
+            }));
+            return {
+                contents,
+                systemInstruction: { parts: [{ text: systemPrompts }] }
+            };
+        }
+
+        if (provider === 'anthropic') {
+            const cleanedMessages = cleanMessagesForClaude(chatMessages);
+            return { system: systemPrompts, messages: cleanedMessages };
+        }
+    }
+
+    // 對於 OpenAI 和其他相容 API，可以傳遞更靈活的訊息結構
+    // 但最佳實踐是將開頭的 system prompts 合併為一則
+    let systemContent = '';
+    const otherMessages = [];
+    let systemBlockEnded = false;
+    for (const msg of combinedMessages) {
+        if (msg.role === 'system' && !systemBlockEnded) {
+            systemContent += (systemContent ? '\n\n' : '') + msg.content;
+        } else {
+            if (msg.role !== 'system') {
+                systemBlockEnded = true;
             }
-        };
+            otherMessages.push(msg);
+        }
     }
 
-    if (provider === 'anthropic') {
-        const cleanedMessages = cleanMessagesForClaude(recentHistory);
-        return { system: systemPrompt, messages: cleanedMessages };
+    const finalMessages = [];
+    if (systemContent) {
+        finalMessages.push({ role: 'system', content: systemContent });
     }
-
-    const messages = [];
-    if (systemPrompt) {
-        messages.push({ role: 'system', content: systemPrompt });
-    }
-    messages.push(...recentHistory);
-    return messages;
+    finalMessages.push(...otherMessages);
+    return finalMessages;
 }
 
-/**
- * @description 呼叫後端大型語言模型 API
- * @param {Array|Object} messagePayload - 準備發送的訊息
- * @param {boolean} isForSummarization - 是否為生成摘要的呼叫
- * @returns {Promise<string>} AI 回應的文字
- */
+// ... (callApi, callOfficialApi, callProxyApi, parseResponse, testApiConnection 函式保持不變) ...
 export async function callApi(messagePayload, isForSummarization = false) {
     tempState.apiCallController = new AbortController();
     const signal = tempState.apiCallController.signal;
@@ -143,9 +164,6 @@ export async function callApi(messagePayload, isForSummarization = false) {
     }
 }
 
-/**
- * @description 呼叫我們的安全後端 (使用官方金鑰)
- */
 async function callOfficialApi(messagePayload, isForSummarization, signal) {
     const YOUR_WORKER_URL = 'https://key.d778105.workers.dev/';
     const url = YOUR_WORKER_URL + 'chat';
@@ -174,10 +192,6 @@ async function callOfficialApi(messagePayload, isForSummarization, signal) {
     return parseResponse('openai', data);
 }
 
-
-/**
- * @description 呼叫代理伺服器 (使用使用者自訂金鑰)
- */
 async function callProxyApi(provider, apiKey, messagePayload, isForSummarization, signal) {
     if (!apiKey) throw new Error('尚未設定 API 金鑰。');
 
@@ -247,10 +261,6 @@ async function callProxyApi(provider, apiKey, messagePayload, isForSummarization
     return parseResponse(provider, data);
 }
 
-
-/**
- * @description 解析不同 API 供應商的回應
- */
 function parseResponse(provider, data) {
     try {
         switch (provider) {
@@ -273,9 +283,6 @@ function parseResponse(provider, data) {
     }
 }
 
-/**
- * @description 專門用於測試 API 連線的函式
- */
 export async function testApiConnection(provider, apiKey, model) {
     const YOUR_CLOUDFLARE_WORKER_URL = 'https://key.d778105.workers.dev/';
     let url = "", headers = {}, body = {};
@@ -307,7 +314,7 @@ export async function testApiConnection(provider, apiKey, model) {
             body = { model, messages: testPayload, max_tokens: 5 };
             break;
         case "google":
-            url = YOUR_CLOUDFLARE_WORKER_URL + `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            url = YOUR_WORKER_URL + `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
             headers = { "Content-Type": "application/json" };
             body = { contents: [{ parts: [{ text: "Hello" }] }], generationConfig: { maxOutputTokens: 5 } };
             break;
