@@ -4,6 +4,7 @@
 import * as DOM from './dom.js';
 import { tempState, state } from './state.js';
 import { DEFAULT_AVATAR } from './constants.js';
+import { renderFirstMessageInputs } from './ui.js';
 
 /**
  * @description 設定 --app-height CSS 變數，以解決行動裝置瀏覽器高度問題
@@ -89,10 +90,24 @@ export function handleImageUpload(event, previewElement) {
 export function exportCharacter() {
     if (!tempState.editingCharacterId) { alert('請先儲存角色後再匯出。'); return; }
     const char = state.characters.find(c => c.id === tempState.editingCharacterId);
+    
+    // 建立符合 TavernAI V2 卡片規格的資料結構
     const characterData = {
         spec: 'chara_card_v2',
-        data: { name: char.name, description: char.description, first_mes: char.firstMessage, mes_example: char.exampleDialogue, character_avatar: char.avatarUrl }
+        data: {
+            name: char.name,
+            description: char.description,
+            // 將第一個開場白作為主要的 first_mes
+            first_mes: char.firstMessage[0] || '',
+            mes_example: char.exampleDialogue,
+            // 將剩餘的開場白放入 alternate_greetings
+            alternate_greetings: char.firstMessage.slice(1),
+            // 為了我們自己的應用程式，也儲存完整的陣列
+            firstMessage: char.firstMessage, 
+            character_avatar: char.avatarUrl
+        }
     };
+
     const blob = new Blob([JSON.stringify(characterData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -130,6 +145,7 @@ export function importCharacter() {
             reader.readAsText(file, 'UTF-8'); 
         
         } else if (file.type === 'image/png') {
+            // ... (PNG 處理邏輯維持不變)
             let fileAsDataURL = '';
             const readerForDataURL = new FileReader();
             readerForDataURL.onload = (e) => {
@@ -228,9 +244,39 @@ function populateEditorWithCharData(importedData, imageBase64 = null) {
     
     DOM.charNameInput.value = data.name || '';
     DOM.charDescriptionInput.value = data.description || data.personality || '';
-    DOM.charFirstMessageInput.value = data.first_mes || data.firstMessage || '';
-    DOM.charExampleDialogueInput.value = data.mes_example || data.exampleDialogue || '';
     
+    // [MODIFIED] New logic to handle first_mes and alternate_greetings
+    let allGreetings = [];
+
+    // 1. Add the main greeting (first_mes) if it exists
+    if (data.first_mes && typeof data.first_mes === 'string' && data.first_mes.trim() !== '') {
+        allGreetings.push(data.first_mes.trim());
+    }
+
+    // 2. Add alternate greetings if they exist and is an array
+    if (data.alternate_greetings && Array.isArray(data.alternate_greetings)) {
+        const validAlternateGreetings = data.alternate_greetings
+            .filter(g => typeof g === 'string' && g.trim() !== '')
+            .map(g => g.trim());
+        allGreetings = allGreetings.concat(validAlternateGreetings);
+    }
+
+    // 3. Fallback to our own 'firstMessage' array format if the others don't exist
+    if (allGreetings.length === 0 && data.firstMessage && Array.isArray(data.firstMessage)) {
+         const validFirstMessages = data.firstMessage
+            .filter(g => typeof g === 'string' && g.trim() !== '')
+            .map(g => g.trim());
+        allGreetings = allGreetings.concat(validFirstMessages);
+    }
+
+    // 4. Ensure there's at least one empty input if no greetings were found
+    if (allGreetings.length === 0) {
+        allGreetings.push('');
+    }
+    
+    renderFirstMessageInputs(allGreetings);
+
+    DOM.charExampleDialogueInput.value = data.mes_example || data.exampleDialogue || '';
     DOM.charAvatarPreview.src = imageBase64 || data.character_avatar || DEFAULT_AVATAR;
     
     alert('角色卡匯入成功！請記得儲存。');

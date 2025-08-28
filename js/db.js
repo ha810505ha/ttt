@@ -2,7 +2,7 @@
 // 這個檔案封裝了所有與 IndexedDB 互動的底層邏輯。
 
 const DB_NAME = 'AiChatDB';
-const DB_VERSION = 1;
+const DB_VERSION = 3; // [MODIFIED] 版本號 +1 以觸發資料庫結構更新
 let db;
 
 /**
@@ -31,9 +31,12 @@ export function openDB() {
             if (!db.objectStoreNames.contains('userPersonas')) {
                 db.createObjectStore('userPersonas', { keyPath: 'id' });
             }
-            // 建立一個通用的鍵值對儲存區，用來放設定等單一項目
             if (!db.objectStoreNames.contains('keyValueStore')) {
                 db.createObjectStore('keyValueStore', { keyPath: 'key' });
+            }
+            // [ADDED] 為提示詞設定檔建立新的儲存區
+            if (!db.objectStoreNames.contains('promptSets')) {
+                db.createObjectStore('promptSets', { keyPath: 'id' });
             }
         };
 
@@ -107,6 +110,21 @@ export function deleteItem(storeName, key) {
         const transaction = db.transaction(storeName, 'readwrite');
         const store = transaction.objectStore(storeName);
         const request = store.delete(key);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+/**
+ * @description 清空指定的儲存區
+ * @param {string} storeName - 要清空的儲存區名稱
+ * @returns {Promise}
+ */
+export function clearStore(storeName) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.clear();
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
     });

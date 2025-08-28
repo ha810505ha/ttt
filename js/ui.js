@@ -1,11 +1,10 @@
 // js/ui.js
 import * as DOM from './dom.js';
 import { state, tempState } from './state.js';
-import { DEFAULT_AVATAR, MODELS, DEFAULT_SUMMARY_PROMPT, DEFAULT_SCENARIO_PROMPT, DEFAULT_JAILBREAK_PROMPT } from './constants.js';
+import { DEFAULT_AVATAR, MODELS, DEFAULT_PROMPT_SET } from './constants.js';
+import { getActivePromptSet } from './promptManager.js';
 
-/**
- * @description 根據登入狀態更新使用者個人資料區域的 UI
- */
+// ... (其他 renderUserProfile, renderCharacterList 等函式保持不變) ...
 export function renderUserProfile() {
     if (state.currentUser) {
         DOM.loginBtn.classList.add('hidden');
@@ -18,9 +17,6 @@ export function renderUserProfile() {
     }
 }
 
-/**
- * @description 渲染左側的角色列表
- */
 export function renderCharacterList() {
     renderUserProfile();
     DOM.characterList.innerHTML = '';
@@ -36,9 +32,6 @@ export function renderCharacterList() {
     });
 }
 
-/**
- * @description 顯示角色列表視圖
- */
 export function showCharacterListView() {
     DOM.leftPanel.classList.remove('show-chats');
     DOM.leftPanel.classList.remove('mobile-visible');
@@ -46,10 +39,6 @@ export function showCharacterListView() {
     state.activeCharacterId = null;
 }
 
-/**
- * @description 顯示指定角色的聊天室列表視圖
- * @param {string} charId - 角色 ID
- */
 export function showChatSessionListView(charId) {
     try {
         state.activeCharacterId = charId;
@@ -69,9 +58,6 @@ export function showChatSessionListView(charId) {
     }
 }
 
-/**
- * @description 渲染當前選定角色的聊天室列表
- */
 export function renderChatSessionList() {
     DOM.chatSessionList.innerHTML = '';
     const sessions = state.chatHistories[state.activeCharacterId] || {};
@@ -117,9 +103,6 @@ export function renderChatSessionList() {
     });
 }
 
-/**
- * @description 渲染當前活躍的聊天介面
- */
 export function renderActiveChat() {
     if (!state.activeCharacterId || !state.activeChatId) {
         DOM.welcomeScreen.classList.remove('hidden');
@@ -146,9 +129,6 @@ export function renderActiveChat() {
     renderChatMessages();
 }
 
-/**
- * @description 渲染聊天視窗中的所有訊息
- */
 export function renderChatMessages() {
     DOM.chatWindow.innerHTML = '';
     const history = state.chatHistories[state.activeCharacterId]?.[state.activeChatId] || [];
@@ -156,16 +136,8 @@ export function renderChatMessages() {
         const contentToDisplay = (msg.role === 'assistant') ? msg.content[msg.activeContentIndex] : msg.content;
         displayMessage(contentToDisplay, msg.role, msg.timestamp, index, false, msg.error);
     });
-
-    const lastMessageRow = DOM.chatWindow.querySelector('.message-row:last-child');
-    if (lastMessageRow) {
-        lastMessageRow.classList.add('is-last-message');
-    }
 }
 
-/**
- * @description 在聊天視窗中顯示單一訊息
- */
 export function displayMessage(text, sender, timestamp, index, isNew, error = null) {
     const metadata = state.chatMetadatas[state.activeCharacterId]?.[state.activeChatId] || {};
     const currentPersonaId = metadata.userPersonaId || state.activeUserPersonaId;
@@ -187,8 +159,9 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
     const formattedTimestamp = new Date(timestamp).toLocaleString('zh-TW', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
     let messageActionsHTML = '';
+    const msgData = state.chatHistories[state.activeCharacterId]?.[state.activeChatId]?.[index];
+
     if (sender === 'assistant') {
-        const msgData = state.chatHistories[state.activeCharacterId]?.[state.activeChatId]?.[index];
         if (msgData && msgData.content.length > 1) {
             messageActionsHTML += `
                 <div class="version-nav">
@@ -197,7 +170,11 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
                     <button class="version-next-btn" ${msgData.activeContentIndex === msgData.content.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>
                 </div>`;
         }
-        messageActionsHTML += `<button class="regenerate-btn-sm" title="再生成一則新的回應？"><i class="fa-solid fa-arrows-rotate"></i>再生成一則新的回應？</button>`;
+
+        const history = state.chatHistories[state.activeCharacterId]?.[state.activeChatId] || [];
+        if (index === history.length - 1) {
+             messageActionsHTML += `<button class="regenerate-btn-sm" title="再生成一則新的回應？"><i class="fa-solid fa-arrows-rotate"></i> 再生成</button>`;
+        }
     }
 
     row.innerHTML = `
@@ -206,7 +183,7 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
             <div class="chat-bubble"></div>
             ${error ? `<div class="message-error"><span>${error}</span><button class="retry-btn-sm"><i class="fa-solid fa-rotate-right"></i> 重試</button></div>` : ''}
             <div class="message-timestamp">${formattedTimestamp}</div>
-            <div class="message-actions">${messageActionsHTML}</div>
+            <div class="message-actions" style="${messageActionsHTML ? 'display: flex;' : 'display: none;'}">${messageActionsHTML}</div>
         </div>
         <button class="icon-btn edit-msg-btn" title="編輯訊息"><i class="fa-solid fa-pencil"></i></button>
     `;
@@ -221,9 +198,6 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
     return row;
 }
 
-/**
- * @description 將全域設定載入到設定彈窗的 UI 中
- */
 export function loadGlobalSettingsToUI() {
     const settings = state.globalSettings;
     DOM.apiProviderSelect.value = settings.apiProvider || 'official_gemini';
@@ -244,8 +218,10 @@ export function loadGlobalSettingsToUI() {
 
     renderUserPersonaList();
     renderActiveUserPersonaSelector();
-    loadPromptSettingsToUI();
     renderApiPresetsDropdown();
+    
+    renderPromptSetSelector();
+    renderPromptList();
 
     DOM.settingsTabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     DOM.globalSettingsModal.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -253,9 +229,6 @@ export function loadGlobalSettingsToUI() {
     DOM.apiSettingsTab.classList.add('active');
 }
 
-/**
- * @description 根據選擇的 API 供應商更新模型下拉選單
- */
 export function updateModelDropdown() {
     const provider = DOM.apiProviderSelect.value;
     const models = MODELS[provider] || [];
@@ -276,30 +249,6 @@ export function updateModelDropdown() {
     DOM.apiKeyFormGroup.classList.toggle('hidden', provider === 'official_gemini');
 }
 
-/**
- * @description 將提示詞設定載入到提示詞庫 UI
- */
-export function loadPromptSettingsToUI() {
-    const prompts = state.promptSettings;
-    const promptMode = prompts.mode || 'default';
-    DOM.promptModeSelect.value = promptMode;
-
-    DOM.customPromptsContainer.classList.toggle('hidden', promptMode === 'default');
-
-    if (promptMode === 'custom') {
-        DOM.promptScenarioInput.value = prompts.scenario || '';
-        DOM.promptJailbreakInput.value = prompts.jailbreak || '';
-    } else {
-        DOM.promptScenarioInput.value = DEFAULT_SCENARIO_PROMPT;
-        DOM.promptJailbreakInput.value = DEFAULT_JAILBREAK_PROMPT;
-    }
-    
-    DOM.promptSummarizationInput.value = prompts.summarizationPrompt || DEFAULT_SUMMARY_PROMPT;
-}
-
-/**
- * @description 渲染使用者角色列表 (在設定彈窗中)
- */
 export function renderUserPersonaList() {
     DOM.userPersonaList.innerHTML = '';
     state.userPersonas.forEach(persona => {
@@ -318,9 +267,6 @@ export function renderUserPersonaList() {
     });
 }
 
-/**
- * @description 渲染預設使用者角色的下拉選單 (在設定彈窗中)
- */
 export function renderActiveUserPersonaSelector() {
     DOM.activeUserPersonaSelect.innerHTML = '';
     state.userPersonas.forEach(persona => {
@@ -332,9 +278,6 @@ export function renderActiveUserPersonaSelector() {
     DOM.activeUserPersonaSelect.value = state.activeUserPersonaId;
 }
 
-/**
- * @description 渲染聊天介面中的使用者角色下拉選單
- */
 export function renderChatUserPersonaSelector() {
     DOM.chatUserPersonaSelect.innerHTML = '';
     state.userPersonas.forEach(persona => {
@@ -347,9 +290,6 @@ export function renderChatUserPersonaSelector() {
     DOM.chatUserPersonaSelect.value = metadata.userPersonaId || state.activeUserPersonaId;
 }
 
-/**
- * @description 渲染 API 設定檔下拉選單
- */
 export function renderApiPresetsDropdown() {
     DOM.apiPresetSelect.innerHTML = '<option value="">選擇要載入的設定檔...</option>';
     state.apiPresets.forEach(preset => {
@@ -360,34 +300,24 @@ export function renderApiPresetsDropdown() {
     });
 }
 
-/**
- * @description 將指定的 API 設定檔載入到 UI
- */
-export function loadApiPresetToUI(presetId) {
+export async function loadApiPresetToUI(presetId) {
     const preset = state.apiPresets.find(p => p.id === presetId);
     if (!preset) return;
 
     DOM.apiProviderSelect.value = preset.provider;
-    updateModelDropdown();
     
-    setTimeout(() => {
-        DOM.apiModelSelect.value = preset.model;
-    }, 0);
-
+    updateModelDropdown();
+    await Promise.resolve(); 
+    
+    DOM.apiModelSelect.value = preset.model;
     DOM.apiKeyInput.value = preset.apiKey;
     DOM.apiStatusIndicator.style.display = 'none';
 }
 
-/**
- * @description 切換彈出視窗的顯示或隱藏
- */
 export function toggleModal(modalId, show) {
     document.getElementById(modalId).classList.toggle('hidden', !show);
 }
 
-/**
- * @description 設定應用程式是否處於「生成中」的狀態
- */
 export function setGeneratingState(isGenerating, changeMainButton = true) {
     if (changeMainButton) {
         DOM.sendBtn.classList.toggle('is-generating', isGenerating);
@@ -398,5 +328,71 @@ export function setGeneratingState(isGenerating, changeMainButton = true) {
     
     document.querySelectorAll('.regenerate-btn-sm, .retry-btn-sm').forEach(btn => {
         btn.disabled = isGenerating;
+    });
+}
+
+export function renderFirstMessageInputs(messages = ['']) {
+    DOM.firstMessageList.innerHTML = '';
+    const messagesToRender = messages.length > 0 ? messages : [''];
+    
+    messagesToRender.forEach((msg, index) => {
+        const item = document.createElement('div');
+        item.className = 'first-message-item';
+        item.innerHTML = `
+            <textarea class="char-first-message" placeholder="開場白 #${index + 1}" rows="1">${msg}</textarea>
+            <button type="button" class="icon-btn-sm danger remove-first-message-btn" title="移除此開場白">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        `;
+        DOM.firstMessageList.appendChild(item);
+        const textarea = item.querySelector('textarea');
+        textarea.addEventListener('input', () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        });
+        setTimeout(() => {
+             textarea.style.height = 'auto';
+             textarea.style.height = `${textarea.scrollHeight}px`;
+        }, 0);
+    });
+}
+
+export function renderPromptSetSelector() {
+    DOM.promptSetSelect.innerHTML = '';
+    state.promptSets.forEach(set => {
+        const option = document.createElement('option');
+        option.value = set.id;
+        option.textContent = set.name;
+        DOM.promptSetSelect.appendChild(option);
+    });
+    if (state.activePromptSetId) {
+        DOM.promptSetSelect.value = state.activePromptSetId;
+    }
+}
+
+/**
+ * @description [MODIFIED] 根據當前選擇的設定檔，渲染提示詞列表及其開關和編輯按鈕
+ */
+export function renderPromptList() {
+    const activeSet = getActivePromptSet();
+    DOM.promptList.innerHTML = '';
+
+    if (!activeSet || !activeSet.prompts) {
+        DOM.promptList.innerHTML = '<li class="list-placeholder">此設定檔沒有可用的提示詞。</li>';
+        return;
+    }
+
+    activeSet.prompts.forEach(prompt => {
+        const item = document.createElement('li');
+        item.className = 'prompt-item';
+        item.dataset.identifier = prompt.identifier;
+        item.innerHTML = `
+            <span class="prompt-item-name" title="${prompt.name}">${prompt.name}</span>
+            <div class="prompt-item-actions">
+                <button class="icon-btn-sm edit-prompt-btn" title="編輯提示詞"><i class="fa-solid fa-pencil"></i></button>
+                <div class="prompt-item-toggle ${prompt.enabled ? 'enabled' : ''}"></div>
+            </div>
+        `;
+        DOM.promptList.appendChild(item);
     });
 }

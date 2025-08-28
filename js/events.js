@@ -28,7 +28,7 @@ export function setupEventListeners() {
     DOM.backToCharsBtn.addEventListener('click', async () => {
         UI.showCharacterListView();
         state.activeCharacterId = null;
-        state.activeChatId = null;
+        state.activeChatId = null; 
         await saveSettings();
     });
     DOM.addChatBtn.addEventListener('click', Handlers.handleAddNewChat);
@@ -85,6 +85,37 @@ export function setupEventListeners() {
     DOM.exportCharBtn.addEventListener('click', Utils.exportCharacter);
     DOM.charAvatarUpload.addEventListener('change', (e) => Utils.handleImageUpload(e, DOM.charAvatarPreview));
 
+    DOM.addFirstMessageBtn.addEventListener('click', () => {
+        const item = document.createElement('div');
+        item.className = 'first-message-item';
+        const nextIndex = DOM.firstMessageList.children.length + 1;
+        item.innerHTML = `
+            <textarea class="char-first-message" placeholder="開場白 #${nextIndex}" rows="1"></textarea>
+            <button type="button" class="icon-btn-sm danger remove-first-message-btn" title="移除此開場白">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        `;
+        DOM.firstMessageList.appendChild(item);
+        const textarea = item.querySelector('textarea');
+        textarea.focus();
+        textarea.addEventListener('input', () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        });
+    });
+
+    DOM.firstMessageList.addEventListener('click', (e) => {
+        const removeBtn = e.target.closest('.remove-first-message-btn');
+        if (removeBtn) {
+            if (DOM.firstMessageList.children.length > 1) {
+                removeBtn.closest('.first-message-item').remove();
+            } else {
+                alert('至少需要保留一個開場白。');
+            }
+        }
+    });
+
+
     DOM.globalSettingsBtn.addEventListener('click', () => {
         UI.loadGlobalSettingsToUI();
         UI.toggleModal('global-settings-modal', true);
@@ -116,10 +147,34 @@ export function setupEventListeners() {
     DOM.themeSelect.addEventListener('change', (e) => {
         Utils.applyTheme(e.target.value);
     });
-
-    DOM.promptModeSelect.addEventListener('change', (e) => {
-        DOM.customPromptsContainer.classList.toggle('hidden', e.target.value === 'default');
+    
+    DOM.importPromptSetBtn.addEventListener('click', Handlers.handleImportPromptSet);
+    DOM.deletePromptSetBtn.addEventListener('click', Handlers.handleDeletePromptSet);
+    DOM.promptSetSelect.addEventListener('change', Handlers.handleSwitchPromptSet);
+    
+    DOM.promptList.addEventListener('click', (e) => {
+        const toggle = e.target.closest('.prompt-item-toggle');
+        const editBtn = e.target.closest('.edit-prompt-btn');
+        
+        if (toggle) {
+            const item = toggle.closest('.prompt-item');
+            const identifier = item.dataset.identifier;
+            Handlers.handleTogglePromptEnabled(identifier);
+        } else if (editBtn) {
+            const item = editBtn.closest('.prompt-item');
+            const identifier = item.dataset.identifier;
+            Handlers.openPromptEditor(identifier);
+        }
     });
+
+    DOM.savePromptEditorBtn.addEventListener('click', Handlers.handleSavePrompt);
+    DOM.cancelPromptEditorBtn.addEventListener('click', () => {
+        UI.toggleModal('prompt-editor-modal', false);
+        tempState.editingPromptIdentifier = null;
+    });
+    // [ADDED] 提示詞編輯器中刪除按鈕的事件綁定
+    DOM.deletePromptEditorBtn.addEventListener('click', Handlers.handleDeletePromptItem);
+
 
     DOM.addUserPersonaBtn.addEventListener('click', () => Handlers.openUserPersonaEditor());
     DOM.saveUserPersonaBtn.addEventListener('click', Handlers.handleSaveUserPersona);
@@ -131,12 +186,39 @@ export function setupEventListeners() {
     DOM.chatUserPersonaSelect.addEventListener('change', Handlers.handleChatPersonaChange);
     DOM.userPersonaAvatarUpload.addEventListener('change', (e) => Utils.handleImageUpload(e, DOM.userPersonaAvatarPreview));
 
-    // 匯出與截圖
     DOM.exportChatOptionBtn.addEventListener('click', Handlers.openExportModal);
     DOM.confirmExportChatBtn.addEventListener('click', Handlers.handleConfirmExport);
     DOM.cancelExportChatBtn.addEventListener('click', () => UI.toggleModal('export-chat-modal', false));
     DOM.cancelScreenshotBtn.addEventListener('click', Handlers.handleToggleScreenshotMode);
     DOM.generateScreenshotBtn.addEventListener('click', Handlers.handleGenerateScreenshot);
+
+    DOM.globalExportBtn.addEventListener('click', Handlers.handleGlobalExport);
+    DOM.openImportOptionsBtn.addEventListener('click', () => UI.toggleModal('import-options-modal', true));
+    DOM.cancelImportOptionsBtn.addEventListener('click', () => UI.toggleModal('import-options-modal', false));
+    DOM.importMergeBtn.addEventListener('click', () => {
+        UI.toggleModal('import-options-modal', false);
+        Handlers.handleGlobalImport('merge');
+    });
+    DOM.importOverwriteBtn.addEventListener('click', () => {
+        UI.toggleModal('import-options-modal', false);
+        Handlers.handleGlobalImport('overwrite');
+    });
+
+    DOM.googleLoginBtn.addEventListener('click', Handlers.handleGoogleLogin);
+    DOM.loginForm.addEventListener('submit', Handlers.handleEmailLogin);
+    DOM.registerForm.addEventListener('submit', Handlers.handleEmailRegister);
+    DOM.cancelAuthModalBtn.addEventListener('click', () => UI.toggleModal('auth-modal', false));
+    DOM.showRegisterViewBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        DOM.loginView.classList.add('hidden');
+        DOM.registerView.classList.remove('hidden');
+    });
+    DOM.showLoginViewBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        DOM.registerView.classList.add('hidden');
+        DOM.loginView.classList.remove('hidden');
+    });
+
 
     window.addEventListener('resize', Utils.setAppHeight);
 

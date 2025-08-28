@@ -37,7 +37,8 @@ export const charAvatarUpload = document.getElementById('char-avatar-upload');
 export const charAvatarPreview = document.getElementById('char-avatar-preview');
 export const charNameInput = document.getElementById('char-name');
 export const charDescriptionInput = document.getElementById('char-description');
-export const charFirstMessageInput = document.getElementById('char-first-message');
+export const firstMessageList = document.getElementById('first-message-list');
+export const addFirstMessageBtn = document.getElementById('add-first-message-btn');
 export const charExampleDialogueInput = document.getElementById('char-example-dialogue');
 export const importCharBtn = document.getElementById('import-char-btn');
 export const exportCharBtn = document.getElementById('export-char-btn');
@@ -61,9 +62,6 @@ export const repetitionPenaltyValue = document.getElementById('repetition-penalt
 export const contextSizeInput = document.getElementById('context-size-input');
 export const maxTokensSlider = document.getElementById('max-tokens-slider');
 export const maxTokensValue = document.getElementById('max-tokens-value');
-export const promptScenarioInput = document.getElementById('prompt-scenario');
-export const promptJailbreakInput = document.getElementById('prompt-jailbreak');
-export const promptSummarizationInput = document.getElementById('prompt-summarization');
 export const userPersonaEditorModal = document.getElementById('user-persona-editor-modal');
 export const userPersonaEditorTitle = document.getElementById('user-persona-editor-title');
 export const userPersonaAvatarUpload = document.getElementById('user-persona-avatar-upload');
@@ -100,9 +98,23 @@ export const promptSettingsTab = document.getElementById('prompt-settings-tab');
 export const themeSettingsTab = document.getElementById('theme-settings-tab');
 export const themeSelect = document.getElementById('theme-select');
 
-// 提示詞庫相關
-export const promptModeSelect = document.getElementById('prompt-mode-select');
-export const customPromptsContainer = document.getElementById('custom-prompts-container');
+// 新提示詞庫相關
+export const promptSetSelect = document.getElementById('prompt-set-select');
+export const deletePromptSetBtn = document.getElementById('delete-prompt-set-btn');
+export const importPromptSetBtn = document.getElementById('import-prompt-set-btn');
+export const promptListContainer = document.getElementById('prompt-list-container');
+export const promptList = document.getElementById('prompt-list');
+
+// 提示詞編輯器 Modal 相關
+export const promptEditorModal = document.getElementById('prompt-editor-modal');
+export const promptEditorTitle = document.getElementById('prompt-editor-title');
+export const promptEditorNameInput = document.getElementById('prompt-editor-name');
+export const promptEditorContentInput = document.getElementById('prompt-editor-content');
+export const cancelPromptEditorBtn = document.getElementById('cancel-prompt-editor-btn');
+export const savePromptEditorBtn = document.getElementById('save-prompt-editor-btn');
+// [ADDED] 新增刪除按鈕的選擇器
+export const deletePromptEditorBtn = document.getElementById('delete-prompt-editor-btn');
+
 
 // API 設定檔相關
 export const apiPresetSelect = document.getElementById('api-preset-select');
@@ -121,3 +133,24 @@ export const cancelScreenshotBtn = document.getElementById('cancel-screenshot-bt
 export const screenshotInfoText = document.getElementById('screenshot-info-text');
 export const generateScreenshotBtn = document.getElementById('generate-screenshot-btn');
 export const messageInputContainer = document.querySelector('.message-input-container');
+
+// 全域匯入/匯出相關
+export const dataManagementTab = document.getElementById('data-management-tab');
+export const globalExportBtn = document.getElementById('global-export-btn');
+export const openImportOptionsBtn = document.getElementById('open-import-options-btn');
+export const importOptionsModal = document.getElementById('import-options-modal');
+export const importMergeBtn = document.getElementById('import-merge-btn');
+export const importOverwriteBtn = document.getElementById('import-overwrite-btn');
+export const cancelImportOptionsBtn = document.getElementById('cancel-import-options-btn');
+
+// 帳號認證 Modal 相關
+export const authModal = document.getElementById('auth-modal');
+export const loginView = document.getElementById('login-view');
+export const registerView = document.getElementById('register-view');
+export const loginForm = document.getElementById('login-form');
+export const registerForm = document.getElementById('register-form');
+export const googleLoginBtn = document.getElementById('google-login-btn');
+export const showRegisterViewBtn = document.getElementById('show-register-view-btn');
+export const showLoginViewBtn = document.getElementById('show-login-view-btn');
+export const cancelAuthModalBtn = document.getElementById('cancel-auth-modal-btn');
+export const registerNameInput = document.getElementById('register-name');

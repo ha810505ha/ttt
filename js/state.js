@@ -1,7 +1,7 @@
 // js/state.js
 // 這個檔案負責管理整個應用程式的狀態，並與 IndexedDB 互動。
 
-import { defaultCharacters, DEFAULT_AVATAR } from './constants.js';
+import { defaultCharacters, DEFAULT_AVATAR, DEFAULT_PROMPT_SET } from './constants.js';
 import * as db from './db.js';
 
 // 應用程式的核心狀態物件
@@ -13,11 +13,14 @@ export let state = {
     chatMetadatas: {}, 
     userPersonas: [],
     apiPresets: [], 
+    
+    promptSets: [],
+    activePromptSetId: null,
+
     activeUserPersonaId: null,
     activeCharacterId: null,
     activeChatId: null,
     globalSettings: {},
-    promptSettings: {}
 };
 
 // 暫存的編輯狀態
@@ -26,9 +29,10 @@ export let tempState = {
     editingUserPersonaId: null,
     renamingChatId: null,
     apiCallController: null,
-    // [新增] 用於管理截圖模式的狀態
     isScreenshotMode: false,
     selectedMessageIndices: [],
+    // [ADDED] 新增一個屬性來追蹤正在編輯的提示詞
+    editingPromptIdentifier: null, 
 };
 
 /**
@@ -38,29 +42,56 @@ export async function loadStateFromDB() {
     const settingsData = await db.get('keyValueStore', 'settings');
     if (settingsData) {
         state.globalSettings = settingsData.globalSettings || {};
-        state.promptSettings = settingsData.promptSettings || {};
         state.activeUserPersonaId = settingsData.activeUserPersonaId || null;
         state.activeCharacterId = settingsData.activeCharacterId || null;
         state.activeChatId = settingsData.activeChatId || null;
         state.apiPresets = settingsData.apiPresets || [];
+        state.activePromptSetId = settingsData.activePromptSetId || null;
     }
 
     state.characters = await db.getAll('characters');
     state.userPersonas = await db.getAll('userPersonas');
+    state.promptSets = await db.getAll('promptSets');
 
     if (state.characters.length === 0) {
         for (const char of defaultCharacters) {
+            if (typeof char.firstMessage === 'string') {
+                char.firstMessage = [char.firstMessage];
+            }
             await db.put('characters', char);
         }
-        state.characters = defaultCharacters;
+        state.characters = await db.getAll('characters');
+    } else {
+        let migrationNeeded = false;
+        for (const char of state.characters) {
+            if (typeof char.firstMessage === 'string') {
+                char.firstMessage = [char.firstMessage];
+                await db.put('characters', char);
+                migrationNeeded = true;
+            }
+        }
+        if (migrationNeeded) {
+            console.log("資料遷移完成: 'firstMessage' 欄位已轉換為陣列格式。");
+        }
     }
+
     if (state.userPersonas.length === 0) {
         const defaultPersona = { id: `user_${Date.now()}`, name: 'User', description: '', avatarUrl: DEFAULT_AVATAR };
         await db.put('userPersonas', defaultPersona);
         state.userPersonas.push(defaultPersona);
         state.activeUserPersonaId = defaultPersona.id;
-        await saveSettings();
     }
+
+    if (state.promptSets.length === 0) {
+        await db.put('promptSets', DEFAULT_PROMPT_SET);
+        state.promptSets.push(DEFAULT_PROMPT_SET);
+    }
+    
+    if (!state.activePromptSetId || !state.promptSets.find(ps => ps.id === state.activePromptSetId)) {
+        state.activePromptSetId = state.promptSets[0]?.id || null;
+    }
+
+    await saveSettings();
 
     if (state.activeCharacterId) {
         await loadChatDataForCharacter(state.activeCharacterId);
@@ -89,11 +120,11 @@ export function saveSettings() {
     const settingsData = {
         key: 'settings',
         globalSettings: state.globalSettings,
-        promptSettings: state.promptSettings,
         activeUserPersonaId: state.activeUserPersonaId,
         activeCharacterId: state.activeCharacterId,
         activeChatId: state.activeChatId,
         apiPresets: state.apiPresets,
+        activePromptSetId: state.activePromptSetId, 
     };
     return db.put('keyValueStore', settingsData);
 }
@@ -130,4 +161,12 @@ export async function deleteAllChatDataForChar(charId) {
     await db.deleteItem('chatHistories', charId);
     await db.deleteItem('longTermMemories', charId);
     await db.deleteItem('chatMetadatas', charId);
+}
+
+export function savePromptSet(promptSet) {
+    return db.put('promptSets', promptSet);
+}
+
+export function deletePromptSet(promptSetId) {
+    return db.deleteItem('promptSets', promptSetId);
 }

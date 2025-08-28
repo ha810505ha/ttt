@@ -63,28 +63,26 @@ body.theme-a {
     --shadow-color: rgba(50, 67, 95, 0.1);
 }
 
-/* [新增] 主題 B 的配色 */
 body.theme-b {
-    --primary-color: #EBC57C; /* 柔和金 */
+    --primary-color: #EBC57C;
     --primary-hover-color: #F0D199;
     --danger-color: #e57373;
     --success-color: #a5d6a7;
-    --secondary-color: #9C8F96; /* 灰紫 */
-    --background-color: #F4F6F8; /* 淺灰藍背景 */
+    --secondary-color: #9C8F96;
+    --background-color: #F4F6F8;
     --panel-background: #FFFFFF;
     --hover-background: #E9EEF2;
     --active-background: #DDE5EB;
     --assistant-bubble-color: #FFFFFF;
     --user-bubble-color: #FFFFFF;
-    --border-color: #A6C2CE; /* 淺藍灰 */
-    --text-color: #6B799E; /* 灰藍紫 */
-    --text-light-color: #9C8F96; /* 灰紫 */
+    --border-color: #A6C2CE;
+    --text-color: #6B799E;
+    --text-light-color: #9C8F96;
     --pin-active-color: #EBC57C;
     --input-background: #F4F6F8;
     --modal-background: #FFFFFF;
     --shadow-color: rgba(107, 121, 158, 0.1);
 }
-
 
 * {
     box-sizing: border-box;
@@ -95,7 +93,7 @@ body {
     margin: 0;
     background-color: var(--background-color);
     color: var(--text-color);
-    height: 100vh; /* Fallback */
+    height: 100vh;
     height: var(--app-height, 100vh);
     overflow: hidden;
     transition: background-color 0.3s, color 0.3s;
@@ -105,10 +103,8 @@ body {
     display: none !important;
 }
 
-/* --- 主應用程式佈局 --- */
 .app-container {
     display: flex;
-    height: 100vh; /* Fallback */
     height: var(--app-height, 100vh);
 }
 
@@ -124,25 +120,21 @@ body {
 
 .panel-view-container {
     display: flex;
-    width: 300%; /* 3 views */
+    width: 200%;
     height: 100%;
     transition: transform 0.3s ease-in-out;
 }
 
 .left-panel.show-chats .panel-view-container {
-    transform: translateX(-33.33%);
-}
-.left-panel.show-prompts .panel-view-container {
-    transform: translateX(-66.66%);
+    transform: translateX(-50%);
 }
 
 .panel-view {
-    width: 33.33%;
+    width: 50%;
     height: 100%;
     display: flex;
     flex-direction: column;
 }
-
 
 .chat-panel {
     flex-grow: 1;
@@ -151,7 +143,6 @@ body {
     position: relative;
 }
 
-/* --- 左側面板 --- */
 .panel-header {
     display: flex;
     justify-content: space-between;
@@ -178,9 +169,6 @@ body {
 .panel-header .header-actions {
     display: flex;
     gap: 5px;
-}
-.panel-header .placeholder-div {
-    width: 40px; /* Match icon-btn width */
 }
 
 .character-list, .chat-session-list {
@@ -255,7 +243,6 @@ body {
     padding: 20px;
 }
 
-
 .add-character-btn {
     width: calc(100% - 30px);
     margin: 15px;
@@ -268,10 +255,16 @@ body {
     font-size: 16px;
     flex-shrink: 0;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 4px 10px rgba(166, 127, 120, 0.4);
+    box-shadow: 0 4px 10px rgba(137, 207, 240, 0.4);
 }
 .add-character-btn:hover {
     transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(137, 207, 240, 0.5);
+}
+body.theme-a .add-character-btn {
+    box-shadow: 0 4px 10px rgba(166, 127, 120, 0.4);
+}
+body.theme-a .add-character-btn:hover {
     box-shadow: 0 6px 12px rgba(166, 127, 120, 0.5);
 }
 body.theme-b .add-character-btn {
@@ -282,34 +275,6 @@ body.theme-b .add-character-btn:hover {
     box-shadow: 0 6px 12px rgba(235, 197, 124, 0.5);
 }
 
-
-/* --- 提示詞庫視圖 --- */
-.prompt-view-body {
-    padding: 20px;
-    overflow-y: auto;
-    flex-grow: 1;
-}
-.prompt-view-body .form-group textarea {
-    width: 100%;
-    padding: 12px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    font-size: 14px;
-    background-color: var(--input-background);
-    color: var(--text-color);
-    min-height: 120px;
-    resize: vertical;
-}
-.prompt-view-body .form-group textarea:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(166, 127, 120, 0.3);
-}
-body.theme-b .prompt-view-body .form-group textarea:focus {
-    box-shadow: 0 0 0 2px rgba(235, 197, 124, 0.3);
-}
-
-/* --- 右側聊天面板 --- */
 .welcome-screen {
     flex-grow: 1;
     display: flex;
@@ -354,7 +319,7 @@ body.theme-b .prompt-view-body .form-group textarea:focus {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    min-width: 0; /* Important for flexbox truncation */
+    min-width: 0;
 }
 
 .chat-header-name-container {
@@ -483,7 +448,6 @@ body.theme-b .prompt-view-body .form-group textarea:focus {
     background-color: var(--danger-color);
     color: white;
 }
-
 
 .chat-window {
     flex-grow: 1;
@@ -670,6 +634,9 @@ body.theme-b .prompt-view-body .form-group textarea:focus {
 #message-input:focus {
     outline: none;
     border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(137, 207, 240, 0.3);
+}
+body.theme-a #message-input:focus {
     box-shadow: 0 0 0 2px rgba(166, 127, 120, 0.3);
 }
 body.theme-b #message-input:focus {
@@ -692,7 +659,6 @@ body.theme-b #message-input:focus {
 body.theme-b #send-btn {
     color: var(--text-color);
 }
-
 #send-btn:hover {
     background-color: var(--primary-hover-color);
 }
@@ -700,7 +666,6 @@ body.theme-b #send-btn {
     background-color: var(--danger-color);
 }
 
-/* --- 通用按鈕樣式 --- */
 .icon-btn {
     background: none;
     border: none;
@@ -748,7 +713,8 @@ body.theme-b #send-btn {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .action-btn-sm { padding: 8px 16px; font-size: 14px; }
-.action-btn.primary { background-color: var(--primary-color); color: white; box-shadow: 0 2px 5px rgba(166, 127, 120, 0.4); }
+.action-btn.primary { background-color: var(--primary-color); color: white; box-shadow: 0 2px 5px rgba(137, 207, 240, 0.4); }
+body.theme-a .action-btn.primary { box-shadow: 0 2px 5px rgba(166, 127, 120, 0.4); }
 body.theme-b .action-btn.primary { color: var(--text-color); box-shadow: 0 2px 5px rgba(235, 197, 124, 0.4); }
 
 .action-btn.primary:hover { background-color: var(--primary-hover-color); transform: translateY(-1px); }
@@ -764,8 +730,6 @@ body.theme-a .action-btn.secondary:hover { background-color: #C8C0BC; }
 body.theme-b .action-btn.secondary { background-color: #A6C2CE; color: var(--text-color); }
 body.theme-b .action-btn.secondary:hover { background-color: #BBD0DA; }
 
-
-/* --- 彈出視窗 (Modal) 樣式 --- */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -881,12 +845,16 @@ body.theme-b .action-btn.secondary:hover { background-color: #BBD0DA; }
     background-color: var(--danger-color);
 }
 
-
 .modal-body input:focus, 
 .modal-body select:focus, 
 .modal-body textarea:focus {
     outline: none;
     border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(137, 207, 240, 0.3);
+}
+body.theme-a .modal-body input:focus, 
+body.theme-a .modal-body select:focus, 
+body.theme-a .modal-body textarea:focus {
     box-shadow: 0 0 0 2px rgba(166, 127, 120, 0.3);
 }
 body.theme-b .modal-body input:focus, 
@@ -960,7 +928,6 @@ input[type="range"]::-moz-range-thumb {
     border-radius: 50%;
 }
 
-/* --- 使用者角色管理 --- */
 .persona-list {
     list-style: none;
     padding: 0;
@@ -994,7 +961,6 @@ input[type="range"]::-moz-range-thumb {
     gap: 5px;
 }
 
-/* --- 手機版響應式設計 --- */
 .menu-toggle-btn {
     display: none;
     position: absolute;
@@ -1043,7 +1009,6 @@ input[type="range"]::-moz-range-thumb {
     }
 }
 
-/* --- Markdown 樣式 --- */
 .chat-bubble p {
     margin: 0 0 10px 0;
 }
@@ -1102,7 +1067,6 @@ input[type="range"]::-moz-range-thumb {
     font-style: italic;
 }
 
-/* --- 重新生成與版本控制樣式 --- */
 .message-actions {
     display: none;
     padding-top: 8px;
@@ -1111,9 +1075,12 @@ input[type="range"]::-moz-range-thumb {
     gap: 10px;
 }
 
+/* [REMOVED] This rule is no longer needed as visibility is controlled by inline styles now. */
+/*
 .assistant-row.is-last-message .message-actions {
     display: flex;
 }
+*/
 
 .regenerate-btn-sm {
     background-color: var(--hover-background);
@@ -1176,7 +1143,6 @@ input[type="range"]::-moz-range-thumb {
     font-weight: 500;
 }
 
-/* --- 載入畫面樣式 --- */
 .loading-overlay {
     position: fixed;
     top: 0;
@@ -1237,7 +1203,6 @@ input[type="range"]::-moz-range-thumb {
     box-shadow: 0 0 0 3px var(--panel-background) inset;
 }
 
-/* --- 使用者登入區域樣式 --- */
 #user-profile-area {
     position: absolute;
     left: 15px;
@@ -1246,13 +1211,13 @@ input[type="range"]::-moz-range-thumb {
 }
 
 #user-profile-area #login-btn {
-    background-color: #4285F4;
+    background-color: var(--primary-color);
     color: white;
     padding: 6px 12px;
 }
 
 #user-profile-area #login-btn:hover {
-    background-color: #357ae8;
+    background-color: var(--primary-hover-color);
 }
 
 #user-profile-area #user-info {
@@ -1276,7 +1241,6 @@ input[type="range"]::-moz-range-thumb {
     max-width: 100px;
 }
 
-/* --- 設定彈出視窗的分頁樣式 --- */
 .settings-tabs {
     display: flex;
     border-bottom: 1px solid var(--border-color);
@@ -1317,7 +1281,6 @@ input[type="range"]::-moz-range-thumb {
     display: block;
 }
 
-/* 調整 modal body 的 padding */
 #global-settings-modal .modal-body {
     padding-top: 10px;
 }
@@ -1330,7 +1293,6 @@ input[type="range"]::-moz-range-thumb {
     padding-top: 10px;
 }
 
-/* --- API 設定檔管理區塊樣式 --- */
 .api-preset-manager {
     background-color: var(--input-background);
     border-radius: 12px;
@@ -1361,39 +1323,12 @@ input[type="range"]::-moz-range-thumb {
     color: white;
     background-color: var(--danger-color);
 }
-/* --- [新增] 匯出圖片選擇模式樣式 --- */
-.chat-window.export-selection-mode .message-row {
-    cursor: pointer;
-    border-radius: 12px;
-    transition: background-color 0.2s ease;
-}
 
-.chat-window.export-selection-mode .message-row:hover {
-    background-color: var(--hover-background);
-}
-
-.message-row.export-selected {
-    background-color: var(--active-background) !important;
-    box-shadow: 0 0 0 2px var(--primary-color) inset;
-}
-
-#export-selection-info p {
-    margin: 5px 0;
-    font-size: 14px;
-    color: var(--text-light-color);
-}
-
-#export-selection-info #export-range-display {
-    font-weight: bold;
-    color: var(--text-color);
-}
-
-/* --- [新增] 匯出圖片選擇模式樣式 --- */
 .chat-window.screenshot-mode .message-row {
     cursor: pointer;
     border-radius: 12px;
     transition: background-color 0.2s ease, box-shadow 0.2s ease;
-    padding: 5px; /* 增加點擊區域 */
+    padding: 5px;
     margin-bottom: 15px;
 }
 
@@ -1406,7 +1341,6 @@ input[type="range"]::-moz-range-thumb {
     box-shadow: 0 0 0 2px var(--primary-color) inset;
 }
 
-/* --- [新增] 截圖工具列樣式 --- */
 .screenshot-toolbar {
     display: flex;
     justify-content: space-between;
@@ -1422,3 +1356,186 @@ input[type="range"]::-moz-range-thumb {
     font-weight: 500;
     color: var(--text-light-color);
 }
+
+#import-options-modal .modal-content {
+    max-width: 450px;
+}
+
+.import-option {
+    background-color: var(--input-background);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.import-option h4 {
+    margin-top: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.import-option p {
+    font-size: 14px;
+    color: var(--text-light-color);
+    line-height: 1.5;
+    margin-top: 5px;
+}
+
+.danger-text {
+    color: var(--danger-color) !important;
+}
+
+#auth-modal .modal-content {
+    max-width: 400px;
+}
+
+.full-width {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.social-btn {
+    width: 100%;
+    background-color: #4285F4;
+    color: white;
+}
+.social-btn:hover {
+    background-color: #357ae8;
+}
+
+.divider {
+    text-align: center;
+    margin: 20px 0;
+    color: var(--text-light-color);
+    position: relative;
+}
+.divider::before, .divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background-color: var(--border-color);
+}
+.divider::before { left: 0; }
+.divider::after { right: 0; }
+
+.form-switcher {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+}
+.form-switcher a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+.form-switcher a:hover {
+    text-decoration: underline;
+}
+
+/* [ADDED] Styles for multiple first messages */
+.first-message-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.first-message-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.first-message-item textarea {
+    flex-grow: 1;
+    min-height: 40px; /* Start small */
+    height: auto;
+    resize: vertical;
+    padding: 8px 12px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+#add-first-message-btn {
+    align-self: flex-start;
+}
+/* --- [ADDED] Prompt Set Management Styles --- */
+
+.prompt-item-list {
+    list-style: none;
+    padding: 0;
+    margin: 15px 0 0 0;
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+
+.prompt-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s;
+}
+
+.prompt-item:last-child {
+    border-bottom: none;
+}
+
+.prompt-item:hover {
+    background-color: var(--hover-background);
+}
+
+.prompt-item-name {
+    flex-grow: 1;
+    font-size: 14px;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 10px;
+}
+
+.prompt-item-toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background-color: var(--border-color);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    flex-shrink: 0;
+}
+
+.prompt-item-toggle::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    width: 18px;
+    height: 18px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+}
+
+.prompt-item-toggle.enabled {
+    background-color: var(--success-color);
+}
+
+.prompt-item-toggle.enabled::before {
+    transform: translateX(20px);
+}
+    /* --- [ADDED] Styles for Prompt Item Actions --- */
+    .prompt-item-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+    

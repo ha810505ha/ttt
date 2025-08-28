@@ -2,6 +2,7 @@
 // 這個檔案處理所有與外部 API 互動的邏輯。
 
 import { state, tempState } from './state.js';
+import * as PromptManager from './promptManager.js';
 
 /**
  * @description 清理並格式化對話歷史，以符合 Claude API 的嚴格要求。
@@ -55,7 +56,7 @@ export function buildApiMessages() {
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
     const maxTokenContext = parseInt(state.globalSettings.contextSize) || 30000;
     
-    const systemPrompt = buildSystemPrompt();
+    const systemPrompt = PromptManager.buildSystemPrompt();
     let currentTokenCount = estimateTokens(systemPrompt);
     
     const recentHistory = [];
@@ -86,7 +87,7 @@ export function buildApiMessages() {
  */
 export function buildApiMessagesFromHistory(customHistory) {
     const provider = state.globalSettings.apiProvider || 'official_gemini';
-    const systemPrompt = buildSystemPrompt();
+    const systemPrompt = PromptManager.buildSystemPrompt();
     
     const recentHistory = customHistory.filter(msg => !msg.error).map(msg => {
         let finalContent = msg.content;
@@ -96,17 +97,17 @@ export function buildApiMessagesFromHistory(customHistory) {
         return { role: msg.role, content: finalContent };
     });
     
-    // [重要修正] 確保官方模型和自訂 Gemini 都使用正確的格式
-    if (provider === 'google' || provider === 'official_gemini') {
+    if (provider === 'google') {
         const contents = recentHistory.map(msg => ({ 
             role: msg.role === 'assistant' ? 'model' : 'user', 
             parts: [{ text: msg.content }] 
         }));
-        if (systemPrompt) {
-            contents.unshift({ role: 'user', parts: [{ text: systemPrompt }] });
-            contents.push({ role: 'model', parts: [{ text: "OK." }] });
-        }
-        return contents;
+        return {
+            contents,
+            systemInstruction: {
+                parts: [{ text: systemPrompt }]
+            }
+        };
     }
 
     if (provider === 'anthropic') {
@@ -123,42 +124,6 @@ export function buildApiMessagesFromHistory(customHistory) {
 }
 
 /**
- * @description 根據當前角色、使用者、記憶和提示詞設定，建構系統提示 (System Prompt)
- * @returns {string} 組合好的系統提示字串
- */
-function buildSystemPrompt() {
-    if (!state.activeCharacterId || !state.activeChatId) return "";
-    const char = state.characters.find(c => c.id === state.activeCharacterId);
-    if (!char) {
-        console.error(`buildSystemPrompt: 找不到 ID 為 ${state.activeCharacterId} 的角色`);
-        return "";
-    }
-    
-    const metadata = state.chatMetadatas[state.activeCharacterId]?.[state.activeChatId] || {};
-    const currentPersonaId = metadata.userPersonaId || state.activeUserPersonaId;
-    const user = state.userPersonas.find(p => p.id === currentPersonaId) || state.userPersonas[0] || {};
-
-    const userName = user.name || 'User';
-    const prompts = state.promptSettings;
-    const memory = state.longTermMemories[state.activeCharacterId]?.[state.activeChatId];
-    let prompt = "";
-
-    const replacePlaceholders = (text) => {
-        if (typeof text !== 'string') return '';
-        return text.replace(/{{char}}/g, char.name).replace(/{{user}}/g, userName);
-    };
-
-    if (memory) prompt += `[先前對話摘要]\n${memory}\n\n`;
-    if (char.description) prompt += `[${char.name} 的人物設定]\n${replacePlaceholders(char.description)}\n\n`;
-    if (user.description) prompt += `[${userName} 的人物設定]\n${replacePlaceholders(user.description)}\n\n`;
-    if (prompts.scenario) prompt += `[場景]\n${replacePlaceholders(prompts.scenario)}\n\n`;
-    if (char.exampleDialogue) prompt += `[對話範例]\n${replacePlaceholders(char.exampleDialogue)}\n\n`;
-    if (prompts.jailbreak) prompt += `${replacePlaceholders(prompts.jailbreak)}\n\n`;
-
-    return prompt.trim();
-}
-
-/**
  * @description 呼叫後端大型語言模型 API
  * @param {Array|Object} messagePayload - 準備發送的訊息
  * @param {boolean} isForSummarization - 是否為生成摘要的呼叫
@@ -172,9 +137,8 @@ export async function callApi(messagePayload, isForSummarization = false) {
     const provider = settings.apiProvider || 'official_gemini';
     
     if (provider === 'official_gemini') {
-        return callOfficialApi(messagePayload, signal);
+        return callOfficialApi(messagePayload, isForSummarization, signal);
     } else {
-        if (!settings.apiKey) throw new Error('尚未設定 API 金鑰。');
         return callProxyApi(provider, settings.apiKey, messagePayload, isForSummarization, signal);
     }
 }
@@ -182,14 +146,17 @@ export async function callApi(messagePayload, isForSummarization = false) {
 /**
  * @description 呼叫我們的安全後端 (使用官方金鑰)
  */
-async function callOfficialApi(messagePayload, signal) {
+async function callOfficialApi(messagePayload, isForSummarization, signal) {
     const YOUR_WORKER_URL = 'https://key.d778105.workers.dev/';
     const url = YOUR_WORKER_URL + 'chat';
-
     const settings = state.globalSettings;
+
     const body = {
         model: settings.apiModel,
         messages: messagePayload,
+        temperature: isForSummarization ? 0.5 : parseFloat(settings.temperature),
+        top_p: isForSummarization ? 1 : parseFloat(settings.topP),
+        max_tokens: isForSummarization ? 1000 : parseInt(settings.maxTokens)
     };
 
     const response = await fetch(url, {
@@ -204,13 +171,16 @@ async function callOfficialApi(messagePayload, signal) {
         throw new Error(`API 錯誤 (${response.status}): ${errorText}`);
     }
     const data = await response.json();
-    return parseResponse('google', data);
+    return parseResponse('openai', data);
 }
+
 
 /**
  * @description 呼叫代理伺服器 (使用使用者自訂金鑰)
  */
 async function callProxyApi(provider, apiKey, messagePayload, isForSummarization, signal) {
+    if (!apiKey) throw new Error('尚未設定 API 金鑰。');
+
     const YOUR_WORKER_URL = 'https://key.d778105.workers.dev/';
     const settings = state.globalSettings;
     let url = "", headers = {}, body = {};
@@ -225,15 +195,22 @@ async function callProxyApi(provider, apiKey, messagePayload, isForSummarization
         case "openai":
         case "mistral":
         case "xai":
-            let baseUrl = provider === 'openai' ? 'https://api.openai.com/v1/chat/completions' : provider === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' : 'https://api.x.ai/v1/chat/completions';
+        case "openrouter":
+            let baseUrl;
+            if (provider === 'openai') baseUrl = 'https://api.openai.com/v1/chat/completions';
+            else if (provider === 'mistral') baseUrl = 'https://api.mistral.ai/v1/chat/completions';
+            else if (provider === 'xai') baseUrl = 'https://api.x.ai/v1/chat/completions';
+            else baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+            
             url = YOUR_WORKER_URL + baseUrl;
             headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
-            body = { ...baseParams, messages: messagePayload, frequency_penalty: parseFloat(settings.repetitionPenalty) };
-            break;
-        case "openrouter":
-            url = "https://openrouter.ai/api/v1/chat/completions";
-            headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
-            body = { ...baseParams, messages: messagePayload, repetition_penalty: parseFloat(settings.repetitionPenalty) };
+            body = { ...baseParams, messages: messagePayload };
+            if (provider === 'openai' || provider === 'mistral' || provider === 'xai') {
+                body.frequency_penalty = parseFloat(settings.repetitionPenalty);
+            }
+            if (provider === 'openrouter') {
+                body.repetition_penalty = parseFloat(settings.repetitionPenalty);
+            }
             break;
         case "anthropic":
             url = YOUR_WORKER_URL + "https://api.anthropic.com/v1/messages";
@@ -243,7 +220,15 @@ async function callProxyApi(provider, apiKey, messagePayload, isForSummarization
         case "google":
             url = YOUR_WORKER_URL + `https://generativelanguage.googleapis.com/v1beta/models/${settings.apiModel}:generateContent?key=${apiKey}`;
             headers = { "Content-Type": "application/json" };
-            body = { contents: messagePayload, generationConfig: { temperature: baseParams.temperature, topP: baseParams.topP, maxOutputTokens: baseParams.max_tokens } };
+            body = { 
+                contents: messagePayload.contents, 
+                systemInstruction: messagePayload.systemInstruction,
+                generationConfig: { 
+                    temperature: baseParams.temperature, 
+                    topP: baseParams.top_p, 
+                    maxOutputTokens: baseParams.max_tokens 
+                } 
+            };
             break;
         default: throw new Error("不支援的 API 供應商: " + provider);
     }
@@ -268,6 +253,7 @@ function parseResponse(provider, data) {
             case "mistral":
             case "xai":
             case "openrouter":
+            case "official_gemini": // [MODIFIED] Worker 回傳的格式與 OpenAI 相同
                 return data.choices[0].message.content;
             case "anthropic": 
                 return data.content[0].text;
@@ -295,13 +281,13 @@ export async function testApiConnection(provider, apiKey, model) {
         case "openai":
         case "mistral":
         case "xai":
-            let baseUrl = provider === 'openai' ? 'https://api.openai.com/v1/chat/completions' : provider === 'mistral' ? 'https://api.mistral.ai/v1/chat/completions' : 'https://api.x.ai/v1/chat/completions';
-            url = YOUR_CLOUDFLARE_WORKER_URL + baseUrl;
-            headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
-            body = { model, messages: testPayload, max_tokens: 5 };
-            break;
         case "openrouter":
-            url = "https://openrouter.ai/api/v1/chat/completions";
+            let baseUrl;
+            if (provider === 'openai') baseUrl = 'https://api.openai.com/v1/chat/completions';
+            else if (provider === 'mistral') baseUrl = 'https://api.mistral.ai/v1/chat/completions';
+            else if (provider === 'xai') baseUrl = 'https://api.x.ai/v1/chat/completions';
+            else baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
+            url = YOUR_CLOUDFLARE_WORKER_URL + baseUrl;
             headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
             body = { model, messages: testPayload, max_tokens: 5 };
             break;

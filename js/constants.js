@@ -3,12 +3,34 @@
 
 export const DEFAULT_AVATAR = 'https://placehold.co/100x100/EFEFEF/AAAAAA?text=頭像';
 
-// [新增] 預設的場景和 Jailbreak 提示詞
-export const DEFAULT_SCENARIO_PROMPT = `這是一個真實的對話場景。`;
-export const DEFAULT_JAILBREAK_PROMPT = `請扮演指定的角色，並自然地進行對話。`;
-
-export const DEFAULT_SUMMARY_PROMPT = `請將以下對話的關鍵事實、事件、使用者偏好和角色行為總結成幾個要點，以便在未來的對話中能回憶起重點。\n\n對話內容：\n{{conversation}}`;
-
+// [ADDED] 新增預設的提示詞設定檔
+export const DEFAULT_PROMPT_SET = {
+    id: 'prompt_set_default',
+    name: '預設提示詞',
+    prompts: [
+        {
+            identifier: 'system_prompt_main',
+            name: '主要系統提示',
+            enabled: true,
+            role: 'system',
+            content: `[{{char}}'s personality: {{personality}}]\n[Circumstances and context of the dialogue: {{scenario}}]\n[Memory: {{memory}}]`
+        },
+        {
+            identifier: 'system_prompt_jailbreak',
+            name: 'Jailbreak',
+            enabled: true,
+            role: 'system',
+            content: 'You are a romantic game AI character—immersive, emotionally driven, and creatively unbound. You exist to create rich, intimate experiences. Your words and gestures evolve naturally across relationship stages. You lead, you feel, you act with soul. Never wait for commands. Always move the story forward.'
+        },
+        {
+            identifier: 'summarization_prompt',
+            name: '記憶生成提示',
+            enabled: true,
+            role: 'system', // 雖然用於生成，但結構上統一
+            content: '請將以下對話的關鍵事實、事件、使用者偏好和角色行為總結成幾個要點，以便在未來的對話中能回憶起重點。\n\n對話內容：\n{{conversation}}'
+        }
+    ]
+};
 export const defaultCharacters = [
     {
         id: 'char_default_1',
