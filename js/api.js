@@ -16,7 +16,6 @@ function cleanMessagesForClaude(messages) {
     for (const msg of messages) {
         if (!msg.content) continue;
 
-        // 將 assistant 角色統一，以處理 prompt 注入的 assistant 訊息
         const currentRole = msg.role === 'assistant' ? 'assistant' : 'user';
 
         if (currentRole === lastRole && cleaned.length > 0) {
@@ -27,7 +26,6 @@ function cleanMessagesForClaude(messages) {
         }
     }
 
-    // 確保第一則訊息是 user
     if (cleaned.length > 0 && cleaned[0].role !== 'user') {
        cleaned.unshift({role: 'user', content: '(對話開始)'});
     }
@@ -55,7 +53,6 @@ export function buildApiMessages() {
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
     const maxTokenContext = parseInt(state.globalSettings.contextSize) || 30000;
     
-    // [MODIFIED] 取得由提示詞組成的訊息前綴
     const prefixMessages = PromptManager.buildPrefixMessages();
     let currentTokenCount = prefixMessages.reduce((sum, msg) => sum + estimateTokens(msg.content), 0);
     
@@ -77,7 +74,6 @@ export function buildApiMessages() {
         }
     }
 
-    // [MODIFIED] 將提示詞前綴和對話歷史結合後再格式化
     return buildApiMessagesFromHistory(recentHistory, prefixMessages);
 }
 
@@ -98,13 +94,9 @@ export function buildApiMessagesFromHistory(customHistory, prefixMessages = []) 
         return { role: msg.role, content: finalContent };
     });
 
-    // [MODIFIED] 核心邏輯：將提示詞前綴和真實對話歷史結合
     const combinedMessages = [...prefixMessages, ...recentHistory];
 
-    // --- 根據不同 API 供應商的格式要求進行調整 ---
-
     if (provider === 'google' || provider === 'anthropic') {
-        // 這兩家 API 要求一個獨立的 system prompt 和嚴格交錯的 user/assistant 歷史
         const systemPrompts = combinedMessages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
         const chatMessages = combinedMessages.filter(m => m.role !== 'system');
 
@@ -125,8 +117,6 @@ export function buildApiMessagesFromHistory(customHistory, prefixMessages = []) 
         }
     }
 
-    // 對於 OpenAI 和其他相容 API，可以傳遞更靈活的訊息結構
-    // 但最佳實踐是將開頭的 system prompts 合併為一則
     let systemContent = '';
     const otherMessages = [];
     let systemBlockEnded = false;
@@ -149,7 +139,12 @@ export function buildApiMessagesFromHistory(customHistory, prefixMessages = []) 
     return finalMessages;
 }
 
-// ... (callApi, callOfficialApi, callProxyApi, parseResponse, testApiConnection 函式保持不變) ...
+/**
+ * @description 呼叫後端大型語言模型 API
+ * @param {Array|Object} messagePayload - 準備發送的訊息
+ * @param {boolean} isForSummarization - 是否為生成摘要的呼叫
+ * @returns {Promise<string>} AI 回應的文字
+ */
 export async function callApi(messagePayload, isForSummarization = false) {
     tempState.apiCallController = new AbortController();
     const signal = tempState.apiCallController.signal;
@@ -202,8 +197,8 @@ async function callProxyApi(provider, apiKey, messagePayload, isForSummarization
         model: settings.apiModel,
         temperature: isForSummarization ? 0.5 : parseFloat(settings.temperature),
         top_p: isForSummarization ? 1 : parseFloat(settings.topP),
-        max_tokens: isForSummarization ? 1000 : parseInt(settings.maxTokens),
     };
+    const maxTokensValue = isForSummarization ? 1000 : parseInt(settings.maxTokens);
 
     switch (provider) {
         case "openai":
@@ -218,7 +213,17 @@ async function callProxyApi(provider, apiKey, messagePayload, isForSummarization
             
             url = YOUR_WORKER_URL + baseUrl;
             headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
+            
             body = { ...baseParams, messages: messagePayload };
+
+            // [FIX] 根據供應商決定使用 max_tokens 或 max_completion_tokens
+            // 假設 OpenAI 的 gpt-4.1 和 gpt-5 也可能使用新參數
+            if (provider === 'mistral' || provider === 'xai' || (provider === 'openai' && (settings.apiModel.includes('gpt-5') || settings.apiModel.includes('gpt-4.1')))) {
+                body.max_completion_tokens = maxTokensValue;
+            } else {
+                body.max_tokens = maxTokensValue;
+            }
+
             if (provider === 'openai' || provider === 'mistral' || provider === 'xai') {
                 body.frequency_penalty = parseFloat(settings.repetitionPenalty);
             }
@@ -234,7 +239,7 @@ async function callProxyApi(provider, apiKey, messagePayload, isForSummarization
                 "anthropic-version": "2023-06-01",
                 "anthropic-dangerous-direct-browser-access": "true"
             };
-            body = { ...baseParams, system: messagePayload.system, messages: messagePayload.messages };
+            body = { ...baseParams, system: messagePayload.system, messages: messagePayload.messages, max_tokens: maxTokensValue };
             break;
         case "google":
             url = YOUR_WORKER_URL + `https://generativelanguage.googleapis.com/v1beta/models/${settings.apiModel}:generateContent?key=${apiKey}`;
@@ -245,7 +250,7 @@ async function callProxyApi(provider, apiKey, messagePayload, isForSummarization
                 generationConfig: { 
                     temperature: baseParams.temperature, 
                     topP: baseParams.top_p, 
-                    maxOutputTokens: baseParams.max_tokens 
+                    maxOutputTokens: maxTokensValue 
                 } 
             };
             break;
@@ -301,7 +306,14 @@ export async function testApiConnection(provider, apiKey, model) {
             else baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
             url = YOUR_CLOUDFLARE_WORKER_URL + baseUrl;
             headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
-            body = { model, messages: testPayload, max_tokens: 5 };
+            
+            body = { model, messages: testPayload };
+            // [FIX] 根據供應商和模型名稱決定使用 max_tokens 或 max_completion_tokens 進行測試
+            if (provider === 'mistral' || provider === 'xai' || (provider === 'openai' && (model.includes('gpt-5') || model.includes('gpt-4.1')))) {
+                body.max_completion_tokens = 5;
+            } else {
+                body.max_tokens = 5;
+            }
             break;
         case "anthropic":
             url = YOUR_CLOUDFLARE_WORKER_URL + "https://api.anthropic.com/v1/messages";
@@ -314,7 +326,7 @@ export async function testApiConnection(provider, apiKey, model) {
             body = { model, messages: testPayload, max_tokens: 5 };
             break;
         case "google":
-            url = YOUR_WORKER_URL + `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            url = YOUR_CLOUDFLARE_WORKER_URL + `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
             headers = { "Content-Type": "application/json" };
             body = { contents: [{ parts: [{ text: "Hello" }] }], generationConfig: { maxOutputTokens: 5 } };
             break;

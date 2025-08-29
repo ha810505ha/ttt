@@ -1,7 +1,7 @@
 // js/state.js
 // 這個檔案負責管理整個應用程式的狀態，並與 IndexedDB 互動。
 
-import { defaultCharacters, DEFAULT_AVATAR, DEFAULT_PROMPT_SET } from './constants.js';
+import { DEFAULT_AVATAR, DEFAULT_PROMPT_SET } from './constants.js';
 import * as db from './db.js';
 
 // 應用程式的核心狀態物件
@@ -52,43 +52,57 @@ export async function loadStateFromDB() {
     state.userPersonas = await db.getAll('userPersonas');
     state.promptSets = await db.getAll('promptSets');
 
-    // [MODIFIED] 初始化或遷移角色資料，加入 loved 和 order 屬性
-    let charMigrationNeeded = false;
-    state.characters.forEach((char, index) => {
-        if (char.loved === undefined) {
-            char.loved = false;
-            charMigrationNeeded = true;
-        }
-        if (char.order === undefined) {
-            char.order = index;
-            charMigrationNeeded = true;
-        }
-    });
-    if (charMigrationNeeded) {
-        await db.put('characters', ...state.characters); // 一次性儲存所有更新
-        console.log("資料遷移完成: 角色已新增 'loved' 和 'order' 屬性。");
-    }
-
-
+    // [MODIFIED] 如果是第一次使用，從 JSON 檔案非同步載入預設角色
     if (state.characters.length === 0) {
-        for (const char of defaultCharacters) {
-            if (typeof char.firstMessage === 'string') {
-                char.firstMessage = [char.firstMessage];
+        try {
+            const response = await fetch('js/default_characters.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-            await db.put('characters', char);
-        }
-        state.characters = await db.getAll('characters');
-    } else {
-        let migrationNeeded = false;
-        for (const char of state.characters) {
-            if (typeof char.firstMessage === 'string') {
-                char.firstMessage = [char.firstMessage];
+            const defaultCharacters = await response.json();
+            
+            for (const char of defaultCharacters) {
+                // 確保 firstMessage 是陣列格式
+                if (typeof char.firstMessage === 'string') {
+                    char.firstMessage = [char.firstMessage];
+                }
+                // 賦予 loved 和 order 預設值
+                char.loved = char.loved || false;
+                char.order = char.order || state.characters.length;
                 await db.put('characters', char);
-                migrationNeeded = true;
             }
+            state.characters = await db.getAll('characters');
+            console.log('成功從 JSON 檔案載入預設角色。');
+        } catch (error) {
+            console.error("無法載入預設角色檔案 'js/default_characters.json':", error);
+            alert("錯誤：無法載入預設角色資料，請檢查主控台。");
         }
-        if (migrationNeeded) {
-            console.log("資料遷移完成: 'firstMessage' 欄位已轉換為陣列格式。");
+    } else {
+        // 為現有使用者遷移資料，加入 loved 和 order 屬性
+        let charMigrationNeeded = false;
+        const updatePromises = state.characters.map((char, index) => {
+            let updated = false;
+            if (char.loved === undefined) {
+                char.loved = false;
+                updated = true;
+            }
+            if (char.order === undefined) {
+                char.order = index;
+                updated = true;
+            }
+            if (typeof char.firstMessage === 'string') {
+                char.firstMessage = [char.firstMessage];
+                updated = true;
+            }
+            if (updated) {
+                charMigrationNeeded = true;
+                return db.put('characters', char);
+            }
+            return Promise.resolve();
+        });
+        await Promise.all(updatePromises);
+        if (charMigrationNeeded) {
+            console.log("資料遷移完成: 角色資料已更新。");
         }
     }
 
@@ -127,7 +141,6 @@ export async function loadChatDataForCharacter(charId) {
     state.longTermMemories[charId] = memories ? memories.data : {};
     state.chatMetadatas[charId] = metadatas ? metadatas.data : {};
 
-    // [ADDED] 初始化聊天室的 order 屬性
     if (state.chatMetadatas[charId]) {
         let metaMigrationNeeded = false;
         Object.values(state.chatMetadatas[charId]).forEach((meta, index) => {

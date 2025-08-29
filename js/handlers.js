@@ -30,7 +30,10 @@ import { DEFAULT_AVATAR } from './constants.js';
 import { handleImageUpload, exportChatAsJsonl, applyTheme, importCharacter, exportCharacter } from './utils.js';
 import * as PromptManager from './promptManager.js';
 
-// ... (其他 handlers 保持不變) ...
+// ===================================================================================
+// 使用者認證 (Authentication)
+// ===================================================================================
+
 export function handleLogin() {
     toggleModal('auth-modal', true);
 }
@@ -90,6 +93,11 @@ export function handleLogout() {
         });
     }
 }
+
+
+// ===================================================================================
+// API 連線與設定檔
+// ===================================================================================
 
 export async function handleTestApiConnection() {
     const provider = DOM.apiProviderSelect.value;
@@ -167,6 +175,10 @@ export async function handleDeleteApiPreset() {
         alert(`設定檔 "${presetToDelete.name}" 已刪除。`);
     }
 }
+
+// ===================================================================================
+// 聊天核心邏輯 (Core Chat Logic)
+// ===================================================================================
 
 export async function sendMessage(userMessage = null, messageIndex = null) {
     if (state.globalSettings.apiProvider !== 'official_gemini' && !state.globalSettings.apiKey) {
@@ -307,6 +319,10 @@ export function handleStopGeneration() {
     setGeneratingState(false);
 }
 
+// ===================================================================================
+// 聊天與角色管理 (Chat & Character Management)
+// ===================================================================================
+
 export async function switchChat(chatId) {
     if (state.activeChatId === chatId) return;
 
@@ -418,6 +434,10 @@ export async function handleTogglePinChat(chatId) {
     }
 }
 
+// ===================================================================================
+// 角色編輯器 (Character Editor)
+// ===================================================================================
+
 export function openCharacterEditor(charId = null) {
     tempState.editingCharacterId = charId;
     if (charId) {
@@ -505,10 +525,6 @@ export async function handleDeleteActiveCharacter() {
     }
 }
 
-/**
- * @description [ADDED] 處理角色喜愛狀態的切換
- * @param {string} charId - 角色 ID
- */
 export async function handleToggleCharacterLove(charId) {
     const char = state.characters.find(c => c.id === charId);
     if (char) {
@@ -518,16 +534,10 @@ export async function handleToggleCharacterLove(charId) {
     }
 }
 
-/**
- * @description [ADDED] 處理角色列表的拖曳排序
- * @param {string} draggedId - 被拖曳的角色 ID
- * @param {string|null} targetId - 目標位置的角色 ID
- */
 export async function handleCharacterDropSort(draggedId, targetId) {
     const draggedItem = state.characters.find(c => c.id === draggedId);
     if (!draggedItem) return;
 
-    // 複製一份排序前的陣列以計算新順序
     const sortedChars = [...state.characters].sort((a, b) => {
         if (a.loved !== b.loved) return a.loved ? -1 : 1;
         return (a.order || 0) - (b.order || 0);
@@ -539,22 +549,16 @@ export async function handleCharacterDropSort(draggedId, targetId) {
     const targetIndex = targetId ? sortedChars.findIndex(c => c.id === targetId) : sortedChars.length;
     sortedChars.splice(targetIndex, 0, draggedItem);
 
-    // 為所有角色重新指派 order 值
     for (let i = 0; i < sortedChars.length; i++) {
         const charToUpdate = state.characters.find(c => c.id === sortedChars[i].id);
         if(charToUpdate) {
             charToUpdate.order = i;
-            await saveCharacter(charToUpdate); // 逐一儲存
+            await saveCharacter(charToUpdate);
         }
     }
     renderCharacterList();
 }
 
-/**
- * @description [ADDED] 處理聊天室列表的拖曳排序
- * @param {string} draggedId - 被拖曳的聊天室 ID
- * @param {string|null} targetId - 目標位置的聊天室 ID
- */
 export async function handleChatSessionDropSort(draggedId, targetId) {
     const metadatas = state.chatMetadatas[state.activeCharacterId];
     if (!metadatas) return;
@@ -587,7 +591,10 @@ export async function handleChatSessionDropSort(draggedId, targetId) {
 }
 
 
-// ... (其他 handlers 保持不變) ...
+// ===================================================================================
+// 訊息編輯與操作 (Message Editing & Actions)
+// ===================================================================================
+
 export function makeMessageEditable(row, index) {
     const currentlyEditing = document.querySelector('.is-editing');
     if (currentlyEditing) { 
@@ -651,7 +658,24 @@ async function handleDeleteMessage(index) {
     }
 }
 
+// ===================================================================================
+// 全域與提示詞設定 (Global & Prompt Settings)
+// ===================================================================================
+
+/**
+ * @description [MODIFIED] 儲存全域設定，並只更新必要的 UI
+ */
 export async function handleSaveGlobalSettings() {
+    // [MODIFIED] 新增 Token 上限檢查
+    let contextSize = parseInt(DOM.contextSizeInput.value, 10) || 30000;
+    const maxContextSize = 100000;
+
+    if (contextSize > maxContextSize) {
+        alert(`上下文大小已超過上限 (100,000)，將自動設為 ${maxContextSize}。`);
+        contextSize = maxContextSize;
+        DOM.contextSizeInput.value = maxContextSize; // 同步更新輸入框的顯示值
+    }
+
     state.globalSettings = {
         apiProvider: DOM.apiProviderSelect.value,
         apiModel: DOM.apiModelSelect.value,
@@ -659,7 +683,7 @@ export async function handleSaveGlobalSettings() {
         temperature: DOM.temperatureValue.value,
         topP: DOM.topPValue.value,
         repetitionPenalty: DOM.repetitionPenaltyValue.value,
-        contextSize: DOM.contextSizeInput.value,
+        contextSize: contextSize, // 使用經過驗證的值
         maxTokens: DOM.maxTokensValue.value,
         theme: DOM.themeSelect.value,
     };
@@ -668,9 +692,20 @@ export async function handleSaveGlobalSettings() {
     await saveSettings();
     
     toggleModal('global-settings-modal', false);
-    renderActiveChat();
+
+    // 只更新聊天視窗中可能變動的部分，避免整個頁面跳轉
+    if (state.activeCharacterId && state.activeChatId) {
+        const currentModel = state.globalSettings.apiModel || '未設定';
+        DOM.chatHeaderModelName.textContent = currentModel;
+        DOM.chatHeaderModelName.title = currentModel;
+    }
+    
     alert('所有設定已儲存！');
 }
+
+// ===================================================================================
+// 新的提示詞庫處理函式
+// ===================================================================================
 
 export function handleImportPromptSet() {
     const input = document.createElement('input');
@@ -816,6 +851,11 @@ export async function handlePromptDropSort(draggedIdentifier, targetIdentifier) 
     renderPromptList();
 }
 
+
+// ===================================================================================
+// 使用者角色 (User Persona)
+// ===================================================================================
+
 export function openUserPersonaEditor(personaId = null) {
     tempState.editingUserPersonaId = personaId;
     if (personaId) {
@@ -880,6 +920,10 @@ export async function handleChatPersonaChange(e) {
         renderChatMessages();
     }
 }
+
+// ===================================================================================
+// 長期記憶 (Long-term Memory)
+// ===================================================================================
 
 export function openMemoryEditor() {
     if (!state.activeCharacterId || !state.activeChatId) {
@@ -955,6 +999,10 @@ export async function handleUpdateMemory() {
         setGeneratingState(false, false);
     }
 }
+
+// ===================================================================================
+// 匯入/匯出與截圖
+// ===================================================================================
 
 export function openExportModal() {
     if (!state.activeCharacterId || !state.activeChatId) {

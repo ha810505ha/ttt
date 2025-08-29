@@ -16,14 +16,10 @@ export function renderUserProfile() {
     }
 }
 
-/**
- * @description [MODIFIED] 渲染左側的角色列表，加入排序和喜愛功能
- */
 export function renderCharacterList() {
     renderUserProfile();
     DOM.characterList.innerHTML = '';
 
-    // 排序：喜愛的角色優先，然後按自訂順序
     const sortedCharacters = [...state.characters].sort((a, b) => {
         if (a.loved !== b.loved) {
             return a.loved ? -1 : 1;
@@ -79,9 +75,6 @@ export function showChatSessionListView(charId) {
     }
 }
 
-/**
- * @description [MODIFIED] 渲染當前選定角色的聊天室列表，加入排序功能
- */
 export function renderChatSessionList() {
     DOM.chatSessionList.innerHTML = '';
     const sessions = state.chatHistories[state.activeCharacterId] || {};
@@ -95,7 +88,7 @@ export function renderChatSessionList() {
         }))
         .sort((a, b) => {
             if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-            return (a.order || 0) - (b.order || 0); // 按自訂順序排序
+            return (a.order || 0) - (b.order || 0);
         });
 
     if (sortedSessions.length === 0) {
@@ -127,7 +120,9 @@ export function renderChatSessionList() {
     });
 }
 
-// ... (其他函式保持不變) ...
+/**
+ * @description [MODIFIED] 渲染當前活躍的聊天介面，使用自訂模型名稱
+ */
 export function renderActiveChat() {
     if (!state.activeCharacterId || !state.activeChatId) {
         DOM.welcomeScreen.classList.remove('hidden');
@@ -146,9 +141,20 @@ export function renderActiveChat() {
     DOM.chatHeaderName.textContent = activeChar.name;
     DOM.chatNotesInput.value = metadata.notes || '';
     
-    const currentModel = state.globalSettings.apiModel || '未設定';
-    DOM.chatHeaderModelName.textContent = currentModel;
-    DOM.chatHeaderModelName.title = currentModel;
+    // [FIX] 查找並顯示自訂的模型名稱
+    const provider = state.globalSettings.apiProvider || 'official_gemini';
+    const modelId = state.globalSettings.apiModel;
+    let modelDisplayName = modelId || '未設定'; // 預設顯示 ID
+
+    if (modelId && MODELS[provider]) {
+        const modelObject = MODELS[provider].find(m => m.value === modelId);
+        if (modelObject) {
+            modelDisplayName = modelObject.name; // 如果找到，就使用自訂名稱
+        }
+    }
+    
+    DOM.chatHeaderModelName.textContent = modelDisplayName;
+    DOM.chatHeaderModelName.title = modelDisplayName;
     
     renderChatUserPersonaSelector();
     renderChatMessages();
@@ -227,7 +233,7 @@ export function loadGlobalSettingsToUI() {
     const settings = state.globalSettings;
     DOM.apiProviderSelect.value = settings.apiProvider || 'official_gemini';
     updateModelDropdown(); 
-    DOM.apiModelSelect.value = settings.apiModel || (MODELS[DOM.apiProviderSelect.value] ? MODELS[DOM.apiProviderSelect.value][0] : '');
+    DOM.apiModelSelect.value = settings.apiModel || (MODELS[DOM.apiProviderSelect.value] ? MODELS[DOM.apiProviderSelect.value][0].value : '');
     DOM.apiKeyInput.value = settings.apiKey || '';
     DOM.temperatureSlider.value = settings.temperature || 1;
     DOM.temperatureValue.value = settings.temperature || 1;
@@ -260,15 +266,15 @@ export function updateModelDropdown() {
     DOM.apiModelSelect.innerHTML = ''; 
     models.forEach(model => {
         const option = document.createElement('option');
-        option.value = model;
-        option.textContent = model;
+        option.value = model.value;
+        option.textContent = model.name;
         DOM.apiModelSelect.appendChild(option);
     });
     const savedModel = state.globalSettings.apiModel;
-    if (savedModel && models.includes(savedModel)) {
+    if (savedModel && models.some(m => m.value === savedModel)) {
         DOM.apiModelSelect.value = savedModel;
     } else if (models.length > 0) {
-        DOM.apiModelSelect.value = models[0];
+        DOM.apiModelSelect.value = models[0].value;
     }
 
     DOM.apiKeyFormGroup.classList.toggle('hidden', provider === 'official_gemini');
