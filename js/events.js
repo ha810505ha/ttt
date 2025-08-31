@@ -11,7 +11,7 @@ import { state, tempState, saveSettings, loadChatDataForCharacter } from './stat
  * @description 集中設定所有 DOM 元素的事件監聽器
  */
 export function setupEventListeners() {
-    // ... (其他靜態元素事件綁定保持不變) ...
+    // 靜態元素事件綁定
     DOM.loginBtn.addEventListener('click', Handlers.handleLogin);
     DOM.logoutBtn.addEventListener('click', Handlers.handleLogout);
     
@@ -173,7 +173,6 @@ export function setupEventListeners() {
     });
     DOM.deletePromptEditorBtn.addEventListener('click', Handlers.handleDeletePromptItem);
 
-    // [新增] 監聽位置下拉選單的變更
     DOM.promptEditorPositionSelect.addEventListener('change', Handlers.handlePromptPositionChange);
 
     let draggedIdentifier = null;
@@ -324,15 +323,83 @@ export function setupEventListeners() {
 
     // ================== 事件委派 (處理動態產生的元素) ==================
 
+    // [核心修改] 為角色列表加入長按功能
+    let longPressTimer;
+    let wasLongPress = false;
+
+    DOM.characterList.addEventListener('pointerdown', (e) => {
+        const charItem = e.target.closest('.character-item');
+        if (!charItem) return;
+
+        // 排除拖曳把手和已經存在的按鈕
+        if (e.target.closest('.drag-handle') || e.target.closest('.love-char-btn')) {
+            return;
+        }
+
+        wasLongPress = false;
+        longPressTimer = setTimeout(() => {
+            wasLongPress = true; // 標記為已觸發長按
+            
+            // 增加視覺回饋
+            charItem.classList.add('long-press-active');
+            
+            // 觸發震動回饋 (如果裝置支援)
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+
+            const charId = charItem.dataset.id;
+            Handlers.handleToggleCharacterLove(charId);
+            
+            // 短暫延遲後移除視覺回饋
+            setTimeout(() => {
+                charItem.classList.remove('long-press-active');
+            }, 200);
+
+        }, 500); // 500毫秒視為長按
+    });
+
+    DOM.characterList.addEventListener('pointerup', (e) => {
+        clearTimeout(longPressTimer);
+        const charItem = e.target.closest('.character-item');
+        if(charItem) {
+            charItem.classList.remove('long-press-active');
+        }
+    });
+    
+    DOM.characterList.addEventListener('pointerleave', (e) => {
+         clearTimeout(longPressTimer);
+         const charItem = e.target.closest('.character-item');
+         if(charItem) {
+            charItem.classList.remove('long-press-active');
+        }
+    });
+    
+    DOM.characterList.addEventListener('contextmenu', (e) => {
+        // 防止長按時在手機上彈出右鍵選單
+        e.preventDefault();
+    });
+
+
     DOM.characterList.addEventListener('click', async (e) => {
+        // 如果剛剛觸發了長按，則阻止後續的點擊事件
+        if (wasLongPress) {
+            e.preventDefault();
+            e.stopPropagation();
+            wasLongPress = false; // 重設旗標
+            return;
+        }
+
         const charItem = e.target.closest('.character-item');
         if (!charItem) return;
 
         const charId = charItem.dataset.id;
         
+        // 點擊愛心按鈕的邏輯保持不變 (主要給桌面用戶使用)
         if (e.target.closest('.love-char-btn')) {
             await Handlers.handleToggleCharacterLove(charId);
         } else {
+            // 正常的點擊行為：切換到該角色的聊天列表
             await loadChatDataForCharacter(charId);
             UI.showChatSessionListView(charId);
             state.activeCharacterId = charId;
@@ -406,3 +473,4 @@ export function setupEventListeners() {
         }
     });
 }
+

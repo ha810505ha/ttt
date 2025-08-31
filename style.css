@@ -1589,7 +1589,9 @@ input[type="range"]::-moz-range-thumb {
     transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
-.character-item:hover .char-item-actions {
+/* 當滑鼠懸停，或角色本身已被設為最愛時，顯示操作按鈕 */
+.character-item:hover .char-item-actions,
+.character-item.loved .char-item-actions {
     visibility: visible;
     opacity: 1;
 }
@@ -1612,11 +1614,15 @@ input[type="range"]::-moz-range-thumb {
     align-items: center;
     flex-grow: 1;
     overflow: hidden;
+    /* [新增] 防止長按時選取到文字 */
+    user-select: none;
+    -webkit-user-select: none;
 }
 
-/* [新增] 提示詞編輯器的 Grid 樣式 */
-.prompt-editor-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
+/* [新增] 長按時的視覺回饋效果 */
+.character-item.long-press-active {
+    transform: scale(0.98);
+    background-color: var(--active-background);
+    transition: transform 0.1s ease-in-out, background-color 0.1s ease-in-out;
 }
+
