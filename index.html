@@ -482,6 +482,25 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label for="prompt-editor-position">位置 (Position)</label>
+                    <select id="prompt-editor-position">
+                        <option value="relative">相對位置</option>
+                        <option value="chat">聊天中的提示詞管理</option>
+                    </select>
+                </div>
+                <div id="prompt-depth-order-container" class="hidden">
+                    <div class="prompt-editor-grid">
+                        <div class="form-group">
+                            <label for="prompt-editor-depth">深度 (Depth)</label>
+                            <input type="number" id="prompt-editor-depth" placeholder="例如: 4" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="prompt-editor-order">順序 (Order)</label>
+                            <input type="number" id="prompt-editor-order" placeholder="數字越小越靠前">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label for="prompt-editor-content">提示詞內容</label>
                     <textarea id="prompt-editor-content" rows="8"></textarea>
                 </div>
@@ -496,4 +515,5 @@
 
     <script type="module" src="js/main.js"></script>
 </body>
-</ht
+</html>
+

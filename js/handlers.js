@@ -707,6 +707,7 @@ export async function handleSaveGlobalSettings() {
 // 新的提示詞庫處理函式
 // ===================================================================================
 
+
 export function handleImportPromptSet() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -794,6 +795,16 @@ export function openPromptEditor(identifier) {
     DOM.promptEditorNameInput.value = prompt.name;
     DOM.promptEditorRoleSelect.value = prompt.role || 'system';
     DOM.promptEditorContentInput.value = prompt.content;
+    
+    // 設置位置、深度和順序的預設值
+    const position = prompt.position || { type: 'relative', depth: 4 };
+    DOM.promptEditorPositionSelect.value = position.type;
+    DOM.promptEditorDepthInput.value = position.depth ?? 4;
+    DOM.promptEditorOrderInput.value = prompt.order ?? 0;
+    
+    // 根據位置類型，決定是否顯示深度/順序欄位
+    handlePromptPositionChange();
+    
     toggleModal('prompt-editor-modal', true);
 }
 
@@ -807,6 +818,16 @@ export async function handleSavePrompt() {
         prompt.name = DOM.promptEditorNameInput.value.trim();
         prompt.role = DOM.promptEditorRoleSelect.value;
         prompt.content = DOM.promptEditorContentInput.value;
+        
+        prompt.position = {
+            type: DOM.promptEditorPositionSelect.value,
+            depth: parseInt(DOM.promptEditorDepthInput.value, 10) || 4
+        };
+        prompt.order = parseInt(DOM.promptEditorOrderInput.value, 10) || 0;
+
+        // 因為順序可能已改變，我們需要重新排序整個提示詞列表
+        activeSet.prompts.sort((a, b) => (a.order || 0) - (b.order || 0));
+
         await savePromptSet(activeSet);
         renderPromptList();
     }
@@ -846,10 +867,22 @@ export async function handlePromptDropSort(draggedIdentifier, targetIdentifier) 
         : activeSet.prompts.length;
 
     activeSet.prompts.splice(targetIndex, 0, draggedItem);
+    
+    // 拖曳後，更新所有提示詞的 order 值以反映新的陣列順序
+    activeSet.prompts.forEach((p, index) => {
+        p.order = index;
+    });
 
     await savePromptSet(activeSet);
     renderPromptList();
 }
+
+// [新增] 處理提示詞位置變更的函式
+export function handlePromptPositionChange() {
+    const isChatType = DOM.promptEditorPositionSelect.value === 'chat';
+    DOM.promptDepthOrderContainer.classList.toggle('hidden', !isChatType);
+}
+
 
 
 // ===================================================================================

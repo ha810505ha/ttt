@@ -33,7 +33,6 @@ function cleanMessagesForClaude(messages) {
     return cleaned;
 }
 
-
 /**
  * @description 估算文字的 token 數量 (此處使用字元長度作為一個粗略的代理)
  * @param {string} text - 要計算的文字
@@ -44,7 +43,7 @@ function estimateTokens(text = '') {
 }
 
 /**
- * @description 根據 Token 數量上限，從歷史紀錄中建構準備發送給 API 的訊息 payload
+ * @description 根據 Token 上限和提示詞設定，建構最終發送給 API 的訊息 payload
  * @returns {Array|Object} 格式化後的訊息
  */
 export function buildApiMessages() {
@@ -52,12 +51,16 @@ export function buildApiMessages() {
 
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
     const maxTokenContext = parseInt(state.globalSettings.contextSize) || 30000;
-    
-    const prefixMessages = PromptManager.buildPrefixMessages();
-    let currentTokenCount = prefixMessages.reduce((sum, msg) => sum + estimateTokens(msg.content), 0);
-    
-    const recentHistory = [];
 
+    const activePromptSet = PromptManager.getActivePromptSet();
+    const enabledPrompts = activePromptSet.prompts.filter(p => p.enabled);
+    let promptTokenCount = enabledPrompts.reduce((sum, prompt) => {
+        const content = PromptManager.replacePlaceholders(prompt.content);
+        return sum + estimateTokens(content);
+    }, 0);
+
+    let historyTokenCount = 0;
+    const recentHistory = [];
     for (let i = history.length - 1; i >= 0; i--) {
         const msg = history[i];
         const content = (msg.role === 'assistant' && Array.isArray(msg.content))
@@ -65,40 +68,49 @@ export function buildApiMessages() {
             : msg.content;
         
         const messageTokens = estimateTokens(content);
-
-        if (currentTokenCount + messageTokens <= maxTokenContext) {
+        
+        if (promptTokenCount + historyTokenCount + messageTokens <= maxTokenContext) {
             recentHistory.unshift(msg);
-            currentTokenCount += messageTokens;
+            historyTokenCount += messageTokens;
         } else {
             break;
         }
     }
+    
+    const finalMessages = PromptManager.buildFinalMessages(recentHistory);
 
-    return buildApiMessagesFromHistory(recentHistory, prefixMessages);
+    return formatApiPayload(finalMessages);
 }
 
 /**
- * @description 從指定的歷史紀錄片段建構 API payload
+ * @description 從指定的歷史紀錄片段建構 API payload (用於重新生成等)
  * @param {Array} customHistory - 用於建構 payload 的對話歷史陣列
- * @param {Array} prefixMessages - 由提示詞組成的訊息前綴
  * @returns {Array|Object} 格式化後的訊息
  */
-export function buildApiMessagesFromHistory(customHistory, prefixMessages = []) {
+export function buildApiMessagesFromHistory(customHistory) {
+    const finalMessages = PromptManager.buildFinalMessages(customHistory);
+    return formatApiPayload(finalMessages);
+}
+
+/**
+ * @description 根據不同 API 供應商，將最終的訊息陣列格式化為它們各自需要的格式
+ * @param {Array} finalMessages - 已經插入提示詞並排序好的最終訊息陣列
+ * @returns {Array|Object} 格式化後的訊息
+ */
+function formatApiPayload(finalMessages) {
     const provider = state.globalSettings.apiProvider || 'official_gemini';
-    
-    const recentHistory = customHistory.filter(msg => !msg.error).map(msg => {
+
+    const mappedMessages = finalMessages.filter(msg => !msg.error).map(msg => {
         let finalContent = msg.content;
         if (msg.role === 'assistant' && Array.isArray(msg.content)) {
             finalContent = msg.content[msg.activeContentIndex];
         }
         return { role: msg.role, content: finalContent };
     });
-
-    const combinedMessages = [...prefixMessages, ...recentHistory];
-
+    
     if (provider === 'google' || provider === 'anthropic') {
-        const systemPrompts = combinedMessages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
-        const chatMessages = combinedMessages.filter(m => m.role !== 'system');
+        const systemPrompts = mappedMessages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+        const chatMessages = mappedMessages.filter(m => m.role !== 'system');
 
         if (provider === 'google') {
             const contents = chatMessages.map(msg => ({ 
@@ -120,7 +132,8 @@ export function buildApiMessagesFromHistory(customHistory, prefixMessages = []) 
     let systemContent = '';
     const otherMessages = [];
     let systemBlockEnded = false;
-    for (const msg of combinedMessages) {
+
+    for (const msg of mappedMessages) {
         if (msg.role === 'system' && !systemBlockEnded) {
             systemContent += (systemContent ? '\n\n' : '') + msg.content;
         } else {
@@ -131,13 +144,14 @@ export function buildApiMessagesFromHistory(customHistory, prefixMessages = []) 
         }
     }
 
-    const finalMessages = [];
+    const payload = [];
     if (systemContent) {
-        finalMessages.push({ role: 'system', content: systemContent });
+        payload.push({ role: 'system', content: systemContent });
     }
-    finalMessages.push(...otherMessages);
-    return finalMessages;
+    payload.push(...otherMessages);
+    return payload;
 }
+
 
 /**
  * @description 呼叫後端大型語言模型 API
@@ -153,7 +167,11 @@ export async function callApi(messagePayload, isForSummarization = false) {
     const provider = settings.apiProvider || 'official_gemini';
     
     if (provider === 'official_gemini') {
-        return callOfficialApi(messagePayload, isForSummarization, signal);
+        const simplifiedPayload = messagePayload.map(m => ({
+            role: m.role === 'system' ? 'user' : m.role,
+            content: m.content
+        }));
+        return callOfficialApi(simplifiedPayload, isForSummarization, signal);
     } else {
         return callProxyApi(provider, settings.apiKey, messagePayload, isForSummarization, signal);
     }
@@ -215,9 +233,7 @@ async function callProxyApi(provider, apiKey, messagePayload, isForSummarization
             headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
             
             body = { ...baseParams, messages: messagePayload };
-
-            // [FIX] 根據供應商決定使用 max_tokens 或 max_completion_tokens
-            // 假設 OpenAI 的 gpt-4.1 和 gpt-5 也可能使用新參數
+            
             if (provider === 'mistral' || provider === 'xai' || (provider === 'openai' && (settings.apiModel.includes('gpt-5') || settings.apiModel.includes('gpt-4.1')))) {
                 body.max_completion_tokens = maxTokensValue;
             } else {
@@ -278,12 +294,15 @@ function parseResponse(provider, data) {
             case "anthropic": 
                 return data.content[0].text;
             case "google": 
-                return data.candidates[0].content.parts[0].text;
+                if (data.candidates && data.candidates.length > 0 && data.candidates[0].content.parts.length > 0) {
+                    return data.candidates[0].content.parts[0].text;
+                }
+                return "⚠️ API 沒有回傳有效的內容。";
             default: 
                 return "⚠️ 無法解析回應";
         }
     } catch (e) { 
-        console.error("解析 API 回應失敗:", data); 
+        console.error("解析 API 回應失敗:", data, e); 
         return "⚠️ 回應格式錯誤"; 
     }
 }
@@ -308,7 +327,6 @@ export async function testApiConnection(provider, apiKey, model) {
             headers = { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` };
             
             body = { model, messages: testPayload };
-            // [FIX] 根據供應商和模型名稱決定使用 max_tokens 或 max_completion_tokens 進行測試
             if (provider === 'mistral' || provider === 'xai' || (provider === 'openai' && (model.includes('gpt-5') || model.includes('gpt-4.1')))) {
                 body.max_completion_tokens = 5;
             } else {

@@ -173,6 +173,9 @@ export function setupEventListeners() {
     });
     DOM.deletePromptEditorBtn.addEventListener('click', Handlers.handleDeletePromptItem);
 
+    // [新增] 監聽位置下拉選單的變更
+    DOM.promptEditorPositionSelect.addEventListener('change', Handlers.handlePromptPositionChange);
+
     let draggedIdentifier = null;
 
     function getDragAfterElement(container, y) {
@@ -188,7 +191,6 @@ export function setupEventListeners() {
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
-    // [ADDED] 提示詞列表拖曳
     DOM.promptList.addEventListener('dragstart', (e) => {
         const target = e.target.closest('.prompt-item');
         if (target) {
@@ -217,7 +219,6 @@ export function setupEventListeners() {
         Handlers.handlePromptDropSort(draggedIdentifier, targetIdentifier);
     });
 
-    // [ADDED] 角色列表拖曳
     DOM.characterList.addEventListener('dragstart', (e) => {
         const target = e.target.closest('.character-item');
         if (target) {
@@ -246,7 +247,6 @@ export function setupEventListeners() {
         Handlers.handleCharacterDropSort(draggedIdentifier, targetIdentifier);
     });
 
-    // [ADDED] 聊天室列表拖曳
     DOM.chatSessionList.addEventListener('dragstart', (e) => {
         const target = e.target.closest('.chat-session-item');
         if (target) {
@@ -331,10 +331,8 @@ export function setupEventListeners() {
         const charId = charItem.dataset.id;
         
         if (e.target.closest('.love-char-btn')) {
-            // 如果點擊的是愛心按鈕
             await Handlers.handleToggleCharacterLove(charId);
         } else {
-            // 否則，視為切換角色
             await loadChatDataForCharacter(charId);
             UI.showChatSessionListView(charId);
             state.activeCharacterId = charId;

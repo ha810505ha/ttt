@@ -5,7 +5,7 @@ import { state } from './state.js';
 import { DEFAULT_PROMPT_SET } from './constants.js';
 
 /**
- * @description 解析使用者上傳的提示詞庫 JSON 檔案
+ * @description 解析使用者上傳的 SillyTavern V2 提示詞庫 JSON 檔案
  * @param {string} fileContent - 讀取的檔案內容字串
  * @param {string} fileName - 檔案名稱
  * @returns {Object} - 解析後符合我們應用程式結構的提示詞庫物件
@@ -13,28 +13,54 @@ import { DEFAULT_PROMPT_SET } from './constants.js';
 export function parsePromptSetFile(fileContent, fileName) {
     try {
         const data = JSON.parse(fileContent);
-        if (!data.prompts || !Array.isArray(data.prompts)) {
-            throw new Error('JSON 檔案缺少 "prompts" 陣列。');
+
+        if (!data.prompts || !Array.isArray(data.prompts) || !data.prompt_order || !Array.isArray(data.prompt_order)) {
+            throw new Error('檔案格式不符，缺少 "prompts" 或 "prompt_order" 陣列。');
         }
+
+        const orderGroup = data.prompt_order.find(group => group.character_id === 100001) || data.prompt_order[0];
+        if (!orderGroup || !orderGroup.order) {
+            throw new Error("在檔案中找不到有效的 'prompt_order' 順序列表。");
+        }
+        const orderArray = orderGroup.order;
+
+        const moduleMap = new Map(data.prompts.map(p => [p.identifier, p]));
+
+        const newPrompts = orderArray.map((orderItem, index) => {
+            const moduleData = moduleMap.get(orderItem.identifier);
+            if (!moduleData) return null;
+
+            const positionData = moduleData.position || {};
+            const positionType = (positionData.depth !== undefined) ? 'chat' : 'relative';
+
+            return {
+                identifier: moduleData.identifier,
+                name: moduleData.name || `未命名模組 ${index + 1}`,
+                enabled: orderItem.enabled,
+                role: moduleData.role || 'system',
+                content: moduleData.content || '',
+                position: {
+                    type: positionType,
+                    depth: positionData.depth ?? 4
+                },
+                order: index,
+            };
+        }).filter(Boolean);
 
         const newPromptSet = {
             id: `prompt_set_${Date.now()}`,
-            name: fileName.replace(/\.json$/i, ''), // 使用檔名作為預設名稱
-            prompts: data.prompts.map(p => ({
-                identifier: p.identifier || `prompt_${Math.random().toString(36).substr(2, 9)}`,
-                name: p.name || '未命名提示詞',
-                enabled: p.enabled !== undefined ? p.enabled : true,
-                role: p.role || 'system',
-                content: p.content || '',
-            })),
+            name: fileName.replace(/\.json$/i, ''),
+            prompts: newPrompts,
         };
 
         return newPromptSet;
+
     } catch (error) {
         console.error("解析提示詞庫檔案失敗:", error);
         throw new Error(`檔案解析失敗: ${error.message}`);
     }
 }
+
 
 /**
  * @description 獲取當前作用中的提示詞設定檔
@@ -48,33 +74,43 @@ export function getActivePromptSet() {
     return activeSet || DEFAULT_PROMPT_SET;
 }
 
-
 /**
- * @description [MODIFIED] 根據啟用的提示詞，建構要前置於對話歷史的訊息陣列
- * @returns {Array<Object>} - 包含 {role, content} 物件的陣列
+ * @description 根據啟用提示詞的深度(injection_depth)和順序(order)，建構最終要發送給 API 的訊息陣列
+ * @param {Array<Object>} chatHistory - 當前的對話歷史紀錄
+ * @returns {Array<Object>} - 包含 {role, content} 物件，且已插入提示詞的最終陣列
  */
-export function buildPrefixMessages() {
+export function buildFinalMessages(chatHistory) {
     const activePromptSet = getActivePromptSet();
-    if (!activePromptSet || !activePromptSet.prompts) return [];
+    if (!activePromptSet || !activePromptSet.prompts) return chatHistory;
 
-    const enabledPrompts = activePromptSet.prompts.filter(p => p.enabled);
-    
-    const prefixMessages = enabledPrompts.map(p => {
-        return {
-            role: p.role || 'system', // 預設為 system
-            content: replacePlaceholders(p.content)
+    const enabledPrompts = activePromptSet.prompts
+        .filter(p => p.enabled && p.identifier !== 'chatHistory')
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    const promptsToInject = enabledPrompts.filter(p => p.position?.type === 'chat');
+
+    let finalMessages = [...chatHistory];
+
+    promptsToInject.forEach(prompt => {
+        const message = {
+            role: prompt.role || 'system',
+            content: replacePlaceholders(prompt.content)
         };
+        
+        const insertionIndex = Math.max(0, finalMessages.length - (prompt.position.depth || 0));
+        finalMessages.splice(insertionIndex, 0, message);
     });
-
-    return prefixMessages;
+    
+    return finalMessages;
 }
 
+
 /**
- * @description 替換提示詞內容中的預留位置 (placeholders)
+ * @description [修正] 替換提示詞內容中的預留位置 (placeholders)。新增 export 關鍵字。
  * @param {string} text - 含有預留位置的原始字串
  * @returns {string} - 替換後的字串
  */
-function replacePlaceholders(text) {
+export function replacePlaceholders(text) {
     if (typeof text !== 'string') return '';
     if (!state.activeCharacterId || !state.activeChatId) return text;
 
@@ -111,3 +147,4 @@ export function getPromptContentByIdentifier(identifier) {
     }
     return prompt.content;
 }
+

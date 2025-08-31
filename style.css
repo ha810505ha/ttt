@@ -1075,13 +1075,6 @@ input[type="range"]::-moz-range-thumb {
     gap: 10px;
 }
 
-/* [REMOVED] This rule is no longer needed as visibility is controlled by inline styles now. */
-/*
-.assistant-row.is-last-message .message-actions {
-    display: flex;
-}
-*/
-
 .regenerate-btn-sm {
     background-color: var(--hover-background);
     border: 1px solid var(--border-color);
@@ -1437,7 +1430,6 @@ input[type="range"]::-moz-range-thumb {
     text-decoration: underline;
 }
 
-/* [ADDED] Styles for multiple first messages */
 .first-message-container {
     display: flex;
     flex-direction: column;
@@ -1452,7 +1444,7 @@ input[type="range"]::-moz-range-thumb {
 
 .first-message-item textarea {
     flex-grow: 1;
-    min-height: 40px; /* Start small */
+    min-height: 40px; 
     height: auto;
     resize: vertical;
     padding: 8px 12px;
@@ -1463,7 +1455,6 @@ input[type="range"]::-moz-range-thumb {
 #add-first-message-btn {
     align-self: flex-start;
 }
-/* --- [ADDED] Prompt Set Management Styles --- */
 
 .prompt-item-list {
     list-style: none;
@@ -1531,32 +1522,32 @@ input[type="range"]::-moz-range-thumb {
 .prompt-item-toggle.enabled::before {
     transform: translateX(20px);
 }
-    /* --- [ADDED] Styles for Prompt Item Actions --- */
-    .prompt-item-actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-shrink: 0;
-    }
-        /* --- [ADDED] Styles for Prompt Drag & Drop --- */
-    .prompt-drag-handle {
-        cursor: grab;
-        color: var(--border-color);
-        margin-right: 10px;
-        transition: color 0.2s;
-    }
+   
+.prompt-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
 
-    .prompt-item:hover .prompt-drag-handle {
-        color: var(--text-light-color);
-    }
+.prompt-drag-handle {
+    cursor: grab;
+    color: var(--border-color);
+    margin-right: 10px;
+    transition: color 0.2s;
+}
 
-    .prompt-item.dragging {
-        opacity: 0.5;
-        background: var(--active-background);
-    }
-    /* --- [FIX] Prompt Drag & Drop Styles --- */
+.prompt-item:hover .prompt-drag-handle {
+    color: var(--text-light-color);
+}
+
+.prompt-item.dragging {
+    opacity: 0.5;
+    background: var(--active-background);
+}
+
 .prompt-item {
-    cursor: grab; /* 讓整個項目都顯示可拖曳的手型圖示 */
+    cursor: grab;
 }
 
 .prompt-item.dragging {
@@ -1565,13 +1556,12 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .prompt-drag-handle {
-    color: var(--text-light-color); /* 讓圖示顏色更明顯 */
+    color: var(--text-light-color);
     margin-right: 10px;
 }
-/* --- [ADDED] Character & Chat Drag Sort Styles --- */
 
 .character-item, .chat-session-item {
-    cursor: grab; /* 讓整個項目都顯示可拖曳的手型圖示 */
+    cursor: grab; 
 }
 
 .character-item.dragging, .chat-session-item.dragging {
@@ -1609,7 +1599,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .love-char-btn.loved {
-    color: #ff8fab; /* A nice pink color for the heart */
+    color: #ff8fab;
 }
 
 .character-item.loved {
@@ -1622,4 +1612,11 @@ input[type="range"]::-moz-range-thumb {
     align-items: center;
     flex-grow: 1;
     overflow: hidden;
+}
+
+/* [新增] 提示詞編輯器的 Grid 樣式 */
+.prompt-editor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
 }
