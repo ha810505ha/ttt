@@ -83,19 +83,15 @@ export const loadingOverlay = document.getElementById('loading-overlay');
 export const chatOptionsBtn = document.getElementById('chat-options-btn');
 export const chatOptionsMenu = document.getElementById('chat-options-menu');
 export const deleteChatOptionBtn = document.getElementById('delete-chat-option-btn');
-export const userProfileArea = document.getElementById('user-profile-area');
-export const loginBtn = document.getElementById('login-btn');
-export const userInfo = document.getElementById('user-info');
-export const userAvatar = document.getElementById('user-avatar');
-export const userName = document.getElementById('user-name');
-export const logoutBtn = document.getElementById('logout-btn');
 
 // 設定分頁相關
 export const settingsTabsContainer = document.getElementById('settings-tabs-container');
+export const accountTab = document.getElementById('account-tab');
 export const apiSettingsTab = document.getElementById('api-settings-tab');
 export const userSettingsTab = document.getElementById('user-settings-tab');
 export const promptSettingsTab = document.getElementById('prompt-settings-tab');
 export const themeSettingsTab = document.getElementById('theme-settings-tab');
+export const regexTab = document.getElementById('regex-tab');
 export const themeSelect = document.getElementById('theme-select');
 
 // 新提示詞庫相關
@@ -110,14 +106,14 @@ export const promptEditorModal = document.getElementById('prompt-editor-modal');
 export const promptEditorTitle = document.getElementById('prompt-editor-title');
 export const promptEditorNameInput = document.getElementById('prompt-editor-name');
 export const promptEditorRoleSelect = document.getElementById('prompt-editor-role');
-export const promptEditorPositionSelect = document.getElementById('prompt-editor-position');
-export const promptDepthOrderContainer = document.getElementById('prompt-depth-order-container');
-export const promptEditorDepthInput = document.getElementById('prompt-editor-depth');
-export const promptEditorOrderInput = document.getElementById('prompt-editor-order');
 export const promptEditorContentInput = document.getElementById('prompt-editor-content');
 export const cancelPromptEditorBtn = document.getElementById('cancel-prompt-editor-btn');
 export const savePromptEditorBtn = document.getElementById('save-prompt-editor-btn');
 export const deletePromptEditorBtn = document.getElementById('delete-prompt-editor-btn');
+export const promptEditorPositionSelect = document.getElementById('prompt-editor-position');
+export const promptEditorDepthInput = document.getElementById('prompt-editor-depth');
+export const promptEditorOrderInput = document.getElementById('prompt-editor-order');
+export const promptDepthOrderContainer = document.getElementById('prompt-depth-order-container');
 
 // API 設定檔相關
 export const apiPresetSelect = document.getElementById('api-preset-select');
@@ -146,6 +142,14 @@ export const importMergeBtn = document.getElementById('import-merge-btn');
 export const importOverwriteBtn = document.getElementById('import-overwrite-btn');
 export const cancelImportOptionsBtn = document.getElementById('cancel-import-options-btn');
 
+// 帳號認證 (在設定分頁中)
+export const loginPrompt = document.getElementById('login-prompt');
+export const loginBtnInSettings = document.getElementById('login-btn-in-settings');
+export const userInfoDetails = document.getElementById('user-info-details');
+export const userAvatarInSettings = document.getElementById('user-avatar-in-settings');
+export const userNameInSettings = document.getElementById('user-name-in-settings');
+export const logoutBtn = document.getElementById('logout-btn');
+
 // 帳號認證 Modal 相關
 export const authModal = document.getElementById('auth-modal');
 export const loginView = document.getElementById('login-view');
@@ -157,4 +161,11 @@ export const showRegisterViewBtn = document.getElementById('show-register-view-b
 export const showLoginViewBtn = document.getElementById('show-login-view-btn');
 export const cancelAuthModalBtn = document.getElementById('cancel-auth-modal-btn');
 export const registerNameInput = document.getElementById('register-name');
+
+// 正規表達式相關
+export const regexRulesList = document.getElementById('regex-rules-list');
+export const addRegexRuleBtn = document.getElementById('add-regex-rule-btn');
+
+// 聊天室列表標頭的愛心按鈕
+export const headerLoveChatBtn = document.getElementById('header-love-char-btn');
 

@@ -163,12 +163,28 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex-grow: 1;
-    text-align: center;
 }
+
 .panel-header .header-actions {
     display: flex;
     gap: 5px;
+}
+
+/* [修正] 確保標題置中 */
+#character-view .panel-header h2 {
+    flex-grow: 1;
+    text-align: center;
+    margin: 0 45px; /* 為按鈕留出空間 */
+}
+
+/* [新增] 聊天室標頭標題容器樣式 */
+.chat-list-header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-grow: 1;
+    justify-content: center;
+    overflow: hidden;
 }
 
 .character-list, .chat-session-list {
@@ -216,6 +232,8 @@ body {
     flex-grow: 1;
     overflow: hidden;
     cursor: pointer;
+    display: flex;
+    align-items: center;
 }
 .session-item-name {
     font-weight: 500;
@@ -889,11 +907,6 @@ body.theme-b .modal-body textarea:focus {
     grid-template-columns: 1fr 2fr 60px;
     align-items: center;
     gap: 10px;
-    margin-bottom: 15px;
-}
-.settings-slider-group label {
-    font-size: 14px;
-    color: var(--text-color);
 }
 .slider-value {
     width: 100%;
@@ -926,6 +939,14 @@ input[type="range"]::-moz-range-thumb {
     background: var(--primary-color);
     cursor: pointer;
     border-radius: 50%;
+}
+
+.setting-description {
+    display: block;
+    font-size: 12px;
+    color: var(--text-light-color);
+    margin-top: 8px;
+    padding-left: 5px;
 }
 
 .persona-list {
@@ -1070,7 +1091,6 @@ input[type="range"]::-moz-range-thumb {
 .message-actions {
     display: none;
     padding-top: 8px;
-    align-self: flex-start;
     align-items: center;
     gap: 10px;
 }
@@ -1196,50 +1216,13 @@ input[type="range"]::-moz-range-thumb {
     box-shadow: 0 0 0 3px var(--panel-background) inset;
 }
 
-#user-profile-area {
-    position: absolute;
-    left: 15px;
-    display: flex;
-    align-items: center;
-}
-
-#user-profile-area #login-btn {
-    background-color: var(--primary-color);
-    color: white;
-    padding: 6px 12px;
-}
-
-#user-profile-area #login-btn:hover {
-    background-color: var(--primary-hover-color);
-}
-
-#user-profile-area #user-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-#user-info #user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-}
-
-#user-info #user-name {
-    font-size: 14px;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100px;
-}
-
 .settings-tabs {
     display: flex;
     border-bottom: 1px solid var(--border-color);
     padding: 0 20px;
     flex-shrink: 0;
     flex-wrap: wrap;
+    overflow-x: auto;
 }
 
 .tab-btn {
@@ -1255,6 +1238,7 @@ input[type="range"]::-moz-range-thumb {
     display: flex;
     align-items: center;
     gap: 8px;
+    white-space: nowrap;
 }
 
 .tab-btn:hover {
@@ -1444,7 +1428,7 @@ input[type="range"]::-moz-range-thumb {
 
 .first-message-item textarea {
     flex-grow: 1;
-    min-height: 40px; 
+    min-height: 40px; /* Start small */
     height: auto;
     resize: vertical;
     padding: 8px 12px;
@@ -1455,7 +1439,6 @@ input[type="range"]::-moz-range-thumb {
 #add-first-message-btn {
     align-self: flex-start;
 }
-
 .prompt-item-list {
     list-style: none;
     padding: 0;
@@ -1522,30 +1505,12 @@ input[type="range"]::-moz-range-thumb {
 .prompt-item-toggle.enabled::before {
     transform: translateX(20px);
 }
-   
 .prompt-item-actions {
     display: flex;
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
 }
-
-.prompt-drag-handle {
-    cursor: grab;
-    color: var(--border-color);
-    margin-right: 10px;
-    transition: color 0.2s;
-}
-
-.prompt-item:hover .prompt-drag-handle {
-    color: var(--text-light-color);
-}
-
-.prompt-item.dragging {
-    opacity: 0.5;
-    background: var(--active-background);
-}
-
 .prompt-item {
     cursor: grab;
 }
@@ -1559,9 +1524,8 @@ input[type="range"]::-moz-range-thumb {
     color: var(--text-light-color);
     margin-right: 10px;
 }
-
 .character-item, .chat-session-item {
-    cursor: grab; 
+    cursor: grab;
 }
 
 .character-item.dragging, .chat-session-item.dragging {
@@ -1579,29 +1543,11 @@ input[type="range"]::-moz-range-thumb {
     color: var(--text-light-color);
 }
 
-.char-item-actions {
+.char-item-content {
     display: flex;
     align-items: center;
-    margin-left: auto;
-    padding-left: 10px;
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-}
-
-/* 當滑鼠懸停，或角色本身已被設為最愛時，顯示操作按鈕 */
-.character-item:hover .char-item-actions,
-.character-item.loved .char-item-actions {
-    visibility: visible;
-    opacity: 1;
-}
-
-.love-char-btn {
-    color: var(--text-light-color);
-}
-
-.love-char-btn.loved {
-    color: #ff8fab;
+    flex-grow: 1;
+    overflow: hidden;
 }
 
 .character-item.loved {
@@ -1609,20 +1555,91 @@ input[type="range"]::-moz-range-thumb {
     border-color: #ff8fab;
 }
 
-.char-item-content {
-    display: flex;
-    align-items: center;
-    flex-grow: 1;
-    overflow: hidden;
-    /* [新增] 防止長按時選取到文字 */
-    user-select: none;
-    -webkit-user-select: none;
+#header-love-char-btn.loved i {
+    color: #ff8fab;
 }
 
-/* [新增] 長按時的視覺回饋效果 */
-.character-item.long-press-active {
-    transform: scale(0.98);
-    background-color: var(--active-background);
-    transition: transform 0.1s ease-in-out, background-color 0.1s ease-in-out;
+.prompt-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+/* 正規表達式 */
+.regex-rules-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.regex-rule-item {
+    background-color: var(--input-background);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    padding: 10px 15px;
+}
+
+.regex-rule-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.regex-rule-header .regex-name-input {
+    flex-grow: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+.regex-rule-header .regex-name-input:focus {
+    border-bottom: 1px solid var(--primary-color);
+}
+
+
+.regex-rule-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, margin-top 0.3s ease-out;
+}
+
+.regex-rule-item.expanded .regex-rule-details {
+    max-height: 500px; /* 設一個足夠大的值 */
+    margin-top: 15px;
+}
+
+.regex-rule-item.expanded .regex-expand-btn i {
+    transform: rotate(180deg);
+}
+
+.regex-rule-details textarea {
+    width: 100%;
+    min-height: 60px;
+    resize: vertical;
+}
+
+/* 帳號設定 */
+.user-info-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px;
+    background-color: var(--input-background);
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+.user-info-header img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+}
+.user-info-header span {
+    font-size: 16px;
+    font-weight: 500;
 }
 

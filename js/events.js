@@ -11,10 +11,11 @@ import { state, tempState, saveSettings, loadChatDataForCharacter } from './stat
  * @description 集中設定所有 DOM 元素的事件監聽器
  */
 export function setupEventListeners() {
-    // 靜態元素事件綁定
-    DOM.loginBtn.addEventListener('click', Handlers.handleLogin);
+    // 帳號認證
+    DOM.loginBtnInSettings.addEventListener('click', Handlers.handleLogin);
     DOM.logoutBtn.addEventListener('click', Handlers.handleLogout);
     
+    // 側邊欄與行動裝置
     DOM.menuToggleBtn.addEventListener('click', () => {
         DOM.leftPanel.classList.toggle('mobile-visible');
         DOM.mobileOverlay.classList.toggle('hidden');
@@ -24,31 +25,32 @@ export function setupEventListeners() {
         DOM.mobileOverlay.classList.add('hidden');
     });
 
+    // 角色與聊天室列表
     DOM.backToCharsBtn.addEventListener('click', async () => {
-        UI.showCharacterListView();
-        state.activeCharacterId = null;
+        UI.switchPanelToCharacterView(); 
         state.activeChatId = null; 
         await saveSettings();
     });
     DOM.addChatBtn.addEventListener('click', Handlers.handleAddNewChat);
     DOM.editActiveCharacterBtn.addEventListener('click', () => Handlers.openCharacterEditor(state.activeCharacterId));
     DOM.deleteActiveCharacterBtn.addEventListener('click', Handlers.handleDeleteActiveCharacter);
+    DOM.headerLoveChatBtn.addEventListener('click', () => Handlers.handleToggleCharacterLove(state.activeCharacterId));
 
+    // 聊天介面
     DOM.chatNotesInput.addEventListener('blur', Handlers.handleSaveNote);
     DOM.sendBtn.addEventListener('click', () => {
         if (DOM.sendBtn.classList.contains('is-generating')) {
             Handlers.handleStopGeneration();
         } else {
-            Handlers.sendMessage();
+            Handlers.handleSendMessageOrContinue();
         }
     });
 
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-
     DOM.messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !isMobile && !e.shiftKey) {
             e.preventDefault();
-            Handlers.sendMessage();
+            Handlers.handleSendMessageOrContinue();
         }
     });
 
@@ -69,14 +71,13 @@ export function setupEventListeners() {
         }
     });
 
+    // Modals (彈出視窗)
     DOM.saveRenameChatBtn.addEventListener('click', Handlers.handleSaveChatName);
     DOM.cancelRenameChatBtn.addEventListener('click', () => UI.toggleModal('rename-chat-modal', false));
-
     DOM.updateMemoryBtn.addEventListener('click', Handlers.handleUpdateMemory);
     DOM.viewMemoryBtn.addEventListener('click', Handlers.openMemoryEditor);
     DOM.saveMemoryEditorBtn.addEventListener('click', Handlers.handleSaveMemory);
     DOM.cancelMemoryEditorBtn.addEventListener('click', () => UI.toggleModal('memory-editor-modal', false));
-
     DOM.addCharacterBtn.addEventListener('click', () => Handlers.openCharacterEditor());
     DOM.saveCharBtn.addEventListener('click', Handlers.handleSaveCharacter);
     DOM.cancelCharEditorBtn.addEventListener('click', () => UI.toggleModal('character-editor-modal', false));
@@ -102,7 +103,6 @@ export function setupEventListeners() {
             textarea.style.height = `${textarea.scrollHeight}px`;
         });
     });
-
     DOM.firstMessageList.addEventListener('click', (e) => {
         const removeBtn = e.target.closest('.remove-first-message-btn');
         if (removeBtn) {
@@ -114,7 +114,7 @@ export function setupEventListeners() {
         }
     });
 
-
+    // 全域設定 Modal
     DOM.globalSettingsBtn.addEventListener('click', () => {
         UI.loadGlobalSettingsToUI();
         UI.toggleModal('global-settings-modal', true);
@@ -128,10 +128,12 @@ export function setupEventListeners() {
     Utils.setupSliderSync(DOM.maxTokensSlider, DOM.maxTokensValue);
     DOM.apiProviderSelect.addEventListener('change', UI.updateModelDropdown);
 
+    // API 設定檔
     DOM.saveApiPresetBtn.addEventListener('click', Handlers.handleSaveApiPreset);
     DOM.apiPresetSelect.addEventListener('change', Handlers.handleLoadApiPreset);
     DOM.deleteApiPresetBtn.addEventListener('click', Handlers.handleDeleteApiPreset);
 
+    // 設定分頁
     DOM.settingsTabsContainer.addEventListener('click', (e) => {
         const tabButton = e.target.closest('.tab-btn');
         if (!tabButton) return;
@@ -142,139 +144,49 @@ export function setupEventListeners() {
             content.classList.toggle('active', content.id === tabId);
         });
     });
-
     DOM.themeSelect.addEventListener('change', (e) => {
         Utils.applyTheme(e.target.value);
     });
     
+    // 提示詞庫
     DOM.importPromptSetBtn.addEventListener('click', Handlers.handleImportPromptSet);
     DOM.deletePromptSetBtn.addEventListener('click', Handlers.handleDeletePromptSet);
     DOM.promptSetSelect.addEventListener('change', Handlers.handleSwitchPromptSet);
-    
     DOM.promptList.addEventListener('click', (e) => {
         const toggle = e.target.closest('.prompt-item-toggle');
         const editBtn = e.target.closest('.edit-prompt-btn');
-        
         if (toggle) {
-            const item = toggle.closest('.prompt-item');
-            const identifier = item.dataset.identifier;
-            Handlers.handleTogglePromptEnabled(identifier);
+            Handlers.handleTogglePromptEnabled(toggle.closest('.prompt-item').dataset.identifier);
         } else if (editBtn) {
-            const item = editBtn.closest('.prompt-item');
-            const identifier = item.dataset.identifier;
-            Handlers.openPromptEditor(identifier);
+            Handlers.openPromptEditor(editBtn.closest('.prompt-item').dataset.identifier);
         }
     });
-
     DOM.savePromptEditorBtn.addEventListener('click', Handlers.handleSavePrompt);
     DOM.cancelPromptEditorBtn.addEventListener('click', () => {
         UI.toggleModal('prompt-editor-modal', false);
         tempState.editingPromptIdentifier = null;
     });
     DOM.deletePromptEditorBtn.addEventListener('click', Handlers.handleDeletePromptItem);
-
     DOM.promptEditorPositionSelect.addEventListener('change', Handlers.handlePromptPositionChange);
 
-    let draggedIdentifier = null;
-
-    function getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging)')];
-        return draggableElements.reduce((closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-                return { offset: offset, element: child };
-            } else {
-                return closest;
-            }
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
-    }
-
-    DOM.promptList.addEventListener('dragstart', (e) => {
-        const target = e.target.closest('.prompt-item');
-        if (target) {
-            if (e.target.closest('.edit-prompt-btn') || e.target.closest('.prompt-item-toggle')) {
-                e.preventDefault(); return;
-            }
-            draggedIdentifier = target.dataset.identifier;
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => target.classList.add('dragging'), 0);
+    // 正規表達式
+    DOM.addRegexRuleBtn.addEventListener('click', Handlers.handleAddRegexRule);
+    DOM.regexRulesList.addEventListener('change', Handlers.handleRegexRuleChange);
+    DOM.regexRulesList.addEventListener('click', (e) => {
+        const ruleItem = e.target.closest('.regex-rule-item');
+        if (!ruleItem) return;
+        const ruleId = ruleItem.dataset.id;
+        
+        if (e.target.closest('.prompt-item-toggle')) {
+            Handlers.handleRegexRuleToggle(ruleId);
+        } else if (e.target.closest('.delete-regex-rule-btn')) {
+            Handlers.handleDeleteRegexRule(ruleId);
+        } else if (e.target.closest('.regex-expand-btn')) {
+            ruleItem.classList.toggle('expanded');
         }
     });
 
-    DOM.promptList.addEventListener('dragend', () => {
-        const draggedElement = DOM.promptList.querySelector('.dragging');
-        if (draggedElement) draggedElement.classList.remove('dragging');
-        draggedIdentifier = null;
-    });
-
-    DOM.promptList.addEventListener('dragover', (e) => e.preventDefault());
-
-    DOM.promptList.addEventListener('drop', (e) => {
-        e.preventDefault();
-        if (!draggedIdentifier) return;
-        const afterElement = getDragAfterElement(DOM.promptList, e.clientY);
-        const targetIdentifier = afterElement ? afterElement.dataset.identifier : null;
-        Handlers.handlePromptDropSort(draggedIdentifier, targetIdentifier);
-    });
-
-    DOM.characterList.addEventListener('dragstart', (e) => {
-        const target = e.target.closest('.character-item');
-        if (target) {
-            if (e.target.closest('.love-char-btn')) {
-                e.preventDefault(); return;
-            }
-            draggedIdentifier = target.dataset.id;
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => target.classList.add('dragging'), 0);
-        }
-    });
-
-    DOM.characterList.addEventListener('dragend', () => {
-        const draggedElement = DOM.characterList.querySelector('.dragging');
-        if (draggedElement) draggedElement.classList.remove('dragging');
-        draggedIdentifier = null;
-    });
-
-    DOM.characterList.addEventListener('dragover', (e) => e.preventDefault());
-
-    DOM.characterList.addEventListener('drop', (e) => {
-        e.preventDefault();
-        if (!draggedIdentifier) return;
-        const afterElement = getDragAfterElement(DOM.characterList, e.clientY);
-        const targetIdentifier = afterElement ? afterElement.dataset.id : null;
-        Handlers.handleCharacterDropSort(draggedIdentifier, targetIdentifier);
-    });
-
-    DOM.chatSessionList.addEventListener('dragstart', (e) => {
-        const target = e.target.closest('.chat-session-item');
-        if (target) {
-            if (e.target.closest('.session-item-actions')) {
-                e.preventDefault(); return;
-            }
-            draggedIdentifier = target.dataset.id;
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => target.classList.add('dragging'), 0);
-        }
-    });
-
-    DOM.chatSessionList.addEventListener('dragend', () => {
-        const draggedElement = DOM.chatSessionList.querySelector('.dragging');
-        if (draggedElement) draggedElement.classList.remove('dragging');
-        draggedIdentifier = null;
-    });
-
-    DOM.chatSessionList.addEventListener('dragover', (e) => e.preventDefault());
-
-    DOM.chatSessionList.addEventListener('drop', (e) => {
-        e.preventDefault();
-        if (!draggedIdentifier) return;
-        const afterElement = getDragAfterElement(DOM.chatSessionList, e.clientY);
-        const targetIdentifier = afterElement ? afterElement.dataset.id : null;
-        Handlers.handleChatSessionDropSort(draggedIdentifier, targetIdentifier);
-    });
-
-
+    // 使用者角色
     DOM.addUserPersonaBtn.addEventListener('click', () => Handlers.openUserPersonaEditor());
     DOM.saveUserPersonaBtn.addEventListener('click', Handlers.handleSaveUserPersona);
     DOM.cancelUserPersonaEditorBtn.addEventListener('click', () => UI.toggleModal('user-persona-editor-modal', false));
@@ -285,12 +197,14 @@ export function setupEventListeners() {
     DOM.chatUserPersonaSelect.addEventListener('change', Handlers.handleChatPersonaChange);
     DOM.userPersonaAvatarUpload.addEventListener('change', (e) => Utils.handleImageUpload(e, DOM.userPersonaAvatarPreview));
 
+    // 匯出與截圖
     DOM.exportChatOptionBtn.addEventListener('click', Handlers.openExportModal);
     DOM.confirmExportChatBtn.addEventListener('click', Handlers.handleConfirmExport);
     DOM.cancelExportChatBtn.addEventListener('click', () => UI.toggleModal('export-chat-modal', false));
     DOM.cancelScreenshotBtn.addEventListener('click', Handlers.handleToggleScreenshotMode);
     DOM.generateScreenshotBtn.addEventListener('click', Handlers.handleGenerateScreenshot);
 
+    // 全域匯入/匯出
     DOM.globalExportBtn.addEventListener('click', Handlers.handleGlobalExport);
     DOM.openImportOptionsBtn.addEventListener('click', () => UI.toggleModal('import-options-modal', true));
     DOM.cancelImportOptionsBtn.addEventListener('click', () => UI.toggleModal('import-options-modal', false));
@@ -303,6 +217,7 @@ export function setupEventListeners() {
         Handlers.handleGlobalImport('overwrite');
     });
 
+    // 登入 Modal
     DOM.googleLoginBtn.addEventListener('click', Handlers.handleGoogleLogin);
     DOM.loginForm.addEventListener('submit', Handlers.handleEmailLogin);
     DOM.registerForm.addEventListener('submit', Handlers.handleEmailRegister);
@@ -318,94 +233,20 @@ export function setupEventListeners() {
         DOM.loginView.classList.remove('hidden');
     });
 
-
     window.addEventListener('resize', Utils.setAppHeight);
 
     // ================== 事件委派 (處理動態產生的元素) ==================
 
-    // [核心修改] 為角色列表加入長按功能
-    let longPressTimer;
-    let wasLongPress = false;
-
-    DOM.characterList.addEventListener('pointerdown', (e) => {
-        const charItem = e.target.closest('.character-item');
-        if (!charItem) return;
-
-        // 排除拖曳把手和已經存在的按鈕
-        if (e.target.closest('.drag-handle') || e.target.closest('.love-char-btn')) {
-            return;
-        }
-
-        wasLongPress = false;
-        longPressTimer = setTimeout(() => {
-            wasLongPress = true; // 標記為已觸發長按
-            
-            // 增加視覺回饋
-            charItem.classList.add('long-press-active');
-            
-            // 觸發震動回饋 (如果裝置支援)
-            if (navigator.vibrate) {
-                navigator.vibrate(50);
-            }
-
-            const charId = charItem.dataset.id;
-            Handlers.handleToggleCharacterLove(charId);
-            
-            // 短暫延遲後移除視覺回饋
-            setTimeout(() => {
-                charItem.classList.remove('long-press-active');
-            }, 200);
-
-        }, 500); // 500毫秒視為長按
-    });
-
-    DOM.characterList.addEventListener('pointerup', (e) => {
-        clearTimeout(longPressTimer);
-        const charItem = e.target.closest('.character-item');
-        if(charItem) {
-            charItem.classList.remove('long-press-active');
-        }
-    });
-    
-    DOM.characterList.addEventListener('pointerleave', (e) => {
-         clearTimeout(longPressTimer);
-         const charItem = e.target.closest('.character-item');
-         if(charItem) {
-            charItem.classList.remove('long-press-active');
-        }
-    });
-    
-    DOM.characterList.addEventListener('contextmenu', (e) => {
-        // 防止長按時在手機上彈出右鍵選單
-        e.preventDefault();
-    });
-
-
     DOM.characterList.addEventListener('click', async (e) => {
-        // 如果剛剛觸發了長按，則阻止後續的點擊事件
-        if (wasLongPress) {
-            e.preventDefault();
-            e.stopPropagation();
-            wasLongPress = false; // 重設旗標
-            return;
-        }
-
         const charItem = e.target.closest('.character-item');
-        if (!charItem) return;
+        if (!charItem || e.target.closest('.drag-handle')) return;
 
         const charId = charItem.dataset.id;
-        
-        // 點擊愛心按鈕的邏輯保持不變 (主要給桌面用戶使用)
-        if (e.target.closest('.love-char-btn')) {
-            await Handlers.handleToggleCharacterLove(charId);
-        } else {
-            // 正常的點擊行為：切換到該角色的聊天列表
-            await loadChatDataForCharacter(charId);
-            UI.showChatSessionListView(charId);
-            state.activeCharacterId = charId;
-            state.activeChatId = null; 
-            await saveSettings();
-        }
+        await loadChatDataForCharacter(charId);
+        UI.showChatSessionListView(charId);
+        state.activeCharacterId = charId;
+        state.activeChatId = null; 
+        await saveSettings();
     });
 
     DOM.chatSessionList.addEventListener('click', async (e) => {
@@ -472,5 +313,50 @@ export function setupEventListeners() {
             await Handlers.handleDeleteUserPersona(personaId);
         }
     });
+    
+    // 拖曳排序邏輯
+    let draggedId = null;
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    const setupDragSort = (container, handler) => {
+        container.addEventListener('dragstart', (e) => {
+            const target = e.target.closest('[draggable="true"]');
+            if (target && e.target.closest('.drag-handle')) {
+                draggedId = target.dataset.id || target.dataset.identifier;
+                e.dataTransfer.effectAllowed = 'move';
+                setTimeout(() => target.classList.add('dragging'), 0);
+            } else {
+                e.preventDefault();
+            }
+        });
+        container.addEventListener('dragend', () => {
+            const draggedElement = container.querySelector('.dragging');
+            if (draggedElement) draggedElement.classList.remove('dragging');
+            draggedId = null;
+        });
+        container.addEventListener('dragover', (e) => e.preventDefault());
+        container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (!draggedId) return;
+            const afterElement = getDragAfterElement(container, e.clientY);
+            const targetId = afterElement ? (afterElement.dataset.id || afterElement.dataset.identifier) : null;
+            handler(draggedId, targetId);
+        });
+    };
+
+    setupDragSort(DOM.characterList, Handlers.handleCharacterDropSort);
+    setupDragSort(DOM.chatSessionList, Handlers.handleChatSessionDropSort);
+    setupDragSort(DOM.promptList, Handlers.handlePromptDropSort);
 }
 

@@ -1,7 +1,7 @@
 // js/state.js
 // 這個檔案負責管理整個應用程式的狀態，並與 IndexedDB 互動。
 
-import { DEFAULT_AVATAR, DEFAULT_PROMPT_SET } from './constants.js';
+import { DEFAULT_PROMPT_SET } from './constants.js';
 import * as db from './db.js';
 
 // 應用程式的核心狀態物件
@@ -48,11 +48,32 @@ export async function loadStateFromDB() {
         state.activePromptSetId = settingsData.activePromptSetId || null;
     }
 
+    // 初始化正規表達式規則
+    if (!state.globalSettings.regexRules) {
+        state.globalSettings.regexRules = [
+            {
+                id: 'regex_default_1',
+                name: '消除思考(COT)',
+                find: '.*?(<\\/thinking>|# respond|<plot>|# response)',
+                replace: '',
+                enabled: true
+            },
+            {
+                id: 'regex_default_2',
+                name: '移除標籤',
+                // [核心修正] 修正了括號不匹配的問題，並移除了表達式前後的斜線和結尾的旗標
+                find: '(.*?<\\/thinking>\\n)(.*?<content[\\s\\S]*?>\\n)(.*?)(<\\/content>|<\\(\\)content_>)',
+                replace: '$3',
+                enabled: true
+            }
+        ];
+    }
+
+
     state.characters = await db.getAll('characters');
     state.userPersonas = await db.getAll('userPersonas');
     state.promptSets = await db.getAll('promptSets');
 
-    // [MODIFIED] 如果是第一次使用，從 JSON 檔案非同步載入預設角色
     if (state.characters.length === 0) {
         try {
             const response = await fetch('js/default_characters.json');
@@ -62,11 +83,9 @@ export async function loadStateFromDB() {
             const defaultCharacters = await response.json();
             
             for (const char of defaultCharacters) {
-                // 確保 firstMessage 是陣列格式
                 if (typeof char.firstMessage === 'string') {
                     char.firstMessage = [char.firstMessage];
                 }
-                // 賦予 loved 和 order 預設值
                 char.loved = char.loved || false;
                 char.order = char.order || state.characters.length;
                 await db.put('characters', char);
@@ -78,7 +97,6 @@ export async function loadStateFromDB() {
             alert("錯誤：無法載入預設角色資料，請檢查主控台。");
         }
     } else {
-        // 為現有使用者遷移資料，加入 loved 和 order 屬性
         let charMigrationNeeded = false;
         const updatePromises = state.characters.map((char, index) => {
             let updated = false;
@@ -107,7 +125,7 @@ export async function loadStateFromDB() {
     }
 
     if (state.userPersonas.length === 0) {
-        const defaultPersona = { id: `user_${Date.now()}`, name: 'User', description: '', avatarUrl: DEFAULT_AVATAR };
+        const defaultPersona = { id: `user_${Date.now()}`, name: 'User', description: '', avatarUrl: 'https://placehold.co/100x100/EFEFEF/AAAAAA?text=頭像' };
         await db.put('userPersonas', defaultPersona);
         state.userPersonas.push(defaultPersona);
         state.activeUserPersonaId = defaultPersona.id;
@@ -214,3 +232,4 @@ export function savePromptSet(promptSet) {
 export function deletePromptSet(promptSetId) {
     return db.deleteItem('promptSets', promptSetId);
 }
+

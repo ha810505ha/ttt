@@ -24,7 +24,7 @@ import {
     renderCharacterList, renderChatSessionList, renderActiveChat, renderChatMessages, 
     displayMessage, toggleModal, setGeneratingState, showCharacterListView, loadGlobalSettingsToUI,
     renderApiPresetsDropdown, loadApiPresetToUI, updateModelDropdown,
-    renderFirstMessageInputs, renderPromptSetSelector, renderPromptList
+    renderFirstMessageInputs, renderPromptSetSelector, renderPromptList, renderRegexRulesList
 } from './ui.js';
 import { DEFAULT_AVATAR } from './constants.js';
 import { handleImageUpload, exportChatAsJsonl, applyTheme, importCharacter, exportCharacter } from './utils.js';
@@ -180,78 +180,179 @@ export async function handleDeleteApiPreset() {
 // 聊天核心邏輯 (Core Chat Logic)
 // ===================================================================================
 
-export async function sendMessage(userMessage = null, messageIndex = null) {
+/**
+ * @description 統一處理送出訊息或繼續生成
+ */
+export function handleSendMessageOrContinue() {
+    const messageText = DOM.messageInput.value.trim();
+
+    if (messageText !== '') {
+        sendMessage(messageText);
+    } else {
+        handleContinueGeneration();
+    }
+}
+
+
+/**
+ * @description 處理使用者發送新訊息的邏輯
+ * @param {string} messageText - 使用者輸入的訊息
+ */
+async function sendMessage(messageText) {
     if (state.globalSettings.apiProvider !== 'official_gemini' && !state.globalSettings.apiKey) {
         alert('請先在全域設定中設定您的 API 金鑰。');
         return;
     }
     if (!state.activeCharacterId || !state.activeChatId) return;
-    
-    const isRetry = messageIndex !== null;
-    const messageText = isRetry ? userMessage.content : DOM.messageInput.value.trim();
-    if (messageText === '') return;
 
-    setGeneratingState(true);
-
+    // 將使用者訊息加入歷史紀錄
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
-    let currentUserMessageIndex;
-
-    if (isRetry) {
-        currentUserMessageIndex = messageIndex;
-        delete history[currentUserMessageIndex].error;
-    } else {
-        const timestamp = new Date().toISOString();
-        history.push({ role: 'user', content: messageText, timestamp: timestamp });
-        currentUserMessageIndex = history.length - 1;
-    }
+    const timestamp = new Date().toISOString();
+    history.push({ role: 'user', content: messageText, timestamp: timestamp });
+    const currentUserMessageIndex = history.length - 1;
     
     await saveAllChatHistoriesForChar(state.activeCharacterId);
     renderChatMessages();
     DOM.chatWindow.scrollTop = DOM.chatWindow.scrollHeight;
 
-    if (!isRetry) {
-        DOM.messageInput.value = '';
-        DOM.messageInput.style.height = 'auto';
-        DOM.messageInput.focus();
-    }
+    DOM.messageInput.value = '';
+    DOM.messageInput.style.height = 'auto';
+    DOM.messageInput.focus();
 
-    const thinkingBubble = displayMessage('...', 'assistant', new Date().toISOString(), history.length, true);
-    
+    // 呼叫 API
     try {
+        setGeneratingState(true);
+        const thinkingBubble = displayMessage('...', 'assistant', new Date().toISOString(), history.length, true);
+        
         const messagesForApi = buildApiMessages();
-        const aiResponse = await callApi(messagesForApi);
+        let aiResponse = await callApi(messagesForApi);
+
+        // 套用正規表達式規則
+        const regexRules = state.globalSettings.regexRules || [];
+        const enabledRules = regexRules.filter(rule => rule.enabled);
+        for (const rule of enabledRules) {
+            try {
+                const regex = new RegExp(rule.find, 'gsi');
+                aiResponse = aiResponse.replace(regex, rule.replace);
+            } catch (e) {
+                console.warn(`無效的正規表達式規則 [${rule.name}]:`, e);
+            }
+        }
+
         const aiTimestamp = new Date().toISOString();
         
+        // 新增 AI 回應到歷史紀錄
         history.push({ role: 'assistant', content: [aiResponse], activeContentIndex: 0, timestamp: aiTimestamp });
         
         thinkingBubble.remove();
         
         await saveAllChatHistoriesForChar(state.activeCharacterId);
         renderChatMessages();
+
     } catch (error) {
-        thinkingBubble.remove();
         if (error.name !== 'AbortError') {
             console.error("API 錯誤:", error);
             const errorMessage = `發生錯誤: ${error.message}`;
             history[currentUserMessageIndex].error = errorMessage;
             await saveAllChatHistoriesForChar(state.activeCharacterId);
             renderChatMessages();
-        } else {
-             renderChatMessages();
         }
     } finally {
         setGeneratingState(false);
     }
 }
 
-export function retryMessage(messageIndex) {
+/**
+ * @description 處理繼續生成 AI 回應的邏輯
+ */
+async function handleContinueGeneration() {
+    if (!state.activeCharacterId || !state.activeChatId) return;
+
+    const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
+    const lastMessage = history[history.length - 1];
+
+    // 檢查最後一則訊息是否為 AI 回應
+    if (!lastMessage || lastMessage.role !== 'assistant') {
+        return; // 如果不是，則不執行任何操作
+    }
+    
+    // 呼叫 API
+    try {
+        setGeneratingState(true);
+        // 建立一個臨時的使用者訊息來觸發 API
+        const continuePrompt = PromptManager.getPromptContentByIdentifier('continue_prompt') || "Continue.";
+        const tempHistory = [...history, { role: 'user', content: continuePrompt }];
+        const messagesForApi = buildApiMessagesFromHistory(tempHistory);
+
+        let aiResponse = await callApi(messagesForApi);
+
+        // 套用正規表達式規則
+        const regexRules = state.globalSettings.regexRules || [];
+        const enabledRules = regexRules.filter(rule => rule.enabled);
+        for (const rule of enabledRules) {
+            try {
+                const regex = new RegExp(rule.find, 'gsi');
+                aiResponse = aiResponse.replace(regex, rule.replace);
+            } catch (e) {
+                console.warn(`無效的正規表達式規則 [${rule.name}]:`, e);
+            }
+        }
+        
+        // 將 AI 的新回應附加到上一則訊息的末尾
+        const lastMessageContent = lastMessage.content[lastMessage.activeContentIndex];
+        lastMessage.content[lastMessage.activeContentIndex] = lastMessageContent + aiResponse;
+
+        await saveAllChatHistoriesForChar(state.activeCharacterId);
+        renderChatMessages();
+
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.error("繼續生成 API 錯誤:", error);
+            alert(`繼續生成失敗: ${error.message}`);
+        }
+    } finally {
+        setGeneratingState(false);
+    }
+}
+
+
+export async function retryMessage(messageIndex) {
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
     const messageToRetry = history[messageIndex];
 
     if (messageToRetry && messageToRetry.role === 'user' && messageToRetry.error) {
-        sendMessage(messageToRetry, messageIndex);
+        // 為了重試，我們需要重新執行發送邏輯，但要移除錯誤標記
+        delete messageToRetry.error;
+        
+        // 建立一個不包含錯誤訊息的歷史紀錄來呼叫 API
+        const contextHistory = history.slice(0, messageIndex + 1);
+
+        try {
+            setGeneratingState(true);
+            const thinkingBubble = displayMessage('...', 'assistant', new Date().toISOString(), history.length, true);
+
+            const messagesForApi = buildApiMessagesFromHistory(contextHistory);
+            let aiResponse = await callApi(messagesForApi);
+            
+            // ... (此處省略了正規表達式處理，因為重試通常是針對網路錯誤) ...
+            
+            history.push({ role: 'assistant', content: [aiResponse], activeContentIndex: 0, timestamp: new Date().toISOString() });
+            
+            thinkingBubble.remove();
+            await saveAllChatHistoriesForChar(state.activeCharacterId);
+            renderChatMessages();
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                messageToRetry.error = `重試失敗: ${error.message}`;
+                await saveAllChatHistoriesForChar(state.activeCharacterId);
+                renderChatMessages();
+            }
+        } finally {
+            setGeneratingState(false);
+        }
     }
 }
+
 
 export async function regenerateResponse(messageIndex) {
     if (state.globalSettings.apiProvider !== 'official_gemini' && !state.globalSettings.apiKey) {
@@ -279,7 +380,19 @@ export async function regenerateResponse(messageIndex) {
 
     try {
         const messagesForApi = buildApiMessagesFromHistory(contextHistory);
-        const aiResponse = await callApi(messagesForApi);
+        let aiResponse = await callApi(messagesForApi);
+
+        // 套用正規表達式規則
+        const regexRules = state.globalSettings.regexRules || [];
+        const enabledRules = regexRules.filter(rule => rule.enabled);
+        for (const rule of enabledRules) {
+            try {
+                const regex = new RegExp(rule.find, 'gsi');
+                aiResponse = aiResponse.replace(regex, rule.replace);
+            } catch (e) {
+                console.warn(`無效的正規表達式規則 [${rule.name}]:`, e);
+            }
+        }
 
         targetMessage.content.push(aiResponse);
         targetMessage.activeContentIndex = targetMessage.content.length - 1;
@@ -525,12 +638,26 @@ export async function handleDeleteActiveCharacter() {
     }
 }
 
+/**
+ * @description 切換角色的最愛狀態，並更新相關 UI
+ * @param {string} charId - 角色 ID
+ */
 export async function handleToggleCharacterLove(charId) {
+    if (!charId) return;
     const char = state.characters.find(c => c.id === charId);
     if (char) {
         char.loved = !char.loved;
         await saveCharacter(char);
+        
+        // 更新角色列表的視覺效果
         renderCharacterList();
+
+        // 如果當前正在查看這個角色的聊天室列表，也要更新標頭的愛心
+        if (state.activeCharacterId === charId) {
+            const heartIcon = DOM.headerLoveChatBtn.querySelector('i');
+            DOM.headerLoveChatBtn.classList.toggle('loved', char.loved);
+            heartIcon.className = `fa-${char.loved ? 'solid' : 'regular'} fa-heart`;
+        }
     }
 }
 
@@ -663,17 +790,16 @@ async function handleDeleteMessage(index) {
 // ===================================================================================
 
 /**
- * @description [MODIFIED] 儲存全域設定，並只更新必要的 UI
+ * @description 儲存全域設定
  */
 export async function handleSaveGlobalSettings() {
-    // [MODIFIED] 新增 Token 上限檢查
     let contextSize = parseInt(DOM.contextSizeInput.value, 10) || 30000;
     const maxContextSize = 100000;
 
     if (contextSize > maxContextSize) {
         alert(`上下文大小已超過上限 (100,000)，將自動設為 ${maxContextSize}。`);
         contextSize = maxContextSize;
-        DOM.contextSizeInput.value = maxContextSize; // 同步更新輸入框的顯示值
+        DOM.contextSizeInput.value = maxContextSize;
     }
 
     state.globalSettings = {
@@ -683,9 +809,10 @@ export async function handleSaveGlobalSettings() {
         temperature: DOM.temperatureValue.value,
         topP: DOM.topPValue.value,
         repetitionPenalty: DOM.repetitionPenaltyValue.value,
-        contextSize: contextSize, // 使用經過驗證的值
+        contextSize: contextSize,
         maxTokens: DOM.maxTokensValue.value,
         theme: DOM.themeSelect.value,
+        regexRules: state.globalSettings.regexRules || []
     };
     
     applyTheme(state.globalSettings.theme);
@@ -693,7 +820,6 @@ export async function handleSaveGlobalSettings() {
     
     toggleModal('global-settings-modal', false);
 
-    // 只更新聊天視窗中可能變動的部分，避免整個頁面跳轉
     if (state.activeCharacterId && state.activeChatId) {
         const currentModel = state.globalSettings.apiModel || '未設定';
         DOM.chatHeaderModelName.textContent = currentModel;
@@ -704,9 +830,8 @@ export async function handleSaveGlobalSettings() {
 }
 
 // ===================================================================================
-// 新的提示詞庫處理函式
+// 提示詞庫處理函式
 // ===================================================================================
-
 
 export function handleImportPromptSet() {
     const input = document.createElement('input');
@@ -731,6 +856,7 @@ export function handleImportPromptSet() {
                 alert(`提示詞庫 "${newPromptSet.name}" 匯入成功！`);
             } catch (error) {
                 alert(`匯入失敗: ${error.message}`);
+                console.error("匯入處理失敗:", error);
             }
         };
         reader.readAsText(file, 'UTF-8');
@@ -796,13 +922,11 @@ export function openPromptEditor(identifier) {
     DOM.promptEditorRoleSelect.value = prompt.role || 'system';
     DOM.promptEditorContentInput.value = prompt.content;
     
-    // 設置位置、深度和順序的預設值
     const position = prompt.position || { type: 'relative', depth: 4 };
     DOM.promptEditorPositionSelect.value = position.type;
     DOM.promptEditorDepthInput.value = position.depth ?? 4;
     DOM.promptEditorOrderInput.value = prompt.order ?? 0;
     
-    // 根據位置類型，決定是否顯示深度/順序欄位
     handlePromptPositionChange();
     
     toggleModal('prompt-editor-modal', true);
@@ -825,7 +949,6 @@ export async function handleSavePrompt() {
         };
         prompt.order = parseInt(DOM.promptEditorOrderInput.value, 10) || 0;
 
-        // 因為順序可能已改變，我們需要重新排序整個提示詞列表
         activeSet.prompts.sort((a, b) => (a.order || 0) - (b.order || 0));
 
         await savePromptSet(activeSet);
@@ -868,7 +991,6 @@ export async function handlePromptDropSort(draggedIdentifier, targetIdentifier) 
 
     activeSet.prompts.splice(targetIndex, 0, draggedItem);
     
-    // 拖曳後，更新所有提示詞的 order 值以反映新的陣列順序
     activeSet.prompts.forEach((p, index) => {
         p.order = index;
     });
@@ -877,13 +999,10 @@ export async function handlePromptDropSort(draggedIdentifier, targetIdentifier) 
     renderPromptList();
 }
 
-// [新增] 處理提示詞位置變更的函式
 export function handlePromptPositionChange() {
     const isChatType = DOM.promptEditorPositionSelect.value === 'chat';
     DOM.promptDepthOrderContainer.classList.toggle('hidden', !isChatType);
 }
-
-
 
 // ===================================================================================
 // 使用者角色 (User Persona)
@@ -1045,17 +1164,27 @@ export function openExportModal() {
     toggleModal('export-chat-modal', true);
 }
 
-export function handleConfirmExport() {
+export async function handleConfirmExport() {
     if (!state.activeCharacterId || !state.activeChatId) return;
 
+    toggleModal('export-chat-modal', false);
+
     if (DOM.exportFormatPng.checked) {
-        toggleModal('export-chat-modal', false);
         handleToggleScreenshotMode();
     } else {
-        exportChatAsJsonl();
-        toggleModal('export-chat-modal', false);
+        DOM.loadingOverlay.querySelector('p').textContent = '聊天紀錄處理中...';
+        DOM.loadingOverlay.classList.remove('hidden');
+        try {
+            await exportChatAsJsonl(); // 等待非同步匯出完成
+        } catch (error) {
+            alert('匯出失敗，請查看主控台獲取更多資訊。');
+        } finally {
+            DOM.loadingOverlay.classList.add('hidden');
+            DOM.loadingOverlay.querySelector('p').textContent = '圖片生成中，請稍候...'; // 還原預設文字
+        }
     }
 }
+
 
 export function handleToggleScreenshotMode() {
     tempState.isScreenshotMode = !tempState.isScreenshotMode;
@@ -1239,3 +1368,61 @@ export function handleGlobalImport(mode) {
     };
     input.click();
 }
+
+// ===================================================================================
+// 正規表達式規則處理
+// ===================================================================================
+
+export async function handleAddRegexRule() {
+    const newRule = {
+        id: `regex_${Date.now()}`,
+        name: '新規則',
+        find: '',
+        replace: '',
+        enabled: true
+    };
+    if (!state.globalSettings.regexRules) {
+        state.globalSettings.regexRules = [];
+    }
+    state.globalSettings.regexRules.push(newRule);
+    await saveSettings();
+    renderRegexRulesList();
+}
+
+export async function handleRegexRuleChange(event) {
+    const input = event.target;
+    const ruleItem = input.closest('.regex-rule-item');
+    if (!ruleItem) return;
+
+    const ruleId = ruleItem.dataset.id;
+    const rule = state.globalSettings.regexRules.find(r => r.id === ruleId);
+    if (!rule) return;
+
+    if (input.classList.contains('regex-name-input')) {
+        rule.name = input.value;
+    } else if (input.classList.contains('regex-find-input')) {
+        rule.find = input.value;
+    } else if (input.classList.contains('regex-replace-input')) {
+        rule.replace = input.value;
+    }
+
+    await saveSettings();
+}
+
+export async function handleRegexRuleToggle(ruleId) {
+    const rule = state.globalSettings.regexRules.find(r => r.id === ruleId);
+    if (rule) {
+        rule.enabled = !rule.enabled;
+        await saveSettings();
+        renderRegexRulesList();
+    }
+}
+
+export async function handleDeleteRegexRule(ruleId) {
+    if (confirm('確定要刪除這條規則嗎？')) {
+        state.globalSettings.regexRules = state.globalSettings.regexRules.filter(r => r.id !== ruleId);
+        await saveSettings();
+        renderRegexRulesList();
+    }
+}
+

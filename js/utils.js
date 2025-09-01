@@ -91,18 +91,14 @@ export function exportCharacter() {
     if (!tempState.editingCharacterId) { alert('請先儲存角色後再匯出。'); return; }
     const char = state.characters.find(c => c.id === tempState.editingCharacterId);
     
-    // 建立符合 TavernAI V2 卡片規格的資料結構
     const characterData = {
         spec: 'chara_card_v2',
         data: {
             name: char.name,
             description: char.description,
-            // 將第一個開場白作為主要的 first_mes
             first_mes: char.firstMessage[0] || '',
             mes_example: char.exampleDialogue,
-            // 將剩餘的開場白放入 alternate_greetings
             alternate_greetings: char.firstMessage.slice(1),
-            // 為了我們自己的應用程式，也儲存完整的陣列
             firstMessage: char.firstMessage, 
             character_avatar: char.avatarUrl
         }
@@ -119,7 +115,6 @@ export function exportCharacter() {
 
 /**
  * @description 觸發檔案選擇器並處理角色卡的匯入流程。
- * 支援 .json 和 .png 格式。
  */
 export function importCharacter() {
     const input = document.createElement('input');
@@ -145,7 +140,6 @@ export function importCharacter() {
             reader.readAsText(file, 'UTF-8'); 
         
         } else if (file.type === 'image/png') {
-            // ... (PNG 處理邏輯維持不變)
             let fileAsDataURL = '';
             const readerForDataURL = new FileReader();
             readerForDataURL.onload = (e) => {
@@ -245,15 +239,12 @@ function populateEditorWithCharData(importedData, imageBase64 = null) {
     DOM.charNameInput.value = data.name || '';
     DOM.charDescriptionInput.value = data.description || data.personality || '';
     
-    // [MODIFIED] New logic to handle first_mes and alternate_greetings
     let allGreetings = [];
 
-    // 1. Add the main greeting (first_mes) if it exists
     if (data.first_mes && typeof data.first_mes === 'string' && data.first_mes.trim() !== '') {
         allGreetings.push(data.first_mes.trim());
     }
 
-    // 2. Add alternate greetings if they exist and is an array
     if (data.alternate_greetings && Array.isArray(data.alternate_greetings)) {
         const validAlternateGreetings = data.alternate_greetings
             .filter(g => typeof g === 'string' && g.trim() !== '')
@@ -261,7 +252,6 @@ function populateEditorWithCharData(importedData, imageBase64 = null) {
         allGreetings = allGreetings.concat(validAlternateGreetings);
     }
 
-    // 3. Fallback to our own 'firstMessage' array format if the others don't exist
     if (allGreetings.length === 0 && data.firstMessage && Array.isArray(data.firstMessage)) {
          const validFirstMessages = data.firstMessage
             .filter(g => typeof g === 'string' && g.trim() !== '')
@@ -269,7 +259,6 @@ function populateEditorWithCharData(importedData, imageBase64 = null) {
         allGreetings = allGreetings.concat(validFirstMessages);
     }
 
-    // 4. Ensure there's at least one empty input if no greetings were found
     if (allGreetings.length === 0) {
         allGreetings.push('');
     }
@@ -283,20 +272,62 @@ function populateEditorWithCharData(importedData, imageBase64 = null) {
 }
 
 /**
- * @description 匯出對話為 JSONL 格式
+ * @description [核心修改] 使用分塊處理的方式，非同步匯出對話為 JSONL 格式，避免 UI 凍結。
  */
 export function exportChatAsJsonl() {
-    if (!state.activeCharacterId || !state.activeChatId) return;
-    const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
-    if (history.length === 0) { alert('沒有對話可以匯出。'); return; }
-    
-    const activeChar = state.characters.find(c => c.id === state.activeCharacterId);
-    const jsonlString = JSON.stringify({ messages: history });
-    const blob = new Blob([jsonlString], { type: 'application/jsonl' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${activeChar.name}_${state.activeChatId}.jsonl`;
-    a.click();
-    URL.revokeObjectURL(url);
+    return new Promise((resolve, reject) => {
+        if (!state.activeCharacterId || !state.activeChatId) {
+            reject(new Error('沒有活躍的聊天室。'));
+            return;
+        }
+        const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
+        if (history.length === 0) {
+            alert('沒有對話可以匯出。');
+            resolve();
+            return;
+        }
+        
+        const activeChar = state.characters.find(c => c.id === state.activeCharacterId);
+        const filename = `${activeChar.name}_${state.activeChatId}.jsonl`;
+        
+        let content = '{"messages":[\n';
+        const CHUNK_SIZE = 50; // 每次處理 50 則訊息
+        let currentIndex = 0;
+
+        function processChunk() {
+            try {
+                const end = Math.min(currentIndex + CHUNK_SIZE, history.length);
+                const chunk = history.slice(currentIndex, end);
+                
+                chunk.forEach((message, index) => {
+                    const isLast = (currentIndex + index) === (history.length - 1);
+                    content += JSON.stringify(message) + (isLast ? '' : ',\n');
+                });
+
+                currentIndex += CHUNK_SIZE;
+
+                if (currentIndex < history.length) {
+                    // 繼續處理下一塊，使用 setTimeout 將執行推遲到下一個事件循環
+                    setTimeout(processChunk, 0); 
+                } else {
+                    // 所有塊都處理完畢
+                    content += '\n]}';
+                    const blob = new Blob([content], { type: 'application/jsonl' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    resolve();
+                }
+            } catch (error) {
+                console.error("匯出 JSONL 失敗:", error);
+                reject(error);
+            }
+        }
+        
+        // 啟動第一個處理塊
+        processChunk();
+    });
 }

@@ -1,30 +1,60 @@
 // js/ui.js
+// 這個檔案負責渲染所有使用者介面元件。
+
 import * as DOM from './dom.js';
 import { state, tempState } from './state.js';
-import { DEFAULT_AVATAR, MODELS, DEFAULT_PROMPT_SET } from './constants.js';
+import { DEFAULT_AVATAR, MODELS } from './constants.js';
 import { getActivePromptSet } from './promptManager.js';
 
-export function renderUserProfile() {
+/**
+ * @description 套用所有已啟用的正規表達式規則
+ * @param {string} text - AI 回應的原始文字
+ * @returns {string} - 經過規則處理後的文字
+ */
+function applyRegexRules(text) {
+    const regexRules = state.globalSettings.regexRules || [];
+    const enabledRules = regexRules.filter(rule => rule.enabled);
+    let processedText = text;
+
+    for (const rule of enabledRules) {
+        try {
+            const regex = new RegExp(rule.find, 'gsi');
+            processedText = processedText.replace(regex, rule.replace);
+        } catch (e) {
+            console.warn(`無效的正規表達式規則 [${rule.name}]，已跳過:`, e);
+        }
+    }
+    return processedText;
+}
+
+/**
+ * @description 渲染「帳號」分頁的內容
+ */
+export function renderAccountTab() {
     if (state.currentUser) {
-        DOM.loginBtn.classList.add('hidden');
-        DOM.userInfo.classList.remove('hidden');
-        DOM.userAvatar.src = state.currentUser.photoURL || DEFAULT_AVATAR;
-        DOM.userName.textContent = state.currentUser.displayName || '使用者';
+        DOM.loginPrompt.classList.add('hidden');
+        DOM.userInfoDetails.classList.remove('hidden');
+        DOM.userAvatarInSettings.src = state.currentUser.photoURL || DEFAULT_AVATAR;
+        DOM.userNameInSettings.textContent = state.currentUser.displayName || '使用者';
     } else {
-        DOM.loginBtn.classList.remove('hidden');
-        DOM.userInfo.classList.add('hidden');
+        DOM.loginPrompt.classList.remove('hidden');
+        DOM.userInfoDetails.classList.add('hidden');
     }
 }
 
+
+/**
+ * @description 渲染角色列表
+ */
 export function renderCharacterList() {
-    renderUserProfile();
     DOM.characterList.innerHTML = '';
 
+    // 根據 "loved" 狀態和 "order" 進行排序
     const sortedCharacters = [...state.characters].sort((a, b) => {
         if (a.loved !== b.loved) {
-            return a.loved ? -1 : 1;
+            return a.loved ? -1 : 1; // loved 的排前面
         }
-        return (a.order || 0) - (b.order || 0);
+        return (a.order || 0) - (b.order || 0); // 其次按 order 排序
     });
 
     sortedCharacters.forEach(char => {
@@ -39,16 +69,14 @@ export function renderCharacterList() {
                 <img src="${char.avatarUrl || DEFAULT_AVATAR}" alt="${char.name}" class="char-item-avatar">
                 <span class="char-item-name">${char.name}</span>
             </div>
-            <div class="char-item-actions">
-                <button class="icon-btn-sm love-char-btn ${char.loved ? 'loved' : ''}" title="喜愛/取消喜愛">
-                    <i class="fa-${char.loved ? 'solid' : 'regular'} fa-heart"></i>
-                </button>
-            </div>
         `;
         DOM.characterList.appendChild(item);
     });
 }
 
+/**
+ * @description 顯示角色列表視圖(並隱藏側邊欄)
+ */
 export function showCharacterListView() {
     DOM.leftPanel.classList.remove('show-chats');
     DOM.leftPanel.classList.remove('mobile-visible');
@@ -56,6 +84,18 @@ export function showCharacterListView() {
     state.activeCharacterId = null;
 }
 
+/**
+ * @description 將側邊欄內容切換回角色列表，但不隱藏側邊欄
+ */
+export function switchPanelToCharacterView() {
+    DOM.leftPanel.classList.remove('show-chats');
+    state.activeCharacterId = null;
+}
+
+/**
+ * @description 顯示指定角色的聊天室列表視圖，並更新標頭的愛心狀態
+ * @param {string} charId - 角色 ID
+ */
 export function showChatSessionListView(charId) {
     try {
         state.activeCharacterId = charId;
@@ -66,7 +106,15 @@ export function showChatSessionListView(charId) {
         }
         
         DOM.leftPanel.classList.add('show-chats');
-        DOM.chatListHeaderName.textContent = character.name;
+
+        const headerNameContainer = DOM.chatListHeaderName.parentElement;
+        headerNameContainer.querySelector('h2').textContent = character.name;
+
+        // 更新標頭愛心按鈕的狀態
+        const heartIcon = DOM.headerLoveChatBtn.querySelector('i');
+        DOM.headerLoveChatBtn.classList.toggle('loved', character.loved);
+        heartIcon.className = `fa-${character.loved ? 'solid' : 'regular'} fa-heart`;
+
         renderChatSessionList();
     } catch (error) {
         console.error("顯示聊天室列表時發生錯誤:", error);
@@ -75,6 +123,9 @@ export function showChatSessionListView(charId) {
     }
 }
 
+/**
+ * @description 渲染指定角色的聊天室列表
+ */
 export function renderChatSessionList() {
     DOM.chatSessionList.innerHTML = '';
     const sessions = state.chatHistories[state.activeCharacterId] || {};
@@ -121,7 +172,7 @@ export function renderChatSessionList() {
 }
 
 /**
- * @description [MODIFIED] 渲染當前活躍的聊天介面，使用自訂模型名稱
+ * @description 渲染當前活躍的聊天介面
  */
 export function renderActiveChat() {
     if (!state.activeCharacterId || !state.activeChatId) {
@@ -141,15 +192,14 @@ export function renderActiveChat() {
     DOM.chatHeaderName.textContent = activeChar.name;
     DOM.chatNotesInput.value = metadata.notes || '';
     
-    // [FIX] 查找並顯示自訂的模型名稱
     const provider = state.globalSettings.apiProvider || 'official_gemini';
     const modelId = state.globalSettings.apiModel;
-    let modelDisplayName = modelId || '未設定'; // 預設顯示 ID
+    let modelDisplayName = modelId || '未設定';
 
     if (modelId && MODELS[provider]) {
         const modelObject = MODELS[provider].find(m => m.value === modelId);
         if (modelObject) {
-            modelDisplayName = modelObject.name; // 如果找到，就使用自訂名稱
+            modelDisplayName = modelObject.name;
         }
     }
     
@@ -160,15 +210,31 @@ export function renderActiveChat() {
     renderChatMessages();
 }
 
+/**
+ * @description 渲染當前對話的所有訊息
+ */
 export function renderChatMessages() {
     DOM.chatWindow.innerHTML = '';
     const history = state.chatHistories[state.activeCharacterId]?.[state.activeChatId] || [];
     history.forEach((msg, index) => {
-        const contentToDisplay = (msg.role === 'assistant') ? msg.content[msg.activeContentIndex] : msg.content;
+        const contentToDisplay = (msg.role === 'assistant' && Array.isArray(msg.content)) 
+            ? msg.content[msg.activeContentIndex] 
+            : msg.content;
         displayMessage(contentToDisplay, msg.role, msg.timestamp, index, false, msg.error);
     });
+    DOM.chatWindow.scrollTop = DOM.chatWindow.scrollHeight;
 }
 
+/**
+ * @description 在聊天視窗中顯示單則訊息，並在顯示前套用正規表達式
+ * @param {string} text - 訊息內容
+ * @param {string} sender - 'user' 或 'assistant'
+ * @param {string} timestamp - ISO 格式的時間戳
+ * @param {number} index - 訊息在歷史紀錄中的索引
+ * @param {boolean} isNew - 是否為剛收到的新訊息
+ * @param {string|null} error - 錯誤訊息
+ * @returns {HTMLElement} - 建立的訊息 DOM 元素
+ */
 export function displayMessage(text, sender, timestamp, index, isNew, error = null) {
     const metadata = state.chatMetadatas[state.activeCharacterId]?.[state.activeChatId] || {};
     const currentPersonaId = metadata.userPersonaId || state.activeUserPersonaId;
@@ -192,8 +258,8 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
     let messageActionsHTML = '';
     const msgData = state.chatHistories[state.activeCharacterId]?.[state.activeChatId]?.[index];
 
-    if (sender === 'assistant') {
-        if (msgData && msgData.content.length > 1) {
+    if (sender === 'assistant' && msgData) {
+        if (msgData.content.length > 1) {
             messageActionsHTML += `
                 <div class="version-nav">
                     <button class="version-prev-btn" ${msgData.activeContentIndex === 0 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>
@@ -201,7 +267,6 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
                     <button class="version-next-btn" ${msgData.activeContentIndex === msgData.content.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>
                 </div>`;
         }
-
         const history = state.chatHistories[state.activeCharacterId]?.[state.activeChatId] || [];
         if (index === history.length - 1) {
              messageActionsHTML += `<button class="regenerate-btn-sm" title="再生成一則新的回應？"><i class="fa-solid fa-arrows-rotate"></i> 再生成</button>`;
@@ -219,8 +284,13 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
         <button class="icon-btn edit-msg-btn" title="編輯訊息"><i class="fa-solid fa-pencil"></i></button>
     `;
     
+    let contentToRender = text;
+    if (sender === 'assistant') {
+        contentToRender = applyRegexRules(text);
+    }
+
     const bubble = row.querySelector('.chat-bubble');
-    bubble.innerHTML = marked.parse(text || '');
+    bubble.innerHTML = marked.parse(contentToRender || '');
 
     DOM.chatWindow.appendChild(row);
     if (isNew) {
@@ -229,7 +299,12 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
     return row;
 }
 
+/**
+ * @description 將 state 中的全域設定載入到 UI 中
+ */
 export function loadGlobalSettingsToUI() {
+    renderAccountTab();
+
     const settings = state.globalSettings;
     DOM.apiProviderSelect.value = settings.apiProvider || 'official_gemini';
     updateModelDropdown(); 
@@ -250,16 +325,20 @@ export function loadGlobalSettingsToUI() {
     renderUserPersonaList();
     renderActiveUserPersonaSelector();
     renderApiPresetsDropdown();
-    
     renderPromptSetSelector();
     renderPromptList();
+    renderRegexRulesList();
 
+    // 預設顯示帳號分頁
     DOM.settingsTabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     DOM.globalSettingsModal.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    DOM.settingsTabsContainer.querySelector('[data-tab="api-settings-tab"]').classList.add('active');
-    DOM.apiSettingsTab.classList.add('active');
+    DOM.settingsTabsContainer.querySelector('[data-tab="account-tab"]').classList.add('active');
+    DOM.accountTab.classList.add('active');
 }
 
+/**
+ * @description 根據 API 供應商更新模型下拉選單
+ */
 export function updateModelDropdown() {
     const provider = DOM.apiProviderSelect.value;
     const models = MODELS[provider] || [];
@@ -280,6 +359,9 @@ export function updateModelDropdown() {
     DOM.apiKeyFormGroup.classList.toggle('hidden', provider === 'official_gemini');
 }
 
+/**
+ * @description 渲染使用者角色列表 (在設定中)
+ */
 export function renderUserPersonaList() {
     DOM.userPersonaList.innerHTML = '';
     state.userPersonas.forEach(persona => {
@@ -298,6 +380,9 @@ export function renderUserPersonaList() {
     });
 }
 
+/**
+ * @description 渲染預設使用者角色的下拉選單
+ */
 export function renderActiveUserPersonaSelector() {
     DOM.activeUserPersonaSelect.innerHTML = '';
     state.userPersonas.forEach(persona => {
@@ -309,6 +394,9 @@ export function renderActiveUserPersonaSelector() {
     DOM.activeUserPersonaSelect.value = state.activeUserPersonaId;
 }
 
+/**
+ * @description 渲染聊天介面中的使用者角色下拉選單
+ */
 export function renderChatUserPersonaSelector() {
     DOM.chatUserPersonaSelect.innerHTML = '';
     state.userPersonas.forEach(persona => {
@@ -321,6 +409,9 @@ export function renderChatUserPersonaSelector() {
     DOM.chatUserPersonaSelect.value = metadata.userPersonaId || state.activeUserPersonaId;
 }
 
+/**
+ * @description 渲染 API 設定檔下拉選單
+ */
 export function renderApiPresetsDropdown() {
     DOM.apiPresetSelect.innerHTML = '<option value="">選擇要載入的設定檔...</option>';
     state.apiPresets.forEach(preset => {
@@ -331,6 +422,10 @@ export function renderApiPresetsDropdown() {
     });
 }
 
+/**
+ * @description 將選擇的 API 設定檔載入到 UI
+ * @param {string} presetId - 設定檔 ID
+ */
 export async function loadApiPresetToUI(presetId) {
     const preset = state.apiPresets.find(p => p.id === presetId);
     if (!preset) return;
@@ -338,17 +433,27 @@ export async function loadApiPresetToUI(presetId) {
     DOM.apiProviderSelect.value = preset.provider;
     
     updateModelDropdown();
-    await Promise.resolve(); 
+    await new Promise(resolve => setTimeout(resolve, 0)); // 等待 UI 更新
     
     DOM.apiModelSelect.value = preset.model;
     DOM.apiKeyInput.value = preset.apiKey;
     DOM.apiStatusIndicator.style.display = 'none';
 }
 
+/**
+ * @description 開關 Modal
+ * @param {string} modalId - Modal 的 ID
+ * @param {boolean} show - true 為顯示, false 為隱藏
+ */
 export function toggleModal(modalId, show) {
     document.getElementById(modalId).classList.toggle('hidden', !show);
 }
 
+/**
+ * @description 設定 AI 是否正在生成中的狀態
+ * @param {boolean} isGenerating - 是否正在生成
+ * @param {boolean} [changeMainButton=true] - 是否改變主送出按鈕的狀態
+ */
 export function setGeneratingState(isGenerating, changeMainButton = true) {
     if (changeMainButton) {
         DOM.sendBtn.classList.toggle('is-generating', isGenerating);
@@ -362,6 +467,10 @@ export function setGeneratingState(isGenerating, changeMainButton = true) {
     });
 }
 
+/**
+ * @description 渲染角色編輯器中的「第一句話」輸入框
+ * @param {Array<string>} [messages=['']] - 開場白訊息陣列
+ */
 export function renderFirstMessageInputs(messages = ['']) {
     DOM.firstMessageList.innerHTML = '';
     const messagesToRender = messages.length > 0 ? messages : [''];
@@ -388,6 +497,9 @@ export function renderFirstMessageInputs(messages = ['']) {
     });
 }
 
+/**
+ * @description 渲染提示詞庫下拉選單
+ */
 export function renderPromptSetSelector() {
     DOM.promptSetSelect.innerHTML = '';
     state.promptSets.forEach(set => {
@@ -401,6 +513,9 @@ export function renderPromptSetSelector() {
     }
 }
 
+/**
+ * @description 渲染提示詞列表
+ */
 export function renderPromptList() {
     const activeSet = getActivePromptSet();
     DOM.promptList.innerHTML = '';
@@ -426,3 +541,41 @@ export function renderPromptList() {
         DOM.promptList.appendChild(item);
     });
 }
+
+/**
+ * @description 渲染正規表達式規則列表 (摺疊式)
+ */
+export function renderRegexRulesList() {
+    DOM.regexRulesList.innerHTML = '';
+    const rules = state.globalSettings.regexRules || [];
+    if (rules.length === 0) {
+        DOM.regexRulesList.innerHTML = '<li class="list-placeholder">尚無規則</li>';
+        return;
+    }
+
+    rules.forEach(rule => {
+        const item = document.createElement('li');
+        item.className = 'regex-rule-item';
+        item.dataset.id = rule.id;
+        item.innerHTML = `
+            <div class="regex-rule-header">
+                <button class="icon-btn-sm regex-expand-btn"><i class="fa-solid fa-chevron-down"></i></button>
+                <input type="text" class="regex-name-input" placeholder="規則名稱" value="${rule.name}">
+                <div class="prompt-item-toggle ${rule.enabled ? 'enabled' : ''}" title="啟用/停用此規則"></div>
+                <button class="icon-btn-sm danger delete-regex-rule-btn" title="刪除此規則"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <div class="regex-rule-details">
+                <div class="form-group">
+                    <label>尋找 (正規表達式)</label>
+                    <textarea class="regex-find-input" rows="2">${rule.find}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>取代為</label>
+                    <textarea class="regex-replace-input" rows="2">${rule.replace}</textarea>
+                </div>
+            </div>
+        `;
+        DOM.regexRulesList.appendChild(item);
+    });
+}
+
