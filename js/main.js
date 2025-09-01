@@ -4,11 +4,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
-import { loadStateFromDB, state } from './state.js';
+import { loadStateFromDB, state, saveSettings } from './state.js';
 import { openDB } from './db.js';
 import { applyTheme, setAppHeight } from './utils.js';
 import { renderCharacterList, renderActiveChat, renderAccountTab } from './ui.js';
 import { setupEventListeners } from './events.js';
+import { PREMIUM_ACCOUNTS } from './constants.js'; // 【修改】匯入授權帳號列表
 
 export let auth;
 
@@ -59,9 +60,25 @@ async function initialize() {
 
         onAuthStateChanged(auth, async (user) => {
             state.currentUser = user;
-            console.log("使用者狀態已變更:", user ? user.displayName : '已登出');
+            
+            // 【關鍵修改】使用 .some() 方法檢查登入的 Email 是否存在於授權列表中
+            if (user && PREMIUM_ACCOUNTS.some(acc => acc.firebaseEmail === user.email)) {
+                state.isPremiumUser = true;
+                console.log(`授權使用者 ${user.email} 已登入。`);
+            } else {
+                state.isPremiumUser = false;
+            }
+            
+            console.log("使用者狀態已變更:", user ? user.displayName : '已登入');
             
             await loadStateFromDB();
+
+            // 如果使用者不是授權用戶，但他們的設定停留在測試模型，則自動切換
+            if (!state.isPremiumUser && state.globalSettings.apiProvider === 'official_gemini') {
+                console.log("非授權使用者，API 供應商已自動從測試模型切換至 OpenAI。");
+                state.globalSettings.apiProvider = 'openai'; // 切換到一個公開的預設選項
+                await saveSettings();
+            }
             
             if (state.globalSettings.theme) {
                 applyTheme(state.globalSettings.theme);
@@ -82,3 +99,4 @@ async function initialize() {
 }
 
 document.addEventListener('DOMContentLoaded', initialize);
+

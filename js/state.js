@@ -7,6 +7,7 @@ import * as db from './db.js';
 // 應用程式的核心狀態物件
 export let state = {
     currentUser: null,
+    isPremiumUser: false, // 【新增】用來追蹤使用者是否為授權用戶
     characters: [],
     chatHistories: {}, 
     longTermMemories: {},

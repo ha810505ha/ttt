@@ -26,7 +26,7 @@ import {
     renderApiPresetsDropdown, loadApiPresetToUI, updateModelDropdown,
     renderFirstMessageInputs, renderPromptSetSelector, renderPromptList, renderRegexRulesList
 } from './ui.js';
-import { DEFAULT_AVATAR } from './constants.js';
+import { DEFAULT_AVATAR, PREMIUM_ACCOUNTS } from './constants.js'; // 【修改】匯入授權帳號列表
 import { handleImageUpload, exportChatAsJsonl, applyTheme, importCharacter, exportCharacter } from './utils.js';
 import * as PromptManager from './promptManager.js';
 
@@ -71,10 +71,24 @@ export function handleEmailRegister(event) {
 
 export function handleEmailLogin(event) {
     event.preventDefault();
-    const email = event.target.email.value;
+    let emailInput = event.target.email.value; // 這是使用者在輸入框中實際輸入的內容
     const password = event.target.password.value;
 
-    signInWithEmailAndPassword(auth, email, password)
+    let emailToAuth;
+
+    // 【關鍵修改】使用 .find() 方法在授權列表中尋找匹配的帳號
+    const premiumAccount = PREMIUM_ACCOUNTS.find(acc => acc.username.toLowerCase() === emailInput.toLowerCase());
+
+    if (premiumAccount) {
+        // 如果找到了，則使用對應的 Firebase Email 進行驗證
+        emailToAuth = premiumAccount.firebaseEmail;
+        console.log(`偵測到授權帳號登入，使用 ${emailToAuth} 進行驗證。`);
+    } else {
+        // 否則，視為一般 Email 登入
+        emailToAuth = emailInput;
+    }
+
+    signInWithEmailAndPassword(auth, emailToAuth, password)
         .then(() => {
             alert('登入成功！');
             toggleModal('auth-modal', false);

@@ -3,6 +3,29 @@
 
 export const DEFAULT_AVATAR = 'https://placehold.co/100x100/EFEFEF/AAAAAA?text=頭像';
 
+// 【修改】授權使用者帳號列表
+// ==============================================================================
+// 重要提示：
+// 您必須在 Firebase 後台手動建立對應的使用者，此列表才會生效。
+// - username: 使用者在登入框中輸入的「帳號名稱」。
+// - firebaseEmail: 您在 Firebase 後台為該使用者建立的「完整 Email」。
+// ==============================================================================
+export const PREMIUM_ACCOUNTS = [
+    { username: 'ice01', firebaseEmail: 'ice01@mail.com' },
+    { username: 'ice02', firebaseEmail: 'ice02@mail.com' },
+    { username: 'ice03', firebaseEmail: 'ice03@mail.com' },
+    { username: 'ice04', firebaseEmail: 'ice04@mail.com' },
+    { username: 'ice05', firebaseEmail: 'ice05@mail.com' },
+    { username: 'ice06', firebaseEmail: 'ice06@mail.com' },
+    { username: 'ice07', firebaseEmail: 'ice07@mail.com' },
+    { username: 'ice08', firebaseEmail: 'ice08@mail.com' },
+    { username: 'ice09', firebaseEmail: 'ice09@mail.com' },
+    { username: 'ice10', firebaseEmail: 'ice10@mail.com' },
+    // 如果您有更多帳號，可以依照此格式繼續往下新增：
+    // { username: 'test02', firebaseEmail: 'test02@premium.user' },
+];
+
+
 export const DEFAULT_PROMPT_SET = {
     id: 'prompt_set_default',
     name: '預設提示詞',
@@ -84,3 +107,4 @@ export const MODELS = {
         { name: 'Mistral Small', value: 'mistral-small-latest' }
     ]
 };
+

@@ -165,6 +165,11 @@ export async function callApi(messagePayload, isForSummarization = false) {
 
     const settings = state.globalSettings;
     const provider = settings.apiProvider || 'official_gemini';
+
+    // 【新增】API 呼叫前的最終權限檢查
+    if (provider === 'official_gemini' && !state.isPremiumUser) {
+        throw new Error('您沒有使用測試模型的權限。');
+    }
     
     if (provider === 'official_gemini') {
         const simplifiedPayload = messagePayload.map(m => ({
@@ -361,3 +366,4 @@ export async function testApiConnection(provider, apiKey, model) {
 
     return true;
 }
+

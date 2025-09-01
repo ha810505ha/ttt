@@ -306,7 +306,14 @@ export function loadGlobalSettingsToUI() {
     renderAccountTab();
 
     const settings = state.globalSettings;
-    DOM.apiProviderSelect.value = settings.apiProvider || 'official_gemini';
+
+    // 【新增】根據使用者權限顯示或隱藏測試模型選項
+    const officialGeminiOption = DOM.apiProviderSelect.querySelector('option[value="official_gemini"]');
+    if (officialGeminiOption) {
+        officialGeminiOption.hidden = !state.isPremiumUser;
+    }
+
+    DOM.apiProviderSelect.value = settings.apiProvider || 'openai';
     updateModelDropdown(); 
     DOM.apiModelSelect.value = settings.apiModel || (MODELS[DOM.apiProviderSelect.value] ? MODELS[DOM.apiProviderSelect.value][0].value : '');
     DOM.apiKeyInput.value = settings.apiKey || '';
@@ -354,6 +361,11 @@ export function updateModelDropdown() {
         DOM.apiModelSelect.value = savedModel;
     } else if (models.length > 0) {
         DOM.apiModelSelect.value = models[0].value;
+    }
+
+    // 如果目前選中的是隱藏的選項 (例如，一個非授權用戶剛登入)，則切換到第一個可見選項
+    if (DOM.apiProviderSelect.options[DOM.apiProviderSelect.selectedIndex].hidden) {
+        DOM.apiProviderSelect.value = 'openai';
     }
 
     DOM.apiKeyFormGroup.classList.toggle('hidden', provider === 'official_gemini');
