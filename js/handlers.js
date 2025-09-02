@@ -826,6 +826,7 @@ export async function handleSaveGlobalSettings() {
         contextSize: contextSize,
         maxTokens: DOM.maxTokensValue.value,
         theme: DOM.themeSelect.value,
+        summarizationPrompt: DOM.summarizationPromptInput.value.trim(),
         regexRules: state.globalSettings.regexRules || []
     };
     
@@ -1130,9 +1131,9 @@ export async function handleUpdateMemory() {
     try {
         const conversationText = history.map(m => `${m.role}: ${m.role === 'assistant' ? m.content[m.activeContentIndex] : m.content}`).join('\n');
         
-        let userPrompt = PromptManager.getPromptContentByIdentifier('summarization_prompt');
+        let userPrompt = state.globalSettings.summarizationPrompt;
         if (!userPrompt) {
-            throw new Error("在當前提示詞庫中找不到 'summarization_prompt'。");
+            throw new Error("在全域設定中找不到 'summarizationPrompt'。");
         }
         
         const summaryPrompt = userPrompt.replace('{{conversation}}', conversationText);
@@ -1140,7 +1141,7 @@ export async function handleUpdateMemory() {
         const provider = state.globalSettings.apiProvider || 'openai';
         let summaryMessages;
         if (provider === 'google' || provider === 'official_gemini') {
-            summaryMessages = [{ role: 'user', parts: [{ text: summaryPrompt }] }];
+            summaryMessages = [{ role: 'user', content: summaryPrompt }];
         } else if (provider === 'anthropic') {
             summaryMessages = { system: 'You are a summarization expert.', messages: [{ role: 'user', content: summaryPrompt }] };
         } else {

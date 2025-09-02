@@ -114,6 +114,7 @@ export const promptEditorPositionSelect = document.getElementById('prompt-editor
 export const promptEditorDepthInput = document.getElementById('prompt-editor-depth');
 export const promptEditorOrderInput = document.getElementById('prompt-editor-order');
 export const promptDepthOrderContainer = document.getElementById('prompt-depth-order-container');
+export const summarizationPromptInput = document.getElementById('summarization-prompt-input');
 
 // API 設定檔相關
 export const apiPresetSelect = document.getElementById('api-preset-select');

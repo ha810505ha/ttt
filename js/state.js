@@ -1,7 +1,7 @@
 // js/state.js
 // 這個檔案負責管理整個應用程式的狀態，並與 IndexedDB 互動。
 
-import { DEFAULT_PROMPT_SET } from './constants.js';
+import { DEFAULT_PROMPT_SET, DEFAULT_SUMMARY_PROMPT } from './constants.js';
 import * as db from './db.js';
 
 // 應用程式的核心狀態物件
@@ -47,6 +47,11 @@ export async function loadStateFromDB() {
         state.activeChatId = settingsData.activeChatId || null;
         state.apiPresets = settingsData.apiPresets || [];
         state.activePromptSetId = settingsData.activePromptSetId || null;
+    }
+
+    // 初始化記憶生成提示
+    if (state.globalSettings.summarizationPrompt === undefined) {
+        state.globalSettings.summarizationPrompt = DEFAULT_SUMMARY_PROMPT;
     }
 
     // 初始化正規表達式規則

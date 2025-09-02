@@ -92,9 +92,11 @@ export function buildFinalMessages(chatHistory) {
     let finalMessages = [...chatHistory];
 
     promptsToInject.forEach(prompt => {
+        // [核心修改] 在這裡為每個要插入的提示詞內容加上其名稱作為標題
+        const finalContent = `[${prompt.name}]\n${replacePlaceholders(prompt.content)}`;
         const message = {
             role: prompt.role || 'system',
-            content: replacePlaceholders(prompt.content)
+            content: finalContent
         };
         
         const insertionIndex = Math.max(0, finalMessages.length - (prompt.position.depth || 0));
@@ -126,9 +128,10 @@ export function replacePlaceholders(text) {
     result = result.replace(/{{char}}/g, char.name || 'char');
     result = result.replace(/{{user}}/g, user.name || 'user');
     
-    result = result.replace(/{{personality}}/g, char.description || '');
-    result = result.replace(/{{scenario}}/g, char.exampleDialogue || ''); 
-    result = result.replace(/{{memory}}/g, memory);
+    // [核心修改] 在替換時也加上標題，以便除錯
+    result = result.replace(/{{personality}}/g, `[Character Persona]\n${char.description || ''}`);
+    result = result.replace(/{{scenario}}/g, `[Scenario]\n${char.exampleDialogue || ''}`); 
+    result = result.replace(/{{memory}}/g, `[Memory]\n${memory}`);
 
     return result;
 }
@@ -142,6 +145,7 @@ export function getPromptContentByIdentifier(identifier) {
     const activePromptSet = getActivePromptSet();
     const prompt = activePromptSet.prompts.find(p => p.identifier === identifier && p.enabled);
     if (!prompt) {
+        // 後備方案：如果當前庫找不到，就從預設庫找
         const defaultPrompt = DEFAULT_PROMPT_SET.prompts.find(p => p.identifier === identifier);
         return defaultPrompt ? defaultPrompt.content : null;
     }

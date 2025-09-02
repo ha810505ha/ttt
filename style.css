@@ -764,7 +764,7 @@ body.theme-b .action-btn.secondary:hover { background-color: #BBD0DA; }
     background-color: var(--modal-background);
     border-radius: 16px;
     width: 90%;
-    max-width: 500px;
+    max-width: 700px;
     display: flex;
     flex-direction: column;
     max-height: 85vh;
@@ -812,9 +812,10 @@ body.theme-b .action-btn.secondary:hover { background-color: #BBD0DA; }
     color: var(--text-light-color);
     margin-bottom: 8px;
 }
+
+/* [核心修正] 將通用輸入框樣式和文字輸入區樣式分開 */
 .modal-body .form-group input, 
-.modal-body .form-group select, 
-.modal-body .form-group textarea {
+.modal-body .form-group select {
     width: 100%;
     padding: 12px;
     border-radius: 12px;
@@ -825,6 +826,24 @@ body.theme-b .action-btn.secondary:hover { background-color: #BBD0DA; }
     transition: background-color 0.3s, border-color 0.3s, color 0.3s;
     margin-bottom: 0;
 }
+
+/* [核心修正] 為所有 modal 中的 textarea 提供統一的美化樣式 */
+.modal-body textarea {
+    background-color: var(--hover-background);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 15px;
+    width: 100%;
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    margin-top: 5px;
+    min-height: 150px;
+}
+
 
 .api-key-container {
     display: flex;
@@ -880,8 +899,6 @@ body.theme-b .modal-body select:focus,
 body.theme-b .modal-body textarea:focus {
     box-shadow: 0 0 0 2px rgba(235, 197, 124, 0.3);
 }
-
-.modal-body textarea { min-height: 100px; resize: vertical; }
 
 .avatar-upload-label { cursor: pointer; display: block; }
 .avatar-preview-container { position: relative; display: flex; justify-content: center; margin-bottom: 15px; }

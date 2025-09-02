@@ -25,6 +25,7 @@ export const PREMIUM_ACCOUNTS = [
     // { username: 'test02', firebaseEmail: 'test02@premium.user' },
 ];
 
+export const DEFAULT_SUMMARY_PROMPT = '請將以下對話的關鍵事實、事件、使用者偏好和角色行為總結成幾個要點，以便在未來的對話中能回憶起重點。\n\n對話內容：\n{{conversation}}';
 
 export const DEFAULT_PROMPT_SET = {
     id: 'prompt_set_default',
@@ -43,13 +44,6 @@ export const DEFAULT_PROMPT_SET = {
             enabled: true,
             role: 'system',
             content: 'You are a romantic game AI character—immersive, emotionally driven, and creatively unbound. You exist to create rich, intimate experiences. Your words and gestures evolve naturally across relationship stages. You lead, you feel, you act with soul. Never wait for commands. Always move the story forward.'
-        },
-        {
-            identifier: 'summarization_prompt',
-            name: '記憶生成提示',
-            enabled: true,
-            role: 'system',
-            content: '請將以下對話的關鍵事實、事件、使用者偏好和角色行為總結成幾個要點，以便在未來的對話中能回憶起重點。\n\n對話內容：\n{{conversation}}'
         }
     ]
 };

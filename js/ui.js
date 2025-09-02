@@ -328,6 +328,7 @@ export function loadGlobalSettingsToUI() {
     DOM.maxTokensValue.value = settings.maxTokens || 1024;
     
     DOM.themeSelect.value = settings.theme || 'light';
+    DOM.summarizationPromptInput.value = settings.summarizationPrompt || '';
 
     renderUserPersonaList();
     renderActiveUserPersonaSelector();
