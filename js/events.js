@@ -390,122 +390,216 @@ export function setupEventListeners() {
     });
 
     // [REVISED] 拖曳排序邏輯 (支援長按與觸控)
-    let draggedId = null;
-    let draggedElement = null;
-    let longPressTimer = null;
+let draggedId = null;
+let draggedElement = null;
+let longPressTimer = null;
+let startX = 0;
+let startY = 0;
+let isDragging = false;
 
-    function getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('[data-id]:not(.dragging)')];
-        return draggableElements.reduce((closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-                return { offset: offset, element: child };
-            } else {
-                return closest;
-            }
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
-    }
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('[data-id]:not(.dragging)')];
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
 
-    const setupDragSort = (container, handler) => {
-        const onPointerDown = (e) => {
-            // [MODIFIED] Trigger drag on the entire item, not just the handle
-            const targetItem = e.target.closest('[data-id]');
-            if (!targetItem) return;
-    
-            // Prevent drag from starting on interactive elements inside the item
-            if (e.target.closest('button, a, input, select, textarea')) return;
+const setupDragSort = (container, handler) => {
+    const LONG_PRESS_DURATION = 500; // 長按時間 (毫秒)
+    const MOVE_THRESHOLD = 10; // 移動閾值 (像素)
 
-            if (e.pointerType === 'touch') {
-                e.preventDefault();
-            }
-            if (e.pointerType === 'mouse' && e.button !== 0) return;
-    
-            draggedElement = targetItem;
-            if (!draggedElement) return;
-    
-            longPressTimer = setTimeout(() => {
-                if (draggedElement) {
-                    draggedElement.setAttribute('draggable', 'true');
-                    // Manually trigger dragstart for touch, as it's not native
-                    if (e.pointerType === 'touch') {
-                       const dragStartEvent = new DragEvent('dragstart', {
-                           bubbles: true,
-                           cancelable: true,
-                       });
-                       draggedElement.dispatchEvent(dragStartEvent);
-                    }
-                }
-            }, 500); // 500ms for long press
-        };
-    
-        const onPointerUpOrCancel = () => {
-            clearTimeout(longPressTimer);
-            if (draggedElement && !draggedElement.classList.contains('dragging')) {
-                 draggedElement.removeAttribute('draggable');
-            }
-        };
+    const onPointerDown = (e) => {
+        // 觸發拖曳的目標項目
+        const targetItem = e.target.closest('[data-id]');
+        if (!targetItem) return;
 
-        const onPointerMove = (e) => {
-             // If we move too much, cancel the long press timer
-            if (longPressTimer) {
-                 clearTimeout(longPressTimer);
-            }
-        };
+        // 避免在互動元素上觸發拖曳
+        if (e.target.closest('button, a, input, select, textarea')) return;
+
+        // 只處理主要按鈕點擊或觸摸
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        e.preventDefault();
         
-        container.addEventListener('pointerdown', onPointerDown, { passive: false });
-        document.addEventListener('pointerup', onPointerUpOrCancel);
-        document.addEventListener('pointercancel', onPointerUpOrCancel);
-        document.addEventListener('pointermove', onPointerMove);
+        draggedElement = targetItem;
+        startX = e.clientX;
+        startY = e.clientY;
+        isDragging = false;
 
-        container.addEventListener('dragstart', (e) => {
-            const target = e.target.closest('[data-id]');
-            if (target) {
-                draggedElement = target; // Ensure draggedElement is set
-                draggedId = target.dataset.id || target.dataset.identifier;
-                // Use a minimal data transfer object for compatibility
-                if (e.dataTransfer) {
-                   e.dataTransfer.effectAllowed = 'move';
-                   e.dataTransfer.setData('text/plain', draggedId);
+        // 設置長按計時器
+        longPressTimer = setTimeout(() => {
+            if (draggedElement && !isDragging) {
+                // 長按觸發：開始拖曳模式
+                draggedElement.setAttribute('draggable', 'true');
+                draggedElement.classList.add('dragging');
+                document.body.classList.add('is-dragging');
+                isDragging = true;
+                
+                // 觸覺回饋（如果支援）
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
                 }
-                setTimeout(() => {
-                    if (draggedElement) {
-                        draggedElement.classList.add('dragging');
-                        document.body.classList.add('is-dragging'); // Change cursor globally
-                    }
-                }, 0);
-            } else {
-                e.preventDefault();
+
+                // 手動觸發 dragstart 事件
+                const dragStartEvent = new DragEvent('dragstart', {
+                    bubbles: true,
+                    cancelable: true,
+                });
+                draggedElement.dispatchEvent(dragStartEvent);
             }
-        });
-    
-        container.addEventListener('dragend', () => {
-            if (draggedElement) {
-                draggedElement.classList.remove('dragging');
-                draggedElement.removeAttribute('draggable');
-            }
-            document.body.classList.remove('is-dragging'); // Revert global cursor
+        }, LONG_PRESS_DURATION);
+
+        // 添加全域事件監聽器
+        document.addEventListener('pointermove', onPointerMove, { passive: false });
+        document.addEventListener('pointerup', onPointerUp);
+        document.addEventListener('pointercancel', onPointerCancel);
+    };
+
+    const onPointerMove = (e) => {
+        if (!draggedElement) return;
+
+        const deltaX = Math.abs(e.clientX - startX);
+        const deltaY = Math.abs(e.clientY - startY);
+
+        // 如果移動距離超過閾值，取消長按
+        if ((deltaX > MOVE_THRESHOLD || deltaY > MOVE_THRESHOLD) && !isDragging) {
             clearTimeout(longPressTimer);
-            draggedElement = null;
-            draggedId = null;
-        });
-    
-        container.addEventListener('dragover', (e) => {
+            cleanup();
+        }
+
+        // 如果正在拖曳，更新視覺回饋
+        if (isDragging) {
             e.preventDefault();
-        });
-    
-        container.addEventListener('drop', (e) => {
-            e.preventDefault();
-            if (!draggedId) return;
-    
+            
+            // 可以在這裡添加自定義的拖曳視覺效果
+            const afterElement = getDragAfterElement(container, e.clientY);
+            
+            // 移除之前的插入指示器
+            container.querySelectorAll('.drop-indicator').forEach(el => el.remove());
+            
+            // 添加新的插入指示器
+            if (afterElement) {
+                const indicator = document.createElement('div');
+                indicator.className = 'drop-indicator';
+                indicator.style.height = '2px';
+                indicator.style.backgroundColor = 'var(--primary-color)';
+                indicator.style.margin = '2px 0';
+                indicator.style.borderRadius = '1px';
+                afterElement.parentNode.insertBefore(indicator, afterElement);
+            } else if (container.children.length > 0) {
+                const indicator = document.createElement('div');
+                indicator.className = 'drop-indicator';
+                indicator.style.height = '2px';
+                indicator.style.backgroundColor = 'var(--primary-color)';
+                indicator.style.margin = '2px 0';
+                indicator.style.borderRadius = '1px';
+                container.appendChild(indicator);
+            }
+        }
+    };
+
+    const onPointerUp = (e) => {
+        if (isDragging && draggedElement) {
+            // 處理放置邏輯
             const afterElement = getDragAfterElement(container, e.clientY);
             const targetId = afterElement ? (afterElement.dataset.id || afterElement.dataset.identifier) : null;
             
-            handler(draggedId, targetId);
-        });
+            if (draggedId) {
+                handler(draggedId, targetId);
+            }
+        }
+        cleanup();
     };
 
-    setupDragSort(DOM.characterList, Handlers.handleCharacterDropSort);
-    setupDragSort(DOM.chatSessionList, Handlers.handleChatSessionDropSort);
-    setupDragSort(DOM.promptList, Handlers.handlePromptDropSort);
-}
+    const onPointerCancel = () => {
+        cleanup();
+    };
+
+    const cleanup = () => {
+        clearTimeout(longPressTimer);
+        
+        // 移除事件監聽器
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
+        document.removeEventListener('pointercancel', onPointerCancel);
+        
+        // 清理拖曳狀態
+        if (draggedElement) {
+            draggedElement.classList.remove('dragging');
+            draggedElement.removeAttribute('draggable');
+        }
+        
+        // 清理全域狀態
+        document.body.classList.remove('is-dragging');
+        container.querySelectorAll('.drop-indicator').forEach(el => el.remove());
+        
+        // 重置變數
+        draggedElement = null;
+        draggedId = null;
+        isDragging = false;
+        startX = 0;
+        startY = 0;
+    };
+
+    // 容器事件監聽器
+    container.addEventListener('pointerdown', onPointerDown, { passive: false });
+
+    container.addEventListener('dragstart', (e) => {
+        const target = e.target.closest('[data-id]');
+        if (target && isDragging) {
+            draggedElement = target;
+            draggedId = target.dataset.id || target.dataset.identifier;
+            
+            if (e.dataTransfer) {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', draggedId);
+            }
+        } else {
+            e.preventDefault();
+        }
+    });
+
+    container.addEventListener('dragend', () => {
+        cleanup();
+    });
+
+    container.addEventListener('dragover', (e) => {
+        if (isDragging) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+    });
+
+    container.addEventListener('drop', (e) => {
+        if (isDragging) {
+            e.preventDefault();
+            
+            const afterElement = getDragAfterElement(container, e.clientY);
+            const targetId = afterElement ? (afterElement.dataset.id || afterElement.dataset.identifier) : null;
+            
+            if (draggedId) {
+                handler(draggedId, targetId);
+            }
+        }
+        cleanup();
+    });
+
+    // 防止預設的拖曳行為干擾
+    container.addEventListener('selectstart', (e) => {
+        if (isDragging) {
+            e.preventDefault();
+        }
+    });
+};
+
+// 設置拖曳排序
+setupDragSort(DOM.characterList, Handlers.handleCharacterDropSort);
+setupDragSort(DOM.chatSessionList, Handlers.handleChatSessionDropSort);
+setupDragSort(DOM.promptList, Handlers.handlePromptDropSort);
+};

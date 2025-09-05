@@ -193,16 +193,21 @@ body {
     flex-grow: 1;
 }
 
+/* ===== 拖曳排序相關樣式改進 ===== */
 .character-item, .chat-session-item {
     display: flex;
     align-items: center;
     padding: 12px 15px;
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
     position: relative;
     border-radius: 12px;
     margin-bottom: 5px;
-    cursor: grab; /* For desktop users to know it's draggable */
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
 }
+
 .chat-session-item {
     justify-content: space-between;
 }
@@ -213,6 +218,88 @@ body {
 
 .character-item.active, .chat-session-item.active {
     background-color: var(--active-background);
+}
+
+/* 長按回饋效果 */
+.character-item:active, 
+.chat-session-item:active {
+    transform: scale(0.98);
+    background-color: var(--hover-background);
+}
+
+/* 拖曳中的項目樣式 */
+.character-item.dragging, 
+.chat-session-item.dragging {
+    opacity: 0.7;
+    transform: scale(1.05);
+    background: var(--active-background);
+    border: 2px dashed var(--primary-color);
+    box-shadow: 0 8px 25px var(--shadow-color);
+    z-index: 1000;
+    position: relative;
+}
+
+/* 愛心角色的特殊拖曳效果 */
+.character-item.loved.dragging {
+    border-color: #ff8fab;
+    box-shadow: 0 8px 25px rgba(255, 143, 171, 0.4);
+}
+
+/* 置頂聊天室的特殊拖曳效果 */
+.chat-session-item:has(.pin-chat-btn.active).dragging {
+    border-color: var(--pin-active-color);
+    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.4);
+}
+
+/* 全域拖曳狀態 */
+body.is-dragging {
+    cursor: grabbing !important;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body.is-dragging * {
+    cursor: grabbing !important;
+    pointer-events: none;
+}
+
+/* 允許拖曳容器的事件 */
+body.is-dragging .character-list,
+body.is-dragging .chat-session-list,
+body.is-dragging .prompt-item-list {
+    pointer-events: auto;
+}
+
+/* 放置指示器 */
+.drop-indicator {
+    height: 3px !important;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-hover-color)) !important;
+    border-radius: 2px !important;
+    margin: 3px 15px !important;
+    box-shadow: 0 0 8px rgba(137, 207, 240, 0.6);
+    animation: dropIndicatorPulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes dropIndicatorPulse {
+    from {
+        opacity: 0.7;
+        transform: scaleY(1);
+    }
+    to {
+        opacity: 1;
+        transform: scaleY(1.2);
+    }
+}
+
+/* 主題特定的放置指示器顏色 */
+body.theme-a .drop-indicator {
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-hover-color)) !important;
+    box-shadow: 0 0 8px rgba(166, 127, 120, 0.6);
+}
+
+body.theme-b .drop-indicator {
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-hover-color)) !important;
+    box-shadow: 0 0 8px rgba(235, 197, 124, 0.6);
 }
 
 .char-item-avatar {
@@ -233,7 +320,7 @@ body {
 }
 
 .character-item-author {
-    font-size: 12px; /* 您可以在這裡調整字體大小 */
+    font-size: 12px;
     color: var(--text-light-color);
     margin-top: 2px;
 }
@@ -1053,6 +1140,27 @@ input[type="range"]::-moz-range-thumb {
     .chat-window {
         padding: 15px;
     }
+    
+    /* 行動裝置拖曳適配 */
+    .drag-handle {
+        opacity: 1;
+        padding: 12px 8px;
+    }
+    
+    .character-item, .chat-session-item {
+        padding: 15px;
+        border-radius: 16px;
+    }
+    
+    .character-item.dragging, 
+    .chat-session-item.dragging {
+        transform: scale(1.02);
+    }
+    
+    .drop-indicator {
+        height: 4px !important;
+        margin: 5px 10px !important;
+    }
 }
 
 .chat-bubble p {
@@ -1457,7 +1565,7 @@ input[type="range"]::-moz-range-thumb {
 
 .first-message-item textarea {
     flex-grow: 1;
-    min-height: 40px; /* Start small */
+    min-height: 40px;
     height: auto;
     resize: vertical;
     padding: 8px 12px;
@@ -1468,6 +1576,8 @@ input[type="range"]::-moz-range-thumb {
 #add-first-message-btn {
     align-self: flex-start;
 }
+
+/* ===== 提示詞列表相關樣式 ===== */
 .prompt-item-list {
     list-style: none;
     padding: 0;
@@ -1483,8 +1593,12 @@ input[type="range"]::-moz-range-thumb {
     align-items: center;
     padding: 10px 15px;
     border-bottom: 1px solid var(--border-color);
-    transition: background-color 0.2s;
-    cursor: grab; /* For desktop users to know it's draggable */
+    transition: all 0.2s ease;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
 }
 
 .prompt-item:last-child {
@@ -1493,6 +1607,23 @@ input[type="range"]::-moz-range-thumb {
 
 .prompt-item:hover {
     background-color: var(--hover-background);
+}
+
+/* 長按回饋效果 */
+.prompt-item:active {
+    transform: scale(0.98);
+    background-color: var(--hover-background);
+}
+
+/* 拖曳中的提示詞項目樣式 */
+.prompt-item.dragging {
+    opacity: 0.7;
+    transform: scale(1.05);
+    background: var(--active-background);
+    border: 2px dashed var(--primary-color);
+    box-shadow: 0 8px 25px var(--shadow-color);
+    z-index: 1000;
+    position: relative;
 }
 
 .prompt-item-name {
@@ -1545,26 +1676,24 @@ input[type="range"]::-moz-range-thumb {
 .drag-handle {
     color: var(--border-color);
     margin-right: 10px;
-    /* cursor: grab; */ /* This is now handled by the parent item */
-    touch-action: none;
     padding: 8px;
-    transition: color 0.2s;
+    transition: color 0.2s, opacity 0.2s;
+    touch-action: none;
+    cursor: grab;
+    opacity: 0.6;
 }
 
-.character-item:hover .drag-handle, .chat-session-item:hover .drag-handle {
+.character-item:hover .drag-handle, 
+.chat-session-item:hover .drag-handle,
+.prompt-item:hover .drag-handle {
     color: var(--text-light-color);
+    opacity: 1;
 }
 
-.character-item.dragging, .chat-session-item.dragging, .prompt-item.dragging {
-    opacity: 0.5;
-    background: var(--active-background);
-    border: 1px dashed var(--primary-color);
-}
-
-/* When dragging is active, change cursor for the whole page */
-body.is-dragging,
-body.is-dragging * {
-    cursor: grabbing !important;
+/* 拖曳中的握把樣式 */
+.dragging .drag-handle {
+    color: var(--primary-color);
+    cursor: grabbing;
 }
 
 .char-item-content {
@@ -1589,7 +1718,7 @@ body.is-dragging * {
     gap: 15px;
 }
 
-/* 正規表達式 */
+/* ===== 正規表達式相關樣式 ===== */
 .regex-rules-list {
     list-style: none;
     padding: 0;
@@ -1625,7 +1754,6 @@ body.is-dragging * {
     border-bottom: 1px solid var(--primary-color);
 }
 
-
 .regex-rule-details {
     max-height: 0;
     overflow: hidden;
@@ -1633,7 +1761,7 @@ body.is-dragging * {
 }
 
 .regex-rule-item.expanded .regex-rule-details {
-    max-height: 500px; /* 設一個足夠大的值 */
+    max-height: 500px;
     margin-top: 15px;
 }
 
@@ -1647,7 +1775,7 @@ body.is-dragging * {
     resize: vertical;
 }
 
-/* 帳號設定 */
+/* ===== 帳號設定相關樣式 ===== */
 .user-info-header {
     display: flex;
     align-items: center;
@@ -1667,7 +1795,7 @@ body.is-dragging * {
     font-weight: 500;
 }
 
-/* 進階定義 */
+/* ===== 進階定義相關樣式 ===== */
 .advanced-section {
     border-top: 1px solid var(--border-color);
     margin-top: 20px;
@@ -1703,7 +1831,37 @@ body.is-dragging * {
 }
 
 .advanced-section.expanded .advanced-section-content {
-    max-height: 1000px; /* 設一個足夠大的值 */
+    max-height: 1000px;
     margin-top: 15px;
 }
 
+/* ===== 無障礙輔助樣式 ===== */
+@media (prefers-reduced-motion: reduce) {
+    .character-item, .chat-session-item, .prompt-item {
+        transition: none;
+    }
+    
+    .character-item.dragging, 
+    .chat-session-item.dragging, 
+    .prompt-item.dragging {
+        transform: none;
+        animation: none;
+    }
+    
+    .drop-indicator {
+        animation: none;
+    }
+}
+
+/* ===== 觸控裝置的額外樣式 ===== */
+@media (pointer: coarse) {
+    .character-item, .chat-session-item, .prompt-item {
+        padding: 15px;
+        border-radius: 16px;
+    }
+    
+    .drag-handle {
+        padding: 12px;
+        font-size: 18px;
+    }
+}
