@@ -125,9 +125,42 @@ export function setupEventListeners() {
 
     // 全域设定 Modal
     DOM.globalSettingsBtn.addEventListener('click', () => {
-        UI.loadGlobalSettingsToUI();
-        UI.toggleModal('global-settings-modal', true);
-    });
+    // 只載入設定到 UI，不重置狀態
+    UI.renderAccountTab();
+    
+    const settings = state.globalSettings;
+    const officialGeminiOption = DOM.apiProviderSelect.querySelector('option[value="official_gemini"]');
+    if (officialGeminiOption) {
+        officialGeminiOption.hidden = !state.isPremiumUser;
+    }
+
+    DOM.apiProviderSelect.value = settings.apiProvider || 'openai';
+    UI.updateModelDropdown(); 
+    DOM.apiModelSelect.value = settings.apiModel || '';
+    DOM.apiKeyInput.value = settings.apiKey || '';
+    DOM.temperatureSlider.value = settings.temperature || 1;
+    DOM.temperatureValue.value = settings.temperature || 1;
+    DOM.topPSlider.value = settings.topP || 1;
+    DOM.topPValue.value = settings.topP || 1;
+    DOM.repetitionPenaltySlider.value = settings.repetitionPenalty || 0;
+    DOM.repetitionPenaltyValue.value = settings.repetitionPenalty || 0;
+    DOM.contextSizeInput.value = settings.contextSize || 30000;
+    DOM.maxTokensSlider.value = settings.maxTokens || 1024;
+    DOM.maxTokensValue.value = settings.maxTokens || 1024;
+    DOM.themeSelect.value = settings.theme || 'light';
+    DOM.summarizationPromptInput.value = settings.summarizationPrompt || '';
+
+    UI.renderUserPersonaList();
+    UI.renderActiveUserPersonaSelector();
+    UI.renderApiPresetsDropdown();
+    UI.renderPromptSetSelector();
+    UI.renderPromptList();
+    UI.renderLorebookSelector();
+    UI.renderLorebookEntryList();
+    UI.renderRegexRulesList();
+
+    UI.toggleModal('global-settings-modal', true);
+});
     DOM.testApiBtn.addEventListener('click', Handlers.handleTestApiConnection);
     DOM.saveGlobalSettingsBtn.addEventListener('click', Handlers.handleSaveGlobalSettings);
     DOM.cancelGlobalSettingsBtn.addEventListener('click', () => UI.toggleModal('global-settings-modal', false));

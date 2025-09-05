@@ -6,6 +6,7 @@ import { state, tempState } from './state.js';
 import { DEFAULT_AVATAR, MODELS } from './constants.js';
 import { getActivePromptSet } from './promptManager.js';
 import { getActiveLorebook } from './lorebookManager.js';
+import { escapeHtml, safeRenderMarkdown, createSafeTemplate } from './utils.js';
 
 /**
  * @description 套用所有已啟用的正規表達式規則
@@ -43,7 +44,6 @@ export function renderAccountTab() {
     }
 }
 
-
 /**
  * @description 渲染角色列表
  */
@@ -61,16 +61,23 @@ export function renderCharacterList() {
         const item = document.createElement('li');
         item.className = `character-item ${char.loved ? 'loved' : ''}`;
         item.dataset.id = char.id;
+        
+        // 安全地構建 HTML
+        const avatarUrl = char.avatarUrl || DEFAULT_AVATAR;
+        const charName = escapeHtml(char.name);
+        const creatorText = char.creator ? `<span class="character-item-author">By: ${escapeHtml(char.creator)}</span>` : '';
+        
         item.innerHTML = `
             <div class="char-item-content">
                 <i class="fa-solid fa-grip-vertical drag-handle"></i>
-                <img src="${char.avatarUrl || DEFAULT_AVATAR}" alt="${char.name}" class="char-item-avatar">
+                <img src="${avatarUrl}" alt="${charName}" class="char-item-avatar">
                 <div class="character-item-details">
-                    <span class="char-item-name">${char.name}</span>
-                    ${char.creator ? `<span class="character-item-author">By: ${char.creator}</span>` : ''}
+                    <span class="char-item-name">${charName}</span>
+                    ${creatorText}
                 </div>
             </div>
         `;
+        
         DOM.characterList.appendChild(item);
     });
 }
@@ -149,9 +156,9 @@ export function renderChatSessionList() {
 
     sortedSessions.forEach(session => {
         const lastMsgContent = session.lastMessage 
-            ? (Array.isArray(session.lastMessage.content) ? session.lastMessage.content[session.lastMessage.activeContentIndex] : session.lastMessage.content).substring(0, 25) + '...'
+            ? escapeHtml((Array.isArray(session.lastMessage.content) ? session.lastMessage.content[session.lastMessage.activeContentIndex] : session.lastMessage.content).substring(0, 25)) + '...'
             : '新對話';
-        const displayName = (session.pinned ? '📌 ' : '') + (session.name || lastMsgContent);
+        const displayName = (session.pinned ? '📌 ' : '') + escapeHtml(session.name || '') + (session.name ? '' : lastMsgContent);
         
         const item = document.createElement('li');
         item.className = `chat-session-item ${session.id === state.activeChatId ? 'active' : ''}`;
@@ -272,13 +279,20 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
         }
     }
 
+    // 構建安全的 HTML 結構
+    const safeAvatarUrl = avatarUrl;
+    const safeSender = escapeHtml(sender);
+    const safeTimestamp = escapeHtml(formattedTimestamp);
+    const errorHtml = error ? `<div class="message-error"><span>${escapeHtml(error)}</span><button class="retry-btn-sm"><i class="fa-solid fa-rotate-right"></i> 重試</button></div>` : '';
+    const actionsStyle = messageActionsHTML ? 'display: flex;' : 'display: none;';
+
     row.innerHTML = `
-        <img src="${avatarUrl}" alt="${sender} avatar" class="chat-avatar">
+        <img src="${safeAvatarUrl}" alt="${safeSender} avatar" class="chat-avatar">
         <div class="bubble-container">
             <div class="chat-bubble"></div>
-            ${error ? `<div class="message-error"><span>${error}</span><button class="retry-btn-sm"><i class="fa-solid fa-rotate-right"></i> 重試</button></div>` : ''}
-            <div class="message-timestamp">${formattedTimestamp}</div>
-            <div class="message-actions" style="${messageActionsHTML ? 'display: flex;' : 'display: none;'}">${messageActionsHTML}</div>
+            ${errorHtml}
+            <div class="message-timestamp">${safeTimestamp}</div>
+            <div class="message-actions" style="${actionsStyle}">${messageActionsHTML}</div>
         </div>
         <button class="icon-btn edit-msg-btn" title="編輯訊息"><i class="fa-solid fa-pencil"></i></button>
     `;
@@ -288,9 +302,12 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
         contentToRender = applyRegexRules(text);
     }
 
+    // 處理引號樣式（這部分是安全的，因為只是添加 CSS 類別）
     contentToRender = (contentToRender || '').replace(/(「[^」]*」|『[^』]*』)/g, '<span class="quoted-text">$1</span>');
+    
     const bubble = row.querySelector('.chat-bubble');
-    bubble.innerHTML = marked.parse(contentToRender || '');
+    // 使用安全的 Markdown 渲染
+    bubble.innerHTML = safeRenderMarkdown(contentToRender || '');
 
     DOM.chatWindow.appendChild(row);
     if (isNew) {
@@ -303,9 +320,7 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
  * @description 將 state 中的全域設定載入到 UI 中
  */
 export function loadGlobalSettingsToUI() {
-    // 保存當前活躍狀態
-    const savedActiveCharacterId = state.activeCharacterId;
-    const savedActiveChatId = state.activeChatId;
+    
 
     renderAccountTab();
 
@@ -342,15 +357,14 @@ export function loadGlobalSettingsToUI() {
     renderLorebookEntryList();
     renderRegexRulesList();
 
-    // 恢復活躍狀態
-    state.activeCharacterId = savedActiveCharacterId;
-    state.activeChatId = savedActiveChatId;
+   
 
     DOM.settingsTabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     DOM.globalSettingsModal.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     DOM.settingsTabsContainer.querySelector('[data-tab="account-tab"]').classList.add('active');
     DOM.accountTab.classList.add('active');
 }
+
 /**
  * @description 根據 API 供應商更新模型下拉選單
  */
@@ -387,14 +401,20 @@ export function renderUserPersonaList() {
         const item = document.createElement('li');
         item.className = 'persona-item';
         item.dataset.id = persona.id;
-        item.innerHTML = `
-            <img src="${persona.avatarUrl || DEFAULT_AVATAR}" alt="${persona.name}" class="persona-item-avatar">
-            <span class="persona-item-name">${persona.name}</span>
+        
+        // 使用安全的模板創建
+        item.innerHTML = createSafeTemplate(`
+            <img src="{{avatarUrl}}" alt="{{name}}" class="persona-item-avatar">
+            <span class="persona-item-name">{{name}}</span>
             <div class="persona-item-actions">
                 <button class="icon-btn-sm edit-persona-btn" title="編輯"><i class="fa-solid fa-pencil"></i></button>
                 <button class="icon-btn-sm delete-persona-btn" title="刪除"><i class="fa-solid fa-trash"></i></button>
             </div>
-        `;
+        `, {
+            avatarUrl: persona.avatarUrl || DEFAULT_AVATAR,
+            name: persona.name
+        });
+        
         DOM.userPersonaList.appendChild(item);
     });
 }
@@ -498,13 +518,18 @@ export function renderFirstMessageInputs(messages = ['']) {
         const item = document.createElement('div');
         item.className = 'first-message-item';
         item.innerHTML = `
-            <textarea class="char-first-message" placeholder="開場白 #${index + 1}" rows="1">${msg}</textarea>
+            <textarea class="char-first-message" placeholder="開場白 #${index + 1}" rows="1"></textarea>
             <button type="button" class="icon-btn-sm danger remove-first-message-btn" title="移除此開場白">
                 <i class="fa-solid fa-trash"></i>
             </button>
         `;
-        DOM.firstMessageList.appendChild(item);
+        
+        // 安全地設置 textarea 的值
         const textarea = item.querySelector('textarea');
+        textarea.value = msg;
+        
+        DOM.firstMessageList.appendChild(item);
+        
         textarea.addEventListener('input', () => {
             textarea.style.height = 'auto';
             textarea.style.height = `${textarea.scrollHeight}px`;
@@ -548,14 +573,20 @@ export function renderPromptList() {
         const item = document.createElement('li');
         item.className = 'prompt-item';
         item.dataset.identifier = prompt.identifier;
-        item.innerHTML = `
+        
+        // 使用安全的模板創建
+        item.innerHTML = createSafeTemplate(`
             <i class="fa-solid fa-grip-vertical drag-handle"></i>
-            <span class="prompt-item-name" title="${prompt.name}">${prompt.name}</span>
+            <span class="prompt-item-name" title="{{name}}">{{name}}</span>
             <div class="prompt-item-actions">
                 <button class="icon-btn-sm edit-prompt-btn" title="編輯提示詞"><i class="fa-solid fa-pencil"></i></button>
-                <div class="prompt-item-toggle ${prompt.enabled ? 'enabled' : ''}"></div>
+                <div class="prompt-item-toggle {{enabledClass}}"></div>
             </div>
-        `;
+        `, {
+            name: prompt.name,
+            enabledClass: prompt.enabled ? 'enabled' : ''
+        });
+        
         DOM.promptList.appendChild(item);
     });
 }
@@ -594,17 +625,22 @@ export function renderLorebookEntryList() {
         const item = document.createElement('li');
         item.className = 'prompt-item'; // 重用 prompt-item 樣式
         item.dataset.id = entry.id;
-        item.innerHTML = `
-            <span class="prompt-item-name" title="${entry.name}">${entry.name}</span>
+        
+        // 使用安全的模板創建
+        item.innerHTML = createSafeTemplate(`
+            <span class="prompt-item-name" title="{{name}}">{{name}}</span>
             <div class="prompt-item-actions">
                 <button class="icon-btn-sm edit-lorebook-entry-btn" title="編輯條目"><i class="fa-solid fa-pencil"></i></button>
-                <div class="prompt-item-toggle ${entry.enabled ? 'enabled' : ''}"></div>
+                <div class="prompt-item-toggle {{enabledClass}}"></div>
             </div>
-        `;
+        `, {
+            name: entry.name,
+            enabledClass: entry.enabled ? 'enabled' : ''
+        });
+        
         DOM.lorebookEntryList.appendChild(item);
     });
 }
-
 
 /**
  * @description 渲染正規表達式規則列表 (摺疊式)
@@ -621,25 +657,43 @@ export function renderRegexRulesList() {
         const item = document.createElement('li');
         item.className = 'regex-rule-item';
         item.dataset.id = rule.id;
-        item.innerHTML = `
-            <div class="regex-rule-header">
-                <button class="icon-btn-sm regex-expand-btn"><i class="fa-solid fa-chevron-down"></i></button>
-                <input type="text" class="regex-name-input" placeholder="規則名稱" value="${rule.name}">
-                <div class="prompt-item-toggle ${rule.enabled ? 'enabled' : ''}" title="啟用/停用此規則"></div>
-                <button class="icon-btn-sm danger delete-regex-rule-btn" title="刪除此規則"><i class="fa-solid fa-trash"></i></button>
+        
+        // 創建安全的 HTML 結構
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'regex-rule-header';
+        
+        headerDiv.innerHTML = `
+            <button class="icon-btn-sm regex-expand-btn"><i class="fa-solid fa-chevron-down"></i></button>
+            <input type="text" class="regex-name-input" placeholder="規則名稱">
+            <div class="prompt-item-toggle ${rule.enabled ? 'enabled' : ''}" title="啟用/停用此規則"></div>
+            <button class="icon-btn-sm danger delete-regex-rule-btn" title="刪除此規則"><i class="fa-solid fa-trash"></i></button>
+        `;
+        
+        // 安全地設置輸入值
+        const nameInput = headerDiv.querySelector('.regex-name-input');
+        nameInput.value = rule.name;
+        
+        const detailsDiv = document.createElement('div');
+        detailsDiv.className = 'regex-rule-details';
+        detailsDiv.innerHTML = `
+            <div class="form-group">
+                <label>尋找 (正規表達式)</label>
+                <textarea class="regex-find-input" rows="2"></textarea>
             </div>
-            <div class="regex-rule-details">
-                <div class="form-group">
-                    <label>尋找 (正規表達式)</label>
-                    <textarea class="regex-find-input" rows="2">${rule.find}</textarea>
-                </div>
-                <div class="form-group">
-                    <label>取代為</label>
-                    <textarea class="regex-replace-input" rows="2">${rule.replace}</textarea>
-                </div>
+            <div class="form-group">
+                <label>取代為</label>
+                <textarea class="regex-replace-input" rows="2"></textarea>
             </div>
         `;
+        
+        // 安全地設置 textarea 的值
+        const findInput = detailsDiv.querySelector('.regex-find-input');
+        const replaceInput = detailsDiv.querySelector('.regex-replace-input');
+        findInput.value = rule.find;
+        replaceInput.value = rule.replace;
+        
+        item.appendChild(headerDiv);
+        item.appendChild(detailsDiv);
         DOM.regexRulesList.appendChild(item);
     });
 }
-

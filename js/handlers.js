@@ -19,6 +19,7 @@ import {
     deleteAllChatDataForChar, loadChatDataForCharacter, savePromptSet, deletePromptSet,
     saveLorebook, deleteLorebook
 } from './state.js';
+import { escapeHtml } from './utils.js';
 import * as db from './db.js';
 import { callApi, buildApiMessages, buildApiMessagesFromHistory, testApiConnection } from './api.js';
 import { 
@@ -401,7 +402,10 @@ export async function regenerateResponse(messageIndex) {
 export async function switchVersion(messageIndex, direction) {
     // 新增安全檢查
     if (!state.activeCharacterId || !state.activeChatId) {
-        console.error('switchVersion: activeCharacterId 或 activeChatId 為空');
+        console.error('switchVersion: activeCharacterId 或 activeChatId 為空', {
+            activeCharacterId: state.activeCharacterId,
+            activeChatId: state.activeChatId
+        });
         return;
     }
     
@@ -764,16 +768,20 @@ export function makeMessageEditable(row, index) {
     editContainer.style.width = window.getComputedStyle(bubble).width;
     editContainer.style.maxWidth = '100%';
     editContainer.innerHTML = `
-        <textarea class="edit-textarea">${originalText}</textarea>
+        <textarea class="edit-textarea"></textarea>
         <div class="edit-actions">
             <button class="icon-btn delete-btn" title="刪除訊息"><i class="fa-solid fa-trash"></i></button>
             <button class="action-btn secondary edit-cancel-btn">取消</button>
             <button class="action-btn primary edit-save-btn">儲存</button>
         </div>
     `;
+    
+    // 安全地設置 textarea 的值
+    const textarea = editContainer.querySelector('.edit-textarea');
+    textarea.value = originalText;
+    
     bubbleContainer.appendChild(editContainer);
     
-    const textarea = bubbleContainer.querySelector('.edit-textarea');
     const autoResize = () => { textarea.style.height = 'auto'; textarea.style.height = `${textarea.scrollHeight}px`; };
     textarea.addEventListener('input', autoResize);
     autoResize();
@@ -814,15 +822,6 @@ export async function handleSaveGlobalSettings() {
         activeChatId: state.activeChatId
     });
 
-    // 保存當前的所有重要狀態
-    const savedState = {
-        activeCharacterId: state.activeCharacterId,
-        activeChatId: state.activeChatId,
-        activeUserPersonaId: state.activeUserPersonaId,
-        activePromptSetId: state.activePromptSetId,
-        activeLorebookId: state.activeLorebookId,
-    };
-
     let contextSize = parseInt(DOM.contextSizeInput.value, 10) || 30000;
     const maxContextSize = 100000;
 
@@ -834,6 +833,7 @@ export async function handleSaveGlobalSettings() {
 
     // 只更新 globalSettings，不影響其他狀態
     state.globalSettings = {
+        ...state.globalSettings,  // 保留現有設定（包括 regexRules）
         apiProvider: DOM.apiProviderSelect.value,
         apiModel: DOM.apiModelSelect.value,
         apiKey: DOM.apiKeyInput.value.trim(),
@@ -843,14 +843,12 @@ export async function handleSaveGlobalSettings() {
         contextSize: contextSize,
         maxTokens: DOM.maxTokensValue.value,
         theme: DOM.themeSelect.value,
-        summarizationPrompt: DOM.summarizationPromptInput.value.trim(),
-        regexRules: state.globalSettings.regexRules || []
+        summarizationPrompt: DOM.summarizationPromptInput.value.trim()
     };
     
-    // 確保所有重要狀態都被保持
-    Object.assign(state, savedState);
-    
     applyTheme(state.globalSettings.theme);
+    
+    // 儲存設定但不重新載入狀態
     await saveSettings();
     
     console.log('儲存設定後的狀態:', {
@@ -858,9 +856,10 @@ export async function handleSaveGlobalSettings() {
         activeChatId: state.activeChatId
     });
     
+    // 關閉設定視窗
     toggleModal('global-settings-modal', false);
 
-    // 只更新必要的 UI 元素，不重新載入整個狀態
+    // 只更新 UI 上的模型顯示名稱
     if (state.activeCharacterId && state.activeChatId) {
         const provider = state.globalSettings.apiProvider || 'official_gemini';
         const modelId = state.globalSettings.apiModel;

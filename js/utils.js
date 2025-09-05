@@ -7,6 +7,79 @@ import { DEFAULT_AVATAR } from './constants.js';
 import { renderFirstMessageInputs } from './ui.js';
 
 /**
+ * @description HTML 轉義函數，防範 XSS 攻擊
+ * @param {string} unsafe - 需要轉義的字串
+ * @returns {string} - 轉義後的安全字串
+ */
+export function escapeHtml(unsafe) {
+    if (typeof unsafe !== 'string') return '';
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
+ * @description 安全地渲染 Markdown 內容，防範 XSS 攻擊
+ * @param {string} content - Markdown 內容
+ * @returns {string} - 經過清理的安全 HTML
+ */
+export function safeRenderMarkdown(content) {
+    if (typeof content !== 'string') return '';
+    
+    // 使用 marked 解析 Markdown
+    const html = marked.parse(content);
+    
+    // 使用 DOMPurify 清理 HTML，只允許安全的標籤和屬性
+    return DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: [
+            'p', 'br', 'strong', 'b', 'em', 'i', 'code', 'pre', 
+            'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 
+            'h4', 'h5', 'h6', 'span', 'div', 'table', 'thead', 
+            'tbody', 'tr', 'th', 'td'
+        ],
+        ALLOWED_ATTR: ['class'],
+        KEEP_CONTENT: true,
+        RETURN_DOM: false,
+        RETURN_DOM_FRAGMENT: false,
+        RETURN_DOM_IMPORT: false
+    });
+}
+
+/**
+ * @description 安全地設置元素的 HTML 內容
+ * @param {HTMLElement} element - 目標元素
+ * @param {string} content - 要設置的內容
+ * @param {boolean} isMarkdown - 是否為 Markdown 內容
+ */
+export function setSafeInnerHTML(element, content, isMarkdown = false) {
+    if (!element || typeof content !== 'string') return;
+    
+    if (isMarkdown) {
+        element.innerHTML = safeRenderMarkdown(content);
+    } else {
+        element.innerHTML = escapeHtml(content);
+    }
+}
+
+/**
+ * @description 安全地創建 HTML 模板字串
+ * @param {string} template - HTML 模板
+ * @param {Object} data - 要插入的資料
+ * @returns {string} - 安全的 HTML 字串
+ */
+export function createSafeTemplate(template, data) {
+    let result = template;
+    for (const [key, value] of Object.entries(data)) {
+        const placeholder = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+        result = result.replace(placeholder, escapeHtml(String(value)));
+    }
+    return result;
+}
+
+/**
  * @description 設定 --app-height CSS 變數，以解決行動裝置瀏覽器高度問題
  */
 export function setAppHeight() {
@@ -236,14 +309,13 @@ export function importCharacter() {
 function populateEditorWithCharData(importedData, imageBase64 = null) {
     const data = importedData.data || importedData;
     
-    DOM.charNameInput.value = data.name || '';
-    DOM.charDescriptionInput.value = data.description || data.personality || '';
+    // 使用安全的方式設置值
+    DOM.charNameInput.value = escapeHtml(data.name || '');
+    DOM.charDescriptionInput.value = escapeHtml(data.description || data.personality || '');
 
-    // 新增的程式碼
-    DOM.charCreatorInput.value = data.creator || '';
-    DOM.charVersionInput.value = data.character_version || data.characterVersion || '';
-    DOM.charCreatorNotesInput.value = data.creator_notes || data.creatorNotes || '';
-    // 新增結束
+    DOM.charCreatorInput.value = escapeHtml(data.creator || '');
+    DOM.charVersionInput.value = escapeHtml(data.character_version || data.characterVersion || '');
+    DOM.charCreatorNotesInput.value = escapeHtml(data.creator_notes || data.creatorNotes || '');
     
     let allGreetings = [];
 
@@ -271,7 +343,7 @@ function populateEditorWithCharData(importedData, imageBase64 = null) {
     
     renderFirstMessageInputs(allGreetings);
 
-    DOM.charExampleDialogueInput.value = data.mes_example || data.exampleDialogue || '';
+    DOM.charExampleDialogueInput.value = escapeHtml(data.mes_example || data.exampleDialogue || '');
     DOM.charAvatarPreview.src = imageBase64 || data.character_avatar || DEFAULT_AVATAR;
     
     alert('角色卡匯入成功！請記得儲存。');
