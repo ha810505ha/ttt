@@ -2,7 +2,7 @@
 // 這個檔案封裝了所有與 IndexedDB 互動的底層邏輯。
 
 const DB_NAME = 'AiChatDB';
-const DB_VERSION = 3; // [MODIFIED] 版本號 +1 以觸發資料庫結構更新
+const DB_VERSION = 4; // 版本號 +1 以觸發資料庫結構更新
 let db;
 
 /**
@@ -34,9 +34,12 @@ export function openDB() {
             if (!db.objectStoreNames.contains('keyValueStore')) {
                 db.createObjectStore('keyValueStore', { keyPath: 'key' });
             }
-            // [ADDED] 為提示詞設定檔建立新的儲存區
             if (!db.objectStoreNames.contains('promptSets')) {
                 db.createObjectStore('promptSets', { keyPath: 'id' });
+            }
+            // 為世界書建立新的儲存區
+            if (!db.objectStoreNames.contains('lorebooks')) {
+                db.createObjectStore('lorebooks', { keyPath: 'id' });
             }
         };
 

@@ -40,6 +40,9 @@ export const charDescriptionInput = document.getElementById('char-description');
 export const firstMessageList = document.getElementById('first-message-list');
 export const addFirstMessageBtn = document.getElementById('add-first-message-btn');
 export const charExampleDialogueInput = document.getElementById('char-example-dialogue');
+export const charCreatorInput = document.getElementById('char-creator');
+export const charVersionInput = document.getElementById('char-version');
+export const charCreatorNotesInput = document.getElementById('char-creator-notes');
 export const importCharBtn = document.getElementById('import-char-btn');
 export const exportCharBtn = document.getElementById('export-char-btn');
 export const cancelCharEditorBtn = document.getElementById('cancel-char-editor-btn');
@@ -90,6 +93,7 @@ export const accountTab = document.getElementById('account-tab');
 export const apiSettingsTab = document.getElementById('api-settings-tab');
 export const userSettingsTab = document.getElementById('user-settings-tab');
 export const promptSettingsTab = document.getElementById('prompt-settings-tab');
+export const lorebookSettingsTab = document.getElementById('lorebook-settings-tab');
 export const themeSettingsTab = document.getElementById('theme-settings-tab');
 export const regexTab = document.getElementById('regex-tab');
 export const themeSelect = document.getElementById('theme-select');
@@ -169,4 +173,25 @@ export const addRegexRuleBtn = document.getElementById('add-regex-rule-btn');
 
 // 聊天室列表標頭的愛心按鈕
 export const headerLoveChatBtn = document.getElementById('header-love-char-btn');
+
+// 世界書 (Lorebook) 相關
+export const lorebookSelect = document.getElementById('lorebook-select');
+export const addLorebookBtn = document.getElementById('add-lorebook-btn');
+export const renameLorebookBtn = document.getElementById('rename-lorebook-btn');
+export const deleteLorebookBtn = document.getElementById('delete-lorebook-btn');
+export const importLorebookBtn = document.getElementById('import-lorebook-btn');
+export const lorebookEntryList = document.getElementById('lorebook-entry-list');
+export const addLorebookEntryBtn = document.getElementById('add-lorebook-entry-btn');
+export const lorebookEditorModal = document.getElementById('lorebook-editor-modal');
+export const lorebookEditorTitle = document.getElementById('lorebook-editor-title');
+export const lorebookEntryNameInput = document.getElementById('lorebook-entry-name');
+export const lorebookEntryKeywordsInput = document.getElementById('lorebook-entry-keywords');
+export const lorebookEntryContentInput = document.getElementById('lorebook-entry-content');
+export const lorebookEntryLogicSelect = document.getElementById('lorebook-entry-logic');
+export const lorebookEntryPositionSelect = document.getElementById('lorebook-entry-position');
+export const lorebookEntryOrderInput = document.getElementById('lorebook-entry-order');
+export const lorebookEntryDepthInput = document.getElementById('lorebook-entry-depth');
+export const cancelLorebookEditorBtn = document.getElementById('cancel-lorebook-editor-btn');
+export const saveLorebookEntryBtn = document.getElementById('save-lorebook-entry-btn');
+export const deleteLorebookEntryBtn = document.getElementById('delete-lorebook-entry-btn');
 

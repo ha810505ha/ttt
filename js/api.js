@@ -1,13 +1,14 @@
 // js/api.js
 // 這個檔案處理所有與外部 API 互動的邏輯。
 
-import { auth } from './main.js'; // 【新增】匯入 auth 實例
-import { getIdToken } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js"; // 【新增】匯入 getIdToken 函式
+import { auth } from './main.js';
+import { getIdToken } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
 import { state, tempState } from './state.js';
 import * as PromptManager from './promptManager.js';
+import * as LorebookManager from './lorebookManager.js'; // 引入 Lorebook Manager
 
-// ... (cleanMessagesForClaude, estimateTokens, buildApiMessages, buildApiMessagesFromHistory, formatApiPayload 函式保持不變) ...
+// ... (cleanMessagesForClaude, estimateTokens functions remain the same) ...
 function cleanMessagesForClaude(messages) {
     const cleaned = [];
     let lastRole = null;
@@ -34,30 +35,41 @@ function cleanMessagesForClaude(messages) {
 function estimateTokens(text = '') {
     return (text || '').length;
 }
+
 export function buildApiMessages() {
     if (!state.activeCharacterId || !state.activeChatId) return [];
+    return buildApiMessagesFromHistory(state.chatHistories[state.activeCharacterId][state.activeChatId] || []);
+}
 
-    const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
+export function buildApiMessagesFromHistory(customHistory) {
     const maxTokenContext = parseInt(state.globalSettings.contextSize) || 30000;
 
-    const activePromptSet = PromptManager.getActivePromptSet();
-    const enabledPrompts = activePromptSet.prompts.filter(p => p.enabled);
-    let promptTokenCount = enabledPrompts.reduce((sum, prompt) => {
-        const content = PromptManager.replacePlaceholders(prompt.content);
-        return sum + estimateTokens(content);
-    }, 0);
+    // 1. 計算提示詞庫和世界書的 Token 預算
+    const promptSet = PromptManager.getActivePromptSet();
+    const lorebook = LorebookManager.getActiveLorebook();
+    
+    const promptTokenCount = (promptSet.prompts || [])
+        .filter(p => p.enabled)
+        .reduce((sum, p) => sum + estimateTokens(PromptManager.replacePlaceholders(p.content)), 0);
+    
+    const lorebookTokenCount = (lorebook.entries || [])
+        .filter(e => e.enabled)
+        .reduce((sum, e) => sum + estimateTokens(e.content), 0);
 
+    const fixedTokenBudget = promptTokenCount + lorebookTokenCount;
+
+    // 2. 根據剩餘預算截斷歷史紀錄
     let historyTokenCount = 0;
     const recentHistory = [];
-    for (let i = history.length - 1; i >= 0; i--) {
-        const msg = history[i];
+    for (let i = customHistory.length - 1; i >= 0; i--) {
+        const msg = customHistory[i];
         const content = (msg.role === 'assistant' && Array.isArray(msg.content))
             ? msg.content[msg.activeContentIndex]
             : msg.content;
         
         const messageTokens = estimateTokens(content);
         
-        if (promptTokenCount + historyTokenCount + messageTokens <= maxTokenContext) {
+        if (fixedTokenBudget + historyTokenCount + messageTokens <= maxTokenContext) {
             recentHistory.unshift(msg);
             historyTokenCount += messageTokens;
         } else {
@@ -65,14 +77,40 @@ export function buildApiMessages() {
         }
     }
     
-    const finalMessages = PromptManager.buildFinalMessages(recentHistory);
+    // 3. 建構基礎提示詞
+    let finalMessages = PromptManager.buildFinalMessages(recentHistory);
+    
+    // 4. 觸發並注入世界書內容
+    const injections = LorebookManager.buildInjections(recentHistory);
+    if (injections.length > 0) {
+        const charDescriptionPrompt = PromptManager.getPromptContentByIdentifier('char_description');
+        let charDescIndex = -1;
+        if(charDescriptionPrompt) {
+            charDescIndex = finalMessages.findIndex(m => m.content.includes(charDescriptionPrompt));
+        }
+        if (charDescIndex === -1) {
+            charDescIndex = finalMessages.findIndex(m => m.role === 'system');
+            if(charDescIndex === -1) charDescIndex = 0;
+        }
+        
+        const injectionsBefore = injections
+            .filter(inj => inj.position === 0)
+            .sort((a, b) => a.order - b.order)
+            .map(inj => ({ role: 'system', content: inj.content }));
+            
+        const injectionsAfter = injections
+            .filter(inj => inj.position !== 0)
+            .sort((a, b) => a.order - b.order)
+            .map(inj => ({ role: 'system', content: inj.content }));
+            
+        finalMessages.splice(charDescIndex, 0, ...injectionsBefore);
+        finalMessages.splice(charDescIndex + injectionsBefore.length + 1, 0, ...injectionsAfter);
+    }
+    
+    // 5. 格式化為最終 API Payload
+    return formatApiPayload(finalMessages);
+}
 
-    return formatApiPayload(finalMessages);
-}
-export function buildApiMessagesFromHistory(customHistory) {
-    const finalMessages = PromptManager.buildFinalMessages(customHistory);
-    return formatApiPayload(finalMessages);
-}
 function formatApiPayload(finalMessages) {
     const provider = state.globalSettings.apiProvider || 'official_gemini';
 
@@ -153,14 +191,11 @@ export async function callApi(messagePayload, isForSummarization = false) {
 async function callOfficialApi(messagePayload, isForSummarization, signal) {
     const YOUR_WORKER_URL = 'https://key.d778105.workers.dev/';
 
-    // --- [安全機制核心修改] ---
     const currentUser = auth.currentUser;
     if (!currentUser) {
         throw new Error("使用者未登入，無法呼叫官方模型。");
     }
-    // 1. 獲取當前登入使用者的 ID Token
     const idToken = await getIdToken(currentUser);
-    // --- [修改結束] ---
 
     const url = YOUR_WORKER_URL + 'chat';
     const settings = state.globalSettings;
@@ -177,7 +212,6 @@ async function callOfficialApi(messagePayload, isForSummarization, signal) {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
-            // 2. 將 Token 放入 Authorization 標頭中發送
             'Authorization': `Bearer ${idToken}` 
         },
         body: JSON.stringify(body),
@@ -348,4 +382,3 @@ export async function testApiConnection(provider, apiKey, model) {
 
     return true;
 }
-

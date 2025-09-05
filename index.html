@@ -170,11 +170,33 @@
                     </button>
                 </div>
 
-                <div class="form-group">
+                 <div class="form-group">
                     <label for="char-example-dialogue">對話範例</label>
                     <textarea id="char-example-dialogue" placeholder="格式: {{user}}: 你好\n{{char}}: 你好呀"></textarea>
                 </div>
                 
+                 <!-- Advanced Metadata Section -->
+                <div class="advanced-section">
+                    <h4 class="advanced-section-header">
+                        進階定義 (中繼資料)
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </h4>
+                    <div class="advanced-section-content">
+                        <div class="form-group">
+                            <label for="char-creator">創作者</label>
+                            <input type="text" id="char-creator" placeholder="創作者名稱">
+                        </div>
+                        <div class="form-group">
+                            <label for="char-version">角色版本</label>
+                            <input type="text" id="char-version" placeholder="例如：1.0.0">
+                        </div>
+                        <div class="form-group">
+                            <label for="char-creator-notes">創作者備註</label>
+                            <textarea id="char-creator-notes" placeholder="這些備註不會影響 AI 回應"></textarea>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="modal-actions-split">
                     <button id="import-char-btn" class="action-btn"><i class="fa-solid fa-upload"></i> 匯入</button>
                     <button id="export-char-btn" class="action-btn"><i class="fa-solid fa-download"></i> 匯出</button>
@@ -195,6 +217,7 @@
                 <button class="tab-btn" data-tab="api-settings-tab"><i class="fa-solid fa-key"></i> API 設定</button>
                 <button class="tab-btn" data-tab="user-settings-tab"><i class="fa-solid fa-users"></i> 使用者設定</button>
                 <button class="tab-btn" data-tab="prompt-settings-tab"><i class="fa-solid fa-book-bookmark"></i> 提示詞庫</button>
+                <button class="tab-btn" data-tab="lorebook-tab"><i class="fa-solid fa-book"></i> 世界書</button>
                 <button class="tab-btn" data-tab="regex-tab"><i class="fa-solid fa-wand-magic-sparkles"></i> 正規表達式</button>
                 <button class="tab-btn" data-tab="theme-settings-tab"><i class="fa-solid fa-palette"></i> 主題設定</button>
                 <button class="tab-btn" data-tab="data-management-tab"><i class="fa-solid fa-database"></i> 資料管理</button>
@@ -328,8 +351,31 @@
                     <div class="form-group" style="margin-top: 20px;">
                         <h4>記憶生成提示</h4>
                         <small class="setting-description">此提示詞專門用於「更新記憶」功能，指導 AI 如何總結對話內容。它獨立於上方選擇的提示詞庫。</small>
-                        <textarea id="summarization-prompt-input" class="styled-textarea" rows="8"></textarea>
+                        <textarea id="summarization-prompt-input" rows="8"></textarea>
                     </div>
+                </div>
+                <!-- 世界書 Tab Content -->
+                <div id="lorebook-tab" class="tab-content">
+                    <div class="api-preset-manager">
+                        <h4>世界書管理</h4>
+                        <div class="preset-controls">
+                            <select id="lorebook-select"></select>
+                            <button id="rename-lorebook-btn" class="icon-btn-sm" title="重新命名世界書"><i class="fa-solid fa-pencil"></i></button>
+                            <button id="delete-lorebook-btn" class="icon-btn-sm danger" title="刪除選取的世界書"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                        <div class="modal-actions-split" style="margin-top: 10px;">
+                           <button id="add-lorebook-btn" class="action-btn-sm"><i class="fa-solid fa-plus"></i> 新增世界書</button>
+                           <button id="import-lorebook-btn" class="action-btn-sm"><i class="fa-solid fa-upload"></i> 匯入世界書</button>
+                        </div>
+                    </div>
+                    <div id="lorebook-entry-list-container">
+                        <h4>世界書條目</h4>
+                        <ul id="lorebook-entry-list" class="prompt-item-list">
+                        </ul>
+                    </div>
+                     <button id="add-lorebook-entry-btn" class="action-btn-sm" style="margin-top: 15px;">
+                        <i class="fa-solid fa-plus"></i> 新增條目
+                    </button>
                 </div>
                 
                 <!-- 正規表達式分頁 -->
@@ -555,6 +601,59 @@
             </div>
         </div>
     </div>
+
+    <!-- Lorebook Entry Editor Modal -->
+    <div id="lorebook-editor-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="lorebook-editor-title">編輯世界書條目</h2>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="lorebook-entry-name">條目名稱 (註解)</label>
+                    <input type="text" id="lorebook-entry-name" placeholder="例如：魔法學院">
+                </div>
+                <div class="form-group">
+                    <label for="lorebook-entry-keywords">關鍵字 (以逗號分隔)</label>
+                    <textarea id="lorebook-entry-keywords" rows="2" placeholder="魔法,學校,校園"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="lorebook-entry-content">內容</label>
+                    <textarea id="lorebook-entry-content" rows="6" placeholder="關於這個條目的詳細描述..."></textarea>
+                </div>
+                <div class="prompt-grid-2">
+                    <div class="form-group">
+                        <label for="lorebook-entry-logic">關鍵字邏輯</label>
+                        <select id="lorebook-entry-logic">
+                            <option value="0">包含任一 (OR)</option>
+                            <option value="1">包含全部 (AND)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="lorebook-entry-position">插入位置</label>
+                        <select id="lorebook-entry-position">
+                            <option value="0">在角色描述前</option>
+                            <option value="1">在角色描述後</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="prompt-grid-2">
+                    <div class="form-group">
+                        <label for="lorebook-entry-order">插入順序</label>
+                        <input type="number" id="lorebook-entry-order" value="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="lorebook-entry-depth">掃描深度</label>
+                        <input type="number" id="lorebook-entry-depth" value="4">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="delete-lorebook-entry-btn" class="action-btn danger" style="margin-right: auto;">刪除</button>
+                <button id="cancel-lorebook-editor-btn" class="action-btn secondary">取消</button>
+                <button id="save-lorebook-entry-btn" class="action-btn primary">儲存</button>
+            </div>
+        </div>
+    </div>
+
 
     <script type="module" src="js/main.js"></script>
 </body>

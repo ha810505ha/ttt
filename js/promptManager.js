@@ -1,5 +1,5 @@
 // js/promptManager.js
-// 這個檔案封裝了所有與新提示詞系統相關的核心邏輯。
+// 這個檔案封裝了所有與提示詞庫系統相關的核心邏輯。
 
 import { state } from './state.js';
 import { DEFAULT_PROMPT_SET } from './constants.js';
@@ -87,20 +87,23 @@ export function buildFinalMessages(chatHistory) {
         .filter(p => p.enabled && p.identifier !== 'chatHistory')
         .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    const promptsToInject = enabledPrompts.filter(p => p.position?.type === 'chat');
-
     let finalMessages = [...chatHistory];
 
-    promptsToInject.forEach(prompt => {
-        // [核心修改] 在這裡為每個要插入的提示詞內容加上其名稱作為標題
-        const finalContent = `[${prompt.name}]\n${replacePlaceholders(prompt.content)}`;
+    enabledPrompts.forEach(prompt => {
+        const finalContent = replacePlaceholders(prompt.content);
         const message = {
             role: prompt.role || 'system',
             content: finalContent
         };
         
-        const insertionIndex = Math.max(0, finalMessages.length - (prompt.position.depth || 0));
-        finalMessages.splice(insertionIndex, 0, message);
+        const position = prompt.position || { type: 'relative' };
+
+        if (position.type === 'chat') {
+            const insertionIndex = Math.max(0, finalMessages.length - (position.depth || 0));
+            finalMessages.splice(insertionIndex, 0, message);
+        } else { // 'relative'
+             finalMessages.unshift(message);
+        }
     });
     
     return finalMessages;
@@ -108,7 +111,7 @@ export function buildFinalMessages(chatHistory) {
 
 
 /**
- * @description [修正] 替換提示詞內容中的預留位置 (placeholders)。新增 export 關鍵字。
+ * @description 替換提示詞內容中的預留位置 (placeholders)。
  * @param {string} text - 含有預留位置的原始字串
  * @returns {string} - 替換後的字串
  */
@@ -128,16 +131,15 @@ export function replacePlaceholders(text) {
     result = result.replace(/{{char}}/g, char.name || 'char');
     result = result.replace(/{{user}}/g, user.name || 'user');
     
-    // [核心修改] 在替換時也加上標題，以便除錯
-    result = result.replace(/{{personality}}/g, `[Character Persona]\n${char.description || ''}`);
-    result = result.replace(/{{scenario}}/g, `[Scenario]\n${char.exampleDialogue || ''}`); 
-    result = result.replace(/{{memory}}/g, `[Memory]\n${memory}`);
+    result = result.replace(/{{personality}}/g, `${char.description || ''}`);
+    result = result.replace(/{{scenario}}/g, `${char.exampleDialogue || ''}`); 
+    result = result.replace(/{{memory}}/g, `${memory}`);
 
     return result;
 }
 
 /**
- * @description 獲取特定用途的提示詞內容，例如用於生成記憶的提示
+ * @description 獲取特定用途的提示詞內容
  * @param {string} identifier - 提示詞的唯一識別碼
  * @returns {string|null} - 找到的提示詞內容，或 null
  */
@@ -145,10 +147,8 @@ export function getPromptContentByIdentifier(identifier) {
     const activePromptSet = getActivePromptSet();
     const prompt = activePromptSet.prompts.find(p => p.identifier === identifier && p.enabled);
     if (!prompt) {
-        // 後備方案：如果當前庫找不到，就從預設庫找
         const defaultPrompt = DEFAULT_PROMPT_SET.prompts.find(p => p.identifier === identifier);
         return defaultPrompt ? defaultPrompt.content : null;
     }
     return prompt.content;
 }
-

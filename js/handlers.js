@@ -16,7 +16,8 @@ import * as DOM from './dom.js';
 import { 
     state, tempState, saveSettings, saveCharacter, deleteCharacter, saveUserPersona, deleteUserPersona,
     saveAllChatHistoriesForChar, saveAllLongTermMemoriesForChar, saveAllChatMetadatasForChar,
-    deleteAllChatDataForChar, loadChatDataForCharacter, savePromptSet, deletePromptSet
+    deleteAllChatDataForChar, loadChatDataForCharacter, savePromptSet, deletePromptSet,
+    saveLorebook, deleteLorebook
 } from './state.js';
 import * as db from './db.js';
 import { callApi, buildApiMessages, buildApiMessagesFromHistory, testApiConnection } from './api.js';
@@ -24,11 +25,13 @@ import {
     renderCharacterList, renderChatSessionList, renderActiveChat, renderChatMessages, 
     displayMessage, toggleModal, setGeneratingState, showCharacterListView, loadGlobalSettingsToUI,
     renderApiPresetsDropdown, loadApiPresetToUI, updateModelDropdown,
-    renderFirstMessageInputs, renderPromptSetSelector, renderPromptList, renderRegexRulesList
+    renderFirstMessageInputs, renderPromptSetSelector, renderPromptList, renderRegexRulesList,
+    renderLorebookSelector, renderLorebookEntryList
 } from './ui.js';
-import { DEFAULT_AVATAR, PREMIUM_ACCOUNTS } from './constants.js'; // 【修改】匯入授權帳號列表
+import { DEFAULT_AVATAR, PREMIUM_ACCOUNTS, MODELS } from './constants.js';
 import { handleImageUpload, exportChatAsJsonl, applyTheme, importCharacter, exportCharacter } from './utils.js';
 import * as PromptManager from './promptManager.js';
+import * as LorebookManager from './lorebookManager.js';
 
 // ===================================================================================
 // 使用者認證 (Authentication)
@@ -71,20 +74,15 @@ export function handleEmailRegister(event) {
 
 export function handleEmailLogin(event) {
     event.preventDefault();
-    let emailInput = event.target.email.value; // 這是使用者在輸入框中實際輸入的內容
+    let emailInput = event.target.email.value;
     const password = event.target.password.value;
 
     let emailToAuth;
-
-    // 【關鍵修改】使用 .find() 方法在授權列表中尋找匹配的帳號
     const premiumAccount = PREMIUM_ACCOUNTS.find(acc => acc.username.toLowerCase() === emailInput.toLowerCase());
 
     if (premiumAccount) {
-        // 如果找到了，則使用對應的 Firebase Email 進行驗證
         emailToAuth = premiumAccount.firebaseEmail;
-        console.log(`偵測到授權帳號登入，使用 ${emailToAuth} 進行驗證。`);
     } else {
-        // 否則，視為一般 Email 登入
         emailToAuth = emailInput;
     }
 
@@ -194,9 +192,6 @@ export async function handleDeleteApiPreset() {
 // 聊天核心邏輯 (Core Chat Logic)
 // ===================================================================================
 
-/**
- * @description 統一處理送出訊息或繼續生成
- */
 export function handleSendMessageOrContinue() {
     const messageText = DOM.messageInput.value.trim();
 
@@ -207,11 +202,6 @@ export function handleSendMessageOrContinue() {
     }
 }
 
-
-/**
- * @description 處理使用者發送新訊息的邏輯
- * @param {string} messageText - 使用者輸入的訊息
- */
 async function sendMessage(messageText) {
     if (state.globalSettings.apiProvider !== 'official_gemini' && !state.globalSettings.apiKey) {
         alert('請先在全域設定中設定您的 API 金鑰。');
@@ -219,7 +209,6 @@ async function sendMessage(messageText) {
     }
     if (!state.activeCharacterId || !state.activeChatId) return;
 
-    // 將使用者訊息加入歷史紀錄
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
     const timestamp = new Date().toISOString();
     history.push({ role: 'user', content: messageText, timestamp: timestamp });
@@ -233,7 +222,6 @@ async function sendMessage(messageText) {
     DOM.messageInput.style.height = 'auto';
     DOM.messageInput.focus();
 
-    // 呼叫 API
     try {
         setGeneratingState(true);
         const thinkingBubble = displayMessage('...', 'assistant', new Date().toISOString(), history.length, true);
@@ -241,7 +229,6 @@ async function sendMessage(messageText) {
         const messagesForApi = buildApiMessages();
         let aiResponse = await callApi(messagesForApi);
 
-        // 套用正規表達式規則
         const regexRules = state.globalSettings.regexRules || [];
         const enabledRules = regexRules.filter(rule => rule.enabled);
         for (const rule of enabledRules) {
@@ -255,7 +242,6 @@ async function sendMessage(messageText) {
 
         const aiTimestamp = new Date().toISOString();
         
-        // 新增 AI 回應到歷史紀錄
         history.push({ role: 'assistant', content: [aiResponse], activeContentIndex: 0, timestamp: aiTimestamp });
         
         thinkingBubble.remove();
@@ -276,31 +262,24 @@ async function sendMessage(messageText) {
     }
 }
 
-/**
- * @description 處理繼續生成 AI 回應的邏輯
- */
 async function handleContinueGeneration() {
     if (!state.activeCharacterId || !state.activeChatId) return;
 
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
     const lastMessage = history[history.length - 1];
 
-    // 檢查最後一則訊息是否為 AI 回應
     if (!lastMessage || lastMessage.role !== 'assistant') {
-        return; // 如果不是，則不執行任何操作
+        return;
     }
     
-    // 呼叫 API
     try {
         setGeneratingState(true);
-        // 建立一個臨時的使用者訊息來觸發 API
         const continuePrompt = PromptManager.getPromptContentByIdentifier('continue_prompt') || "Continue.";
         const tempHistory = [...history, { role: 'user', content: continuePrompt }];
         const messagesForApi = buildApiMessagesFromHistory(tempHistory);
 
         let aiResponse = await callApi(messagesForApi);
 
-        // 套用正規表達式規則
         const regexRules = state.globalSettings.regexRules || [];
         const enabledRules = regexRules.filter(rule => rule.enabled);
         for (const rule of enabledRules) {
@@ -312,7 +291,6 @@ async function handleContinueGeneration() {
             }
         }
         
-        // 將 AI 的新回應附加到上一則訊息的末尾
         const lastMessageContent = lastMessage.content[lastMessage.activeContentIndex];
         lastMessage.content[lastMessage.activeContentIndex] = lastMessageContent + aiResponse;
 
@@ -335,10 +313,7 @@ export async function retryMessage(messageIndex) {
     const messageToRetry = history[messageIndex];
 
     if (messageToRetry && messageToRetry.role === 'user' && messageToRetry.error) {
-        // 為了重試，我們需要重新執行發送邏輯，但要移除錯誤標記
         delete messageToRetry.error;
-        
-        // 建立一個不包含錯誤訊息的歷史紀錄來呼叫 API
         const contextHistory = history.slice(0, messageIndex + 1);
 
         try {
@@ -347,8 +322,6 @@ export async function retryMessage(messageIndex) {
 
             const messagesForApi = buildApiMessagesFromHistory(contextHistory);
             let aiResponse = await callApi(messagesForApi);
-            
-            // ... (此處省略了正規表達式處理，因為重試通常是針對網路錯誤) ...
             
             history.push({ role: 'assistant', content: [aiResponse], activeContentIndex: 0, timestamp: new Date().toISOString() });
             
@@ -396,7 +369,6 @@ export async function regenerateResponse(messageIndex) {
         const messagesForApi = buildApiMessagesFromHistory(contextHistory);
         let aiResponse = await callApi(messagesForApi);
 
-        // 套用正規表達式規則
         const regexRules = state.globalSettings.regexRules || [];
         const enabledRules = regexRules.filter(rule => rule.enabled);
         for (const rule of enabledRules) {
@@ -427,8 +399,30 @@ export async function regenerateResponse(messageIndex) {
 }
 
 export async function switchVersion(messageIndex, direction) {
-    const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
+    // 新增安全檢查
+    if (!state.activeCharacterId || !state.activeChatId) {
+        console.error('switchVersion: activeCharacterId 或 activeChatId 為空');
+        return;
+    }
+    
+    const chatHistory = state.chatHistories[state.activeCharacterId];
+    if (!chatHistory) {
+        console.error('switchVersion: 找不到角色的聊天歷史');
+        return;
+    }
+    
+    const history = chatHistory[state.activeChatId];
+    if (!history) {
+        console.error('switchVersion: 找不到指定的聊天室歷史');
+        return;
+    }
+    
     const msg = history[messageIndex];
+    if (!msg || !Array.isArray(msg.content)) {
+        console.error('switchVersion: 訊息不存在或內容格式錯誤');
+        return;
+    }
+    
     const newIndex = msg.activeContentIndex + direction;
 
     if (newIndex >= 0 && newIndex < msg.content.length) {
@@ -436,14 +430,6 @@ export async function switchVersion(messageIndex, direction) {
         await saveAllChatHistoriesForChar(state.activeCharacterId);
         renderChatMessages();
     }
-}
-
-export function handleStopGeneration() {
-    if (tempState.apiCallController) {
-        tempState.apiCallController.abort();
-        tempState.apiCallController = null;
-    }
-    setGeneratingState(false);
 }
 
 // ===================================================================================
@@ -569,12 +555,21 @@ export function openCharacterEditor(charId = null) {
     tempState.editingCharacterId = charId;
     if (charId) {
         const char = state.characters.find(c => c.id === charId);
+        if (!char) {
+            console.error(`無法找到 ID 為 "${charId}" 的角色來進行編輯。`);
+            alert('找不到要編輯的角色資料！');
+            return;
+        }
         DOM.charEditorTitle.textContent = '編輯角色';
         DOM.charAvatarPreview.src = char.avatarUrl || DEFAULT_AVATAR;
         DOM.charNameInput.value = char.name;
         DOM.charDescriptionInput.value = char.description || '';
         renderFirstMessageInputs(char.firstMessage || ['']);
         DOM.charExampleDialogueInput.value = char.exampleDialogue || '';
+        DOM.charCreatorInput.value = char.creator || '';
+        DOM.charVersionInput.value = char.characterVersion || '';
+        DOM.charCreatorNotesInput.value = char.creatorNotes || '';
+
     } else {
         DOM.charEditorTitle.textContent = '新增角色';
         DOM.charAvatarPreview.src = DEFAULT_AVATAR;
@@ -582,6 +577,9 @@ export function openCharacterEditor(charId = null) {
         DOM.charDescriptionInput.value = '';
         renderFirstMessageInputs(['']);
         DOM.charExampleDialogueInput.value = '';
+        DOM.charCreatorInput.value = '';
+        DOM.charVersionInput.value = '';
+        DOM.charCreatorNotesInput.value = '';
     }
     toggleModal('character-editor-modal', true);
 }
@@ -602,6 +600,9 @@ export async function handleSaveCharacter() {
         description: DOM.charDescriptionInput.value.trim(),
         firstMessage: firstMessages.length > 0 ? firstMessages : [''],
         exampleDialogue: DOM.charExampleDialogueInput.value.trim(),
+        creator: DOM.charCreatorInput.value.trim(),
+        characterVersion: DOM.charVersionInput.value.trim(),
+        creatorNotes: DOM.charCreatorNotesInput.value.trim(),
     };
     if (!charData.name) { alert('角色名稱不能為空！'); return; }
 
@@ -652,10 +653,6 @@ export async function handleDeleteActiveCharacter() {
     }
 }
 
-/**
- * @description 切換角色的最愛狀態，並更新相關 UI
- * @param {string} charId - 角色 ID
- */
 export async function handleToggleCharacterLove(charId) {
     if (!charId) return;
     const char = state.characters.find(c => c.id === charId);
@@ -663,10 +660,8 @@ export async function handleToggleCharacterLove(charId) {
         char.loved = !char.loved;
         await saveCharacter(char);
         
-        // 更新角色列表的視覺效果
         renderCharacterList();
 
-        // 如果當前正在查看這個角色的聊天室列表，也要更新標頭的愛心
         if (state.activeCharacterId === charId) {
             const heartIcon = DOM.headerLoveChatBtn.querySelector('i');
             DOM.headerLoveChatBtn.classList.toggle('loved', char.loved);
@@ -707,26 +702,36 @@ export async function handleChatSessionDropSort(draggedId, targetId) {
     const draggedItem = metadatas[draggedId];
     if (!draggedItem) return;
 
-    const sortedSessions = Object.values(metadatas).sort((a, b) => {
+    // Create an array of sessions from the metadata object for sorting
+    let sessionsArray = Object.keys(metadatas).map(id => ({ id, ...metadatas[id] }));
+
+    // Sort the array based on pinned status and order
+    sessionsArray.sort((a, b) => {
         if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
         return (a.order || 0) - (b.order || 0);
     });
 
-    const originalIndex = sortedSessions.findIndex(s => s.id === draggedId);
+    // Find the original index of the dragged item and remove it
+    const originalIndex = sessionsArray.findIndex(s => s.id === draggedId);
     if (originalIndex > -1) {
-        sortedSessions.splice(originalIndex, 1);
+        sessionsArray.splice(originalIndex, 1);
     }
     
-    const targetIndex = targetId ? sortedSessions.findIndex(s => s.id === targetId) : sortedSessions.length;
-    sortedSessions.splice(targetIndex, 0, draggedItem);
+    // Find the target index to insert the dragged item
+    const targetIndex = targetId 
+        ? sessionsArray.findIndex(s => s.id === targetId) 
+        : sessionsArray.length;
+    sessionsArray.splice(targetIndex, 0, { id: draggedId, ...draggedItem });
 
-    for (let i = 0; i < sortedSessions.length; i++) {
-        const sessionToUpdate = metadatas[sortedSessions[i].id];
-        if (sessionToUpdate) {
-            sessionToUpdate.order = i;
+    // Re-assign the order property to all sessions based on their new position
+    for (let i = 0; i < sessionsArray.length; i++) {
+        const sessionId = sessionsArray[i].id;
+        if (metadatas[sessionId]) {
+            metadatas[sessionId].order = i;
         }
     }
     
+    // Save the updated metadata and re-render the list
     await saveAllChatMetadatasForChar(state.activeCharacterId);
     renderChatSessionList();
 }
@@ -803,19 +808,31 @@ async function handleDeleteMessage(index) {
 // 全域與提示詞設定 (Global & Prompt Settings)
 // ===================================================================================
 
-/**
- * @description 儲存全域設定
- */
 export async function handleSaveGlobalSettings() {
+    console.log('儲存設定前的狀態:', {
+        activeCharacterId: state.activeCharacterId,
+        activeChatId: state.activeChatId
+    });
+
+    // 保存當前的所有重要狀態
+    const savedState = {
+        activeCharacterId: state.activeCharacterId,
+        activeChatId: state.activeChatId,
+        activeUserPersonaId: state.activeUserPersonaId,
+        activePromptSetId: state.activePromptSetId,
+        activeLorebookId: state.activeLorebookId,
+    };
+
     let contextSize = parseInt(DOM.contextSizeInput.value, 10) || 30000;
     const maxContextSize = 100000;
 
     if (contextSize > maxContextSize) {
-        alert(`上下文大小已超過上限 (100,000)，將自動設為 ${maxContextSize}。`);
+        console.warn(`上下文大小已超過上限 (100,000)，將自動設為 ${maxContextSize}。`);
         contextSize = maxContextSize;
         DOM.contextSizeInput.value = maxContextSize;
     }
 
+    // 只更新 globalSettings，不影響其他狀態
     state.globalSettings = {
         apiProvider: DOM.apiProviderSelect.value,
         apiModel: DOM.apiModelSelect.value,
@@ -830,19 +847,37 @@ export async function handleSaveGlobalSettings() {
         regexRules: state.globalSettings.regexRules || []
     };
     
+    // 確保所有重要狀態都被保持
+    Object.assign(state, savedState);
+    
     applyTheme(state.globalSettings.theme);
     await saveSettings();
     
+    console.log('儲存設定後的狀態:', {
+        activeCharacterId: state.activeCharacterId,
+        activeChatId: state.activeChatId
+    });
+    
     toggleModal('global-settings-modal', false);
 
+    // 只更新必要的 UI 元素，不重新載入整個狀態
     if (state.activeCharacterId && state.activeChatId) {
-        const currentModel = state.globalSettings.apiModel || '未設定';
-        DOM.chatHeaderModelName.textContent = currentModel;
-        DOM.chatHeaderModelName.title = currentModel;
+        const provider = state.globalSettings.apiProvider || 'official_gemini';
+        const modelId = state.globalSettings.apiModel;
+        let modelDisplayName = modelId || '未設定';
+
+        if (modelId && MODELS[provider]) {
+            const modelObject = MODELS[provider].find(m => m.value === modelId);
+            if (modelObject) {
+                modelDisplayName = modelObject.name;
+            }
+        }
+        
+        DOM.chatHeaderModelName.textContent = modelDisplayName;
+        DOM.chatHeaderModelName.title = modelDisplayName;
     }
-    
-    alert('所有設定已儲存！');
 }
+
 
 // ===================================================================================
 // 提示詞庫處理函式
@@ -1019,6 +1054,213 @@ export function handlePromptPositionChange() {
     DOM.promptDepthOrderContainer.classList.toggle('hidden', !isChatType);
 }
 
+
+// ===================================================================================
+// 世界書 (Lorebook) 處理函式
+// ===================================================================================
+
+export async function handleAddNewLorebook() {
+    const bookName = prompt('請輸入新世界書的名稱：');
+    if (!bookName || bookName.trim() === '') {
+        alert('名稱不能為空！');
+        return;
+    }
+    const newLorebook = {
+        id: `lorebook_${Date.now()}`,
+        name: bookName.trim(),
+        entries: [],
+    };
+    state.lorebooks.push(newLorebook);
+    await saveLorebook(newLorebook);
+    
+    state.activeLorebookId = newLorebook.id;
+    await saveSettings();
+
+    renderLorebookSelector();
+    renderLorebookEntryList();
+}
+
+export function handleImportLorebook() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const newLorebook = LorebookManager.parseLorebookFile(e.target.result, file.name);
+                
+                state.lorebooks.push(newLorebook);
+                await saveLorebook(newLorebook);
+                
+                state.activeLorebookId = newLorebook.id;
+                await saveSettings();
+
+                renderLorebookSelector();
+                renderLorebookEntryList();
+                alert(`世界書 "${newLorebook.name}" 匯入成功！`);
+            } catch (error) {
+                alert(`匯入失敗: ${error.message}`);
+                console.error("世界書匯入處理失敗:", error);
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+    };
+    input.click();
+}
+
+export async function handleRenameLorebook() {
+    const bookId = DOM.lorebookSelect.value;
+    if (!bookId) {
+        alert('請先選擇一本要重新命名的世界書。');
+        return;
+    }
+
+    const activeBook = state.lorebooks.find(lb => lb.id === bookId);
+    if (!activeBook) {
+        alert('找不到對應的世界書資料。');
+        return;
+    }
+
+    const newName = prompt('請輸入世界書的新名稱：', activeBook.name);
+
+    if (newName && newName.trim() !== '' && newName.trim() !== activeBook.name) {
+        activeBook.name = newName.trim();
+        await saveLorebook(activeBook);
+        renderLorebookSelector();
+        alert('世界書已成功重新命名！');
+    }
+}
+
+export async function handleDeleteLorebook() {
+    const bookId = DOM.lorebookSelect.value;
+    if (!bookId) {
+        alert('請選擇一個要刪除的世界書。');
+        return;
+    }
+    if (state.lorebooks.length <= 1) {
+        alert('無法刪除最後一個世界書。');
+        return;
+    }
+
+    const bookToDelete = state.lorebooks.find(lb => lb.id === bookId);
+    if (confirm(`確定要刪除世界書 "${bookToDelete.name}" 嗎？`)) {
+        state.lorebooks = state.lorebooks.filter(lb => lb.id !== bookId);
+        await deleteLorebook(bookId);
+
+        if (state.activeLorebookId === bookId) {
+            state.activeLorebookId = state.lorebooks[0].id;
+            await saveSettings();
+        }
+
+        renderLorebookSelector();
+        renderLorebookEntryList();
+    }
+}
+
+export async function handleSwitchLorebook(event) {
+    const newBookId = event.target.value;
+    state.activeLorebookId = newBookId;
+    await saveSettings();
+    renderLorebookEntryList();
+}
+
+export async function handleToggleLorebookEntryEnabled(entryId) {
+    const activeBook = LorebookManager.getActiveLorebook();
+    if (!activeBook) return;
+
+    const entry = activeBook.entries.find(e => e.id === entryId);
+    if (entry) {
+        entry.enabled = !entry.enabled;
+        await saveLorebook(activeBook);
+        renderLorebookEntryList();
+    }
+}
+
+export function openLorebookEditor(entryId = null) {
+    tempState.editingLorebookEntryId = entryId;
+    if (entryId) {
+        const activeBook = LorebookManager.getActiveLorebook();
+        const entry = activeBook.entries.find(e => e.id === entryId);
+        if (!entry) { alert('找不到要編輯的條目。'); return; }
+
+        DOM.lorebookEditorTitle.textContent = '編輯世界書條目';
+        DOM.lorebookEntryNameInput.value = entry.name;
+        DOM.lorebookEntryKeywordsInput.value = entry.keywords.join(', ');
+        DOM.lorebookEntryContentInput.value = entry.content;
+        DOM.lorebookEntryLogicSelect.value = entry.logic;
+        DOM.lorebookEntryPositionSelect.value = entry.position;
+        DOM.lorebookEntryOrderInput.value = entry.order;
+        DOM.lorebookEntryDepthInput.value = entry.scanDepth;
+    } else {
+        DOM.lorebookEditorTitle.textContent = '新增世界書條目';
+        DOM.lorebookEntryNameInput.value = '';
+        DOM.lorebookEntryKeywordsInput.value = '';
+        DOM.lorebookEntryContentInput.value = '';
+        DOM.lorebookEntryLogicSelect.value = 0;
+        DOM.lorebookEntryPositionSelect.value = 0;
+        DOM.lorebookEntryOrderInput.value = 100;
+        DOM.lorebookEntryDepthInput.value = 4;
+    }
+    toggleModal('lorebook-editor-modal', true);
+}
+
+export async function handleSaveLorebookEntry() {
+    const entryId = tempState.editingLorebookEntryId;
+    const activeBook = LorebookManager.getActiveLorebook();
+    if (!activeBook) return;
+
+    const entryData = {
+        name: DOM.lorebookEntryNameInput.value.trim() || '未命名條目',
+        keywords: DOM.lorebookEntryKeywordsInput.value.split(',').map(k => k.trim()).filter(k => k),
+        content: DOM.lorebookEntryContentInput.value,
+        logic: parseInt(DOM.lorebookEntryLogicSelect.value, 10),
+        position: parseInt(DOM.lorebookEntryPositionSelect.value, 10),
+        order: parseInt(DOM.lorebookEntryOrderInput.value, 10) || 100,
+        scanDepth: parseInt(DOM.lorebookEntryDepthInput.value, 10) || 4,
+    };
+
+    if (entryId) { // 編輯現有
+        const entryIndex = activeBook.entries.findIndex(e => e.id === entryId);
+        if (entryIndex > -1) {
+            const existingEntry = activeBook.entries[entryIndex];
+            activeBook.entries[entryIndex] = { ...existingEntry, ...entryData };
+        }
+    } else { // 新增
+        const newEntry = {
+            id: `entry_${Date.now()}`,
+            enabled: true,
+            ...entryData
+        };
+        activeBook.entries.push(newEntry);
+    }
+
+    await saveLorebook(activeBook);
+    renderLorebookEntryList();
+    toggleModal('lorebook-editor-modal', false);
+    tempState.editingLorebookEntryId = null;
+}
+
+export async function handleDeleteLorebookEntry() {
+    const entryId = tempState.editingLorebookEntryId;
+    if (!entryId) return;
+
+    const activeBook = LorebookManager.getActiveLorebook();
+    const entryToDelete = activeBook.entries.find(e => e.id === entryId);
+
+    if (confirm(`確定要刪除條目「${entryToDelete.name}」嗎？`)) {
+        activeBook.entries = activeBook.entries.filter(e => e.id !== entryId);
+        await saveLorebook(activeBook);
+        renderLorebookEntryList();
+        toggleModal('lorebook-editor-modal', false);
+        tempState.editingLorebookEntryId = null;
+    }
+}
+
+
 // ===================================================================================
 // 使用者角色 (User Persona)
 // ===================================================================================
@@ -1190,12 +1432,12 @@ export async function handleConfirmExport() {
         DOM.loadingOverlay.querySelector('p').textContent = '聊天紀錄處理中...';
         DOM.loadingOverlay.classList.remove('hidden');
         try {
-            await exportChatAsJsonl(); // 等待非同步匯出完成
+            await exportChatAsJsonl();
         } catch (error) {
             alert('匯出失敗，請查看主控台獲取更多資訊。');
         } finally {
             DOM.loadingOverlay.classList.add('hidden');
-            DOM.loadingOverlay.querySelector('p').textContent = '圖片生成中，請稍候...'; // 還原預設文字
+            DOM.loadingOverlay.querySelector('p').textContent = '圖片生成中，請稍候...';
         }
     }
 }
@@ -1287,18 +1529,56 @@ export async function handleGenerateScreenshot() {
 }
 
 export async function handleGlobalExport() {
+    if (!confirm('確定要匯出所有資料嗎？匯出的檔案將不包含您的 API 金鑰以確保安全。')) {
+        return;
+    }
+
     try {
         console.log("開始全域匯出...");
+
+        // Deep copy function to avoid modifying the live state
+        const deepCopy = (obj) => JSON.parse(JSON.stringify(obj));
+
+        // Get all data from DB
+        const characters = await db.getAll('characters');
+        const chatHistories = await db.getAll('chatHistories');
+        const longTermMemories = await db.getAll('longTermMemories');
+        const chatMetadatas = await db.getAll('chatMetadatas');
+        const userPersonas = await db.getAll('userPersonas');
+        const promptSets = await db.getAll('promptSets');
+        const lorebooks = await db.getAll('lorebooks');
+        const keyValueStore = await db.getAll('keyValueStore');
+
+        // Sanitize the data to remove API keys
+        const sanitizedKeyValueStore = deepCopy(keyValueStore);
+        const settingsItem = sanitizedKeyValueStore.find(item => item.key === 'settings');
+
+        if (settingsItem) {
+            // Remove the main API key from global settings
+            if (settingsItem.globalSettings && settingsItem.globalSettings.apiKey) {
+                delete settingsItem.globalSettings.apiKey;
+            }
+            // Remove API keys from presets
+            if (settingsItem.apiPresets && Array.isArray(settingsItem.apiPresets)) {
+                settingsItem.apiPresets.forEach(preset => {
+                    if (preset.apiKey) {
+                        delete preset.apiKey;
+                    }
+                });
+            }
+        }
+
         const allData = {
             version: "2.0",
             exportDate: new Date().toISOString(),
-            characters: await db.getAll('characters'),
-            chatHistories: await db.getAll('chatHistories'),
-            longTermMemories: await db.getAll('longTermMemories'),
-            chatMetadatas: await db.getAll('chatMetadatas'),
-            userPersonas: await db.getAll('userPersonas'),
-            promptSets: await db.getAll('promptSets'),
-            keyValueStore: await db.getAll('keyValueStore'),
+            characters,
+            chatHistories,
+            longTermMemories,
+            chatMetadatas,
+            userPersonas,
+            promptSets,
+            lorebooks,
+            keyValueStore: sanitizedKeyValueStore, // Use the sanitized data
         };
 
         const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
@@ -1344,7 +1624,7 @@ export function handleGlobalImport(mode) {
 
                 DOM.loadingOverlay.classList.remove('hidden');
                 
-                const storesToProcess = ['characters', 'chatHistories', 'longTermMemories', 'chatMetadatas', 'userPersonas', 'promptSets', 'keyValueStore'];
+                const storesToProcess = ['characters', 'chatHistories', 'longTermMemories', 'chatMetadatas', 'userPersonas', 'promptSets', 'lorebooks', 'keyValueStore'];
 
                 if (mode === 'overwrite') {
                     for (const storeName of storesToProcess) {

@@ -14,7 +14,7 @@ export function setupEventListeners() {
     // 帳號認證
     DOM.loginBtnInSettings.addEventListener('click', Handlers.handleLogin);
     DOM.logoutBtn.addEventListener('click', Handlers.handleLogout);
-    
+
     // 側邊欄與行動裝置
     DOM.menuToggleBtn.addEventListener('click', () => {
         DOM.leftPanel.classList.toggle('mobile-visible');
@@ -114,7 +114,16 @@ export function setupEventListeners() {
         }
     });
 
-    // 全域設定 Modal
+    // 角色編輯器內的特定事件
+    DOM.charEditorModal.addEventListener('click', (e) => {
+        const header = e.target.closest('.advanced-section-header');
+        if (header) {
+            header.parentElement.classList.toggle('expanded');
+        }
+    });
+
+
+    // 全域设定 Modal
     DOM.globalSettingsBtn.addEventListener('click', () => {
         UI.loadGlobalSettingsToUI();
         UI.toggleModal('global-settings-modal', true);
@@ -128,12 +137,12 @@ export function setupEventListeners() {
     Utils.setupSliderSync(DOM.maxTokensSlider, DOM.maxTokensValue);
     DOM.apiProviderSelect.addEventListener('change', UI.updateModelDropdown);
 
-    // API 設定檔
+    // API 设定档
     DOM.saveApiPresetBtn.addEventListener('click', Handlers.handleSaveApiPreset);
     DOM.apiPresetSelect.addEventListener('change', Handlers.handleLoadApiPreset);
     DOM.deleteApiPresetBtn.addEventListener('click', Handlers.handleDeleteApiPreset);
 
-    // 設定分頁
+    // 设定分页
     DOM.settingsTabsContainer.addEventListener('click', (e) => {
         const tabButton = e.target.closest('.tab-btn');
         if (!tabButton) return;
@@ -148,7 +157,7 @@ export function setupEventListeners() {
         Utils.applyTheme(e.target.value);
     });
     
-    // 提示詞庫
+    // 提示词库
     DOM.importPromptSetBtn.addEventListener('click', Handlers.handleImportPromptSet);
     DOM.deletePromptSetBtn.addEventListener('click', Handlers.handleDeletePromptSet);
     DOM.promptSetSelect.addEventListener('change', Handlers.handleSwitchPromptSet);
@@ -168,6 +177,31 @@ export function setupEventListeners() {
     });
     DOM.deletePromptEditorBtn.addEventListener('click', Handlers.handleDeletePromptItem);
     DOM.promptEditorPositionSelect.addEventListener('change', Handlers.handlePromptPositionChange);
+
+    // 世界书 (Lorebook)
+    DOM.addLorebookBtn.addEventListener('click', Handlers.handleAddNewLorebook);
+    DOM.renameLorebookBtn.addEventListener('click', Handlers.handleRenameLorebook);
+    DOM.importLorebookBtn.addEventListener('click', Handlers.handleImportLorebook);
+    DOM.deleteLorebookBtn.addEventListener('click', Handlers.handleDeleteLorebook);
+    DOM.lorebookSelect.addEventListener('change', Handlers.handleSwitchLorebook);
+    DOM.addLorebookEntryBtn.addEventListener('click', () => Handlers.openLorebookEditor());
+    DOM.lorebookEntryList.addEventListener('click', (e) => {
+        const item = e.target.closest('.prompt-item');
+        if (!item) return;
+        const entryId = item.dataset.id;
+        if (e.target.closest('.prompt-item-toggle')) {
+            Handlers.handleToggleLorebookEntryEnabled(entryId);
+        } else if (e.target.closest('.edit-lorebook-entry-btn')) {
+            Handlers.openLorebookEditor(entryId);
+        }
+    });
+    DOM.saveLorebookEntryBtn.addEventListener('click', Handlers.handleSaveLorebookEntry);
+    DOM.cancelLorebookEditorBtn.addEventListener('click', () => {
+        UI.toggleModal('lorebook-editor-modal', false);
+        tempState.editingLorebookEntryId = null;
+    });
+    DOM.deleteLorebookEntryBtn.addEventListener('click', Handlers.handleDeleteLorebookEntry);
+
 
     // 正規表達式
     DOM.addRegexRuleBtn.addEventListener('click', Handlers.handleAddRegexRule);
@@ -191,9 +225,17 @@ export function setupEventListeners() {
     DOM.saveUserPersonaBtn.addEventListener('click', Handlers.handleSaveUserPersona);
     DOM.cancelUserPersonaEditorBtn.addEventListener('click', () => UI.toggleModal('user-persona-editor-modal', false));
     DOM.activeUserPersonaSelect.addEventListener('change', async (e) => {
-        state.activeUserPersonaId = e.target.value;
-        await saveSettings();
-    });
+    // 確保只更新使用者角色，不影響其他狀態
+    const oldCharacterId = state.activeCharacterId;
+    const oldChatId = state.activeChatId;
+    
+    state.activeUserPersonaId = e.target.value;
+    await saveSettings();
+    
+    // 確保活躍狀態不變
+    state.activeCharacterId = oldCharacterId;
+    state.activeChatId = oldChatId;
+});
     DOM.chatUserPersonaSelect.addEventListener('change', Handlers.handleChatPersonaChange);
     DOM.userPersonaAvatarUpload.addEventListener('change', (e) => Utils.handleImageUpload(e, DOM.userPersonaAvatarPreview));
 
@@ -313,11 +355,14 @@ export function setupEventListeners() {
             await Handlers.handleDeleteUserPersona(personaId);
         }
     });
-    
-    // 拖曳排序邏輯
+
+    // [REVISED] 拖曳排序邏輯 (支援長按與觸控)
     let draggedId = null;
+    let draggedElement = null;
+    let longPressTimer = null;
+
     function getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('[draggable="true"]:not(.dragging)')];
+        const draggableElements = [...container.querySelectorAll('[data-id]:not(.dragging)')];
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
@@ -330,27 +375,99 @@ export function setupEventListeners() {
     }
 
     const setupDragSort = (container, handler) => {
+        const onPointerDown = (e) => {
+            // [MODIFIED] Trigger drag on the entire item, not just the handle
+            const targetItem = e.target.closest('[data-id]');
+            if (!targetItem) return;
+    
+            // Prevent drag from starting on interactive elements inside the item
+            if (e.target.closest('button, a, input, select, textarea')) return;
+
+            if (e.pointerType === 'touch') {
+                e.preventDefault();
+            }
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+    
+            draggedElement = targetItem;
+            if (!draggedElement) return;
+    
+            longPressTimer = setTimeout(() => {
+                if (draggedElement) {
+                    draggedElement.setAttribute('draggable', 'true');
+                    // Manually trigger dragstart for touch, as it's not native
+                    if (e.pointerType === 'touch') {
+                       const dragStartEvent = new DragEvent('dragstart', {
+                           bubbles: true,
+                           cancelable: true,
+                       });
+                       draggedElement.dispatchEvent(dragStartEvent);
+                    }
+                }
+            }, 500); // 500ms for long press
+        };
+    
+        const onPointerUpOrCancel = () => {
+            clearTimeout(longPressTimer);
+            if (draggedElement && !draggedElement.classList.contains('dragging')) {
+                 draggedElement.removeAttribute('draggable');
+            }
+        };
+
+        const onPointerMove = (e) => {
+             // If we move too much, cancel the long press timer
+            if (longPressTimer) {
+                 clearTimeout(longPressTimer);
+            }
+        };
+        
+        container.addEventListener('pointerdown', onPointerDown, { passive: false });
+        document.addEventListener('pointerup', onPointerUpOrCancel);
+        document.addEventListener('pointercancel', onPointerUpOrCancel);
+        document.addEventListener('pointermove', onPointerMove);
+
         container.addEventListener('dragstart', (e) => {
-            const target = e.target.closest('[draggable="true"]');
-            if (target && e.target.closest('.drag-handle')) {
+            const target = e.target.closest('[data-id]');
+            if (target) {
+                draggedElement = target; // Ensure draggedElement is set
                 draggedId = target.dataset.id || target.dataset.identifier;
-                e.dataTransfer.effectAllowed = 'move';
-                setTimeout(() => target.classList.add('dragging'), 0);
+                // Use a minimal data transfer object for compatibility
+                if (e.dataTransfer) {
+                   e.dataTransfer.effectAllowed = 'move';
+                   e.dataTransfer.setData('text/plain', draggedId);
+                }
+                setTimeout(() => {
+                    if (draggedElement) {
+                        draggedElement.classList.add('dragging');
+                        document.body.classList.add('is-dragging'); // Change cursor globally
+                    }
+                }, 0);
             } else {
                 e.preventDefault();
             }
         });
+    
         container.addEventListener('dragend', () => {
-            const draggedElement = container.querySelector('.dragging');
-            if (draggedElement) draggedElement.classList.remove('dragging');
+            if (draggedElement) {
+                draggedElement.classList.remove('dragging');
+                draggedElement.removeAttribute('draggable');
+            }
+            document.body.classList.remove('is-dragging'); // Revert global cursor
+            clearTimeout(longPressTimer);
+            draggedElement = null;
             draggedId = null;
         });
-        container.addEventListener('dragover', (e) => e.preventDefault());
+    
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+    
         container.addEventListener('drop', (e) => {
             e.preventDefault();
             if (!draggedId) return;
+    
             const afterElement = getDragAfterElement(container, e.clientY);
             const targetId = afterElement ? (afterElement.dataset.id || afterElement.dataset.identifier) : null;
+            
             handler(draggedId, targetId);
         });
     };
@@ -359,4 +476,3 @@ export function setupEventListeners() {
     setupDragSort(DOM.chatSessionList, Handlers.handleChatSessionDropSort);
     setupDragSort(DOM.promptList, Handlers.handlePromptDropSort);
 }
-

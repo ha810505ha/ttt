@@ -9,7 +9,7 @@ import { openDB } from './db.js';
 import { applyTheme, setAppHeight } from './utils.js';
 import { renderCharacterList, renderActiveChat, renderAccountTab } from './ui.js';
 import { setupEventListeners } from './events.js';
-import { PREMIUM_ACCOUNTS } from './constants.js'; // 【修改】匯入授權帳號列表
+import { PREMIUM_ACCOUNTS } from './constants.js';
 
 export let auth;
 
@@ -59,34 +59,35 @@ async function initialize() {
         console.log("資料庫已成功連接。");
 
         onAuthStateChanged(auth, async (user) => {
-            state.currentUser = user;
-            
-            // 【關鍵修改】使用 .some() 方法檢查登入的 Email 是否存在於授權列表中
-            if (user && PREMIUM_ACCOUNTS.some(acc => acc.firebaseEmail === user.email)) {
-                state.isPremiumUser = true;
-                console.log(`授權使用者 ${user.email} 已登入。`);
-            } else {
-                state.isPremiumUser = false;
-            }
-            
-            console.log("使用者狀態已變更:", user ? user.displayName : '已登入');
-            
-            await loadStateFromDB();
+        state.currentUser = user;
+    
+        if (user && PREMIUM_ACCOUNTS.some(acc => acc.firebaseEmail === user.email)) {
+        state.isPremiumUser = true;
+        } else {
+        state.isPremiumUser = false;
+    }
+    
+    await loadStateFromDB();
 
-            // 如果使用者不是授權用戶，但他們的設定停留在測試模型，則自動切換
-            if (!state.isPremiumUser && state.globalSettings.apiProvider === 'official_gemini') {
-                console.log("非授權使用者，API 供應商已自動從測試模型切換至 OpenAI。");
-                state.globalSettings.apiProvider = 'openai'; // 切換到一個公開的預設選項
-                await saveSettings();
-            }
-            
+    // 只在首次載入且非授權使用者時自動切換
+    if (!state.isPremiumUser && 
+        state.globalSettings.apiProvider === 'official_gemini' && 
+        !state.isInitialLoad) {
+        console.log("非授權使用者，API 供應商已自動從測試模型切換至 OpenAI。");
+        state.globalSettings.apiProvider = 'openai'; 
+        await saveSettings();
+    }
+    
+    // 標記已完成初始載入
+    state.isInitialLoad = true;
+
             if (state.globalSettings.theme) {
                 applyTheme(state.globalSettings.theme);
             }
 
             renderCharacterList();
             renderActiveChat();
-            renderAccountTab(); // 確保每次認證狀態改變都更新帳號分頁
+            renderAccountTab(); 
         });
 
         setupEventListeners();
@@ -99,4 +100,3 @@ async function initialize() {
 }
 
 document.addEventListener('DOMContentLoaded', initialize);
-

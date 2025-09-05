@@ -5,6 +5,7 @@ import * as DOM from './dom.js';
 import { state, tempState } from './state.js';
 import { DEFAULT_AVATAR, MODELS } from './constants.js';
 import { getActivePromptSet } from './promptManager.js';
+import { getActiveLorebook } from './lorebookManager.js';
 
 /**
  * @description 套用所有已啟用的正規表達式規則
@@ -49,25 +50,25 @@ export function renderAccountTab() {
 export function renderCharacterList() {
     DOM.characterList.innerHTML = '';
 
-    // 根據 "loved" 狀態和 "order" 進行排序
     const sortedCharacters = [...state.characters].sort((a, b) => {
         if (a.loved !== b.loved) {
-            return a.loved ? -1 : 1; // loved 的排前面
+            return a.loved ? -1 : 1;
         }
-        return (a.order || 0) - (b.order || 0); // 其次按 order 排序
+        return (a.order || 0) - (b.order || 0);
     });
 
     sortedCharacters.forEach(char => {
         const item = document.createElement('li');
         item.className = `character-item ${char.loved ? 'loved' : ''}`;
         item.dataset.id = char.id;
-        item.setAttribute('draggable', 'true');
-
         item.innerHTML = `
             <div class="char-item-content">
                 <i class="fa-solid fa-grip-vertical drag-handle"></i>
                 <img src="${char.avatarUrl || DEFAULT_AVATAR}" alt="${char.name}" class="char-item-avatar">
-                <span class="char-item-name">${char.name}</span>
+                <div class="character-item-details">
+                    <span class="char-item-name">${char.name}</span>
+                    ${char.creator ? `<span class="character-item-author">By: ${char.creator}</span>` : ''}
+                </div>
             </div>
         `;
         DOM.characterList.appendChild(item);
@@ -110,7 +111,6 @@ export function showChatSessionListView(charId) {
         const headerNameContainer = DOM.chatListHeaderName.parentElement;
         headerNameContainer.querySelector('h2').textContent = character.name;
 
-        // 更新標頭愛心按鈕的狀態
         const heartIcon = DOM.headerLoveChatBtn.querySelector('i');
         DOM.headerLoveChatBtn.classList.toggle('loved', character.loved);
         heartIcon.className = `fa-${character.loved ? 'solid' : 'regular'} fa-heart`;
@@ -156,7 +156,6 @@ export function renderChatSessionList() {
         const item = document.createElement('li');
         item.className = `chat-session-item ${session.id === state.activeChatId ? 'active' : ''}`;
         item.dataset.id = session.id;
-        item.setAttribute('draggable', 'true');
         item.innerHTML = `
             <div class="session-item-content">
                  <i class="fa-solid fa-grip-vertical drag-handle"></i>
@@ -289,6 +288,7 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
         contentToRender = applyRegexRules(text);
     }
 
+    contentToRender = (contentToRender || '').replace(/(「[^」]*」|『[^』]*』)/g, '<span class="quoted-text">$1</span>');
     const bubble = row.querySelector('.chat-bubble');
     bubble.innerHTML = marked.parse(contentToRender || '');
 
@@ -303,11 +303,14 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
  * @description 將 state 中的全域設定載入到 UI 中
  */
 export function loadGlobalSettingsToUI() {
+    // 保存當前活躍狀態
+    const savedActiveCharacterId = state.activeCharacterId;
+    const savedActiveChatId = state.activeChatId;
+
     renderAccountTab();
 
     const settings = state.globalSettings;
 
-    // 【新增】根據使用者權限顯示或隱藏測試模型選項
     const officialGeminiOption = DOM.apiProviderSelect.querySelector('option[value="official_gemini"]');
     if (officialGeminiOption) {
         officialGeminiOption.hidden = !state.isPremiumUser;
@@ -335,15 +338,19 @@ export function loadGlobalSettingsToUI() {
     renderApiPresetsDropdown();
     renderPromptSetSelector();
     renderPromptList();
+    renderLorebookSelector();
+    renderLorebookEntryList();
     renderRegexRulesList();
 
-    // 預設顯示帳號分頁
+    // 恢復活躍狀態
+    state.activeCharacterId = savedActiveCharacterId;
+    state.activeChatId = savedActiveChatId;
+
     DOM.settingsTabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     DOM.globalSettingsModal.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     DOM.settingsTabsContainer.querySelector('[data-tab="account-tab"]').classList.add('active');
     DOM.accountTab.classList.add('active');
 }
-
 /**
  * @description 根據 API 供應商更新模型下拉選單
  */
@@ -364,7 +371,6 @@ export function updateModelDropdown() {
         DOM.apiModelSelect.value = models[0].value;
     }
 
-    // 如果目前選中的是隱藏的選項 (例如，一個非授權用戶剛登入)，則切換到第一個可見選項
     if (DOM.apiProviderSelect.options[DOM.apiProviderSelect.selectedIndex].hidden) {
         DOM.apiProviderSelect.value = 'openai';
     }
@@ -446,7 +452,7 @@ export async function loadApiPresetToUI(presetId) {
     DOM.apiProviderSelect.value = preset.provider;
     
     updateModelDropdown();
-    await new Promise(resolve => setTimeout(resolve, 0)); // 等待 UI 更新
+    await new Promise(resolve => setTimeout(resolve, 0));
     
     DOM.apiModelSelect.value = preset.model;
     DOM.apiKeyInput.value = preset.apiKey;
@@ -542,9 +548,8 @@ export function renderPromptList() {
         const item = document.createElement('li');
         item.className = 'prompt-item';
         item.dataset.identifier = prompt.identifier;
-        item.setAttribute('draggable', 'true');
         item.innerHTML = `
-            <i class="fa-solid fa-grip-vertical prompt-drag-handle" title="按住拖曳以排序"></i>
+            <i class="fa-solid fa-grip-vertical drag-handle"></i>
             <span class="prompt-item-name" title="${prompt.name}">${prompt.name}</span>
             <div class="prompt-item-actions">
                 <button class="icon-btn-sm edit-prompt-btn" title="編輯提示詞"><i class="fa-solid fa-pencil"></i></button>
@@ -554,6 +559,52 @@ export function renderPromptList() {
         DOM.promptList.appendChild(item);
     });
 }
+
+/**
+ * @description 渲染世界書下拉選單
+ */
+export function renderLorebookSelector() {
+    DOM.lorebookSelect.innerHTML = '';
+    state.lorebooks.forEach(book => {
+        const option = document.createElement('option');
+        option.value = book.id;
+        option.textContent = book.name;
+        DOM.lorebookSelect.appendChild(option);
+    });
+    if (state.activeLorebookId) {
+        DOM.lorebookSelect.value = state.activeLorebookId;
+    } else if (state.lorebooks.length > 0) {
+        DOM.lorebookSelect.value = state.lorebooks[0].id;
+    }
+}
+
+/**
+ * @description 渲染世界書條目列表
+ */
+export function renderLorebookEntryList() {
+    const activeBook = getActiveLorebook();
+    DOM.lorebookEntryList.innerHTML = '';
+
+    if (!activeBook || !activeBook.entries || activeBook.entries.length === 0) {
+        DOM.lorebookEntryList.innerHTML = '<li class="list-placeholder">此世界書沒有條目。</li>';
+        return;
+    }
+
+    activeBook.entries.forEach(entry => {
+        const item = document.createElement('li');
+        item.className = 'prompt-item'; // 重用 prompt-item 樣式
+        item.dataset.id = entry.id;
+        item.innerHTML = `
+            <span class="prompt-item-name" title="${entry.name}">${entry.name}</span>
+            <div class="prompt-item-actions">
+                <button class="icon-btn-sm edit-lorebook-entry-btn" title="編輯條目"><i class="fa-solid fa-pencil"></i></button>
+                <div class="prompt-item-toggle ${entry.enabled ? 'enabled' : ''}"></div>
+            </div>
+        `;
+        DOM.lorebookEntryList.appendChild(item);
+    });
+}
+
 
 /**
  * @description 渲染正規表達式規則列表 (摺疊式)

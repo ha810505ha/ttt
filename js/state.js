@@ -1,13 +1,14 @@
 // js/state.js
 // 這個檔案負責管理整個應用程式的狀態，並與 IndexedDB 互動。
 
-import { DEFAULT_PROMPT_SET, DEFAULT_SUMMARY_PROMPT } from './constants.js';
+import { DEFAULT_PROMPT_SET, DEFAULT_LOREBOOK, DEFAULT_SUMMARY_PROMPT } from './constants.js';
 import * as db from './db.js';
 
 // 應用程式的核心狀態物件
 export let state = {
     currentUser: null,
-    isPremiumUser: false, // 【新增】用來追蹤使用者是否為授權用戶
+    isPremiumUser: false, 
+    isInitialLoad: false,
     characters: [],
     chatHistories: {}, 
     longTermMemories: {},
@@ -17,6 +18,9 @@ export let state = {
     
     promptSets: [],
     activePromptSetId: null,
+
+    lorebooks: [], // 新增
+    activeLorebookId: null, // 新增
 
     activeUserPersonaId: null,
     activeCharacterId: null,
@@ -33,6 +37,7 @@ export let tempState = {
     isScreenshotMode: false,
     selectedMessageIndices: [],
     editingPromptIdentifier: null, 
+    editingLorebookEntryId: null, // 新增
 };
 
 /**
@@ -47,6 +52,7 @@ export async function loadStateFromDB() {
         state.activeChatId = settingsData.activeChatId || null;
         state.apiPresets = settingsData.apiPresets || [];
         state.activePromptSetId = settingsData.activePromptSetId || null;
+        state.activeLorebookId = settingsData.activeLorebookId || null; // 新增
     }
 
     // 初始化記憶生成提示
@@ -58,16 +64,15 @@ export async function loadStateFromDB() {
     if (!state.globalSettings.regexRules) {
         state.globalSettings.regexRules = [
             {
-                id: 'regex_default_1',
+                id: `regex_default_cot`,
                 name: '消除思考(COT)',
                 find: '.*?(<\\/thinking>|# respond|<plot>|# response)',
                 replace: '',
                 enabled: true
             },
             {
-                id: 'regex_default_2',
+                id: `regex_default_tags`,
                 name: '移除標籤',
-                // [核心修正] 修正了括號不匹配的問題，並移除了表達式前後的斜線和結尾的旗標
                 find: '(.*?<\\/thinking>\\n)(.*?<content[\\s\\S]*?>\\n)(.*?)(<\\/content>|<\\(\\)content_>)',
                 replace: '$3',
                 enabled: true
@@ -76,9 +81,11 @@ export async function loadStateFromDB() {
     }
 
 
+
     state.characters = await db.getAll('characters');
     state.userPersonas = await db.getAll('userPersonas');
     state.promptSets = await db.getAll('promptSets');
+    state.lorebooks = await db.getAll('lorebooks'); // 新增
 
     if (state.characters.length === 0) {
         try {
@@ -141,9 +148,19 @@ export async function loadStateFromDB() {
         await db.put('promptSets', DEFAULT_PROMPT_SET);
         state.promptSets.push(DEFAULT_PROMPT_SET);
     }
+
+    if (state.lorebooks.length === 0) { // 新增
+        const defaultBookCopy = JSON.parse(JSON.stringify(DEFAULT_LOREBOOK));
+        await db.put('lorebooks', defaultBookCopy);
+        state.lorebooks.push(defaultBookCopy);
+    }
     
     if (!state.activePromptSetId || !state.promptSets.find(ps => ps.id === state.activePromptSetId)) {
         state.activePromptSetId = state.promptSets[0]?.id || null;
+    }
+
+    if (!state.activeLorebookId || !state.lorebooks.find(lb => lb.id === state.activeLorebookId)) { // 新增
+        state.activeLorebookId = state.lorebooks[0]?.id || null;
     }
 
     await saveSettings();
@@ -193,6 +210,7 @@ export function saveSettings() {
         activeChatId: state.activeChatId,
         apiPresets: state.apiPresets,
         activePromptSetId: state.activePromptSetId, 
+        activeLorebookId: state.activeLorebookId, // 新增
     };
     return db.put('keyValueStore', settingsData);
 }
@@ -237,5 +255,14 @@ export function savePromptSet(promptSet) {
 
 export function deletePromptSet(promptSetId) {
     return db.deleteItem('promptSets', promptSetId);
+}
+
+// 新增 Lorebook 相關儲存函式
+export function saveLorebook(lorebook) {
+    return db.put('lorebooks', lorebook);
+}
+
+export function deleteLorebook(lorebookId) {
+    return db.deleteItem('lorebooks', lorebookId);
 }
 

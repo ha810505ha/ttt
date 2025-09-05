@@ -48,6 +48,14 @@ export const DEFAULT_PROMPT_SET = {
     ]
 };
 
+// 新增：預設世界書
+export const DEFAULT_LOREBOOK = {
+    id: 'lorebook_default',
+    name: '預設世界書',
+    entries: []
+};
+
+
 // [MODIFIED] 將模型列表從字串陣列改為物件陣列，以支援自訂顯示名稱
 export const MODELS = {
     official_gemini: [
@@ -101,4 +109,3 @@ export const MODELS = {
         { name: 'Mistral Small', value: 'mistral-small-latest' }
     ]
 };
-

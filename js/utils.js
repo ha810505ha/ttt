@@ -238,6 +238,12 @@ function populateEditorWithCharData(importedData, imageBase64 = null) {
     
     DOM.charNameInput.value = data.name || '';
     DOM.charDescriptionInput.value = data.description || data.personality || '';
+
+    // 新增的程式碼
+    DOM.charCreatorInput.value = data.creator || '';
+    DOM.charVersionInput.value = data.character_version || data.characterVersion || '';
+    DOM.charCreatorNotesInput.value = data.creator_notes || data.creatorNotes || '';
+    // 新增結束
     
     let allGreetings = [];
 

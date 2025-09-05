@@ -170,14 +170,12 @@ body {
     gap: 5px;
 }
 
-/* [修正] 確保標題置中 */
 #character-view .panel-header h2 {
     flex-grow: 1;
     text-align: center;
-    margin: 0 45px; /* 為按鈕留出空間 */
+    margin: 0 45px;
 }
 
-/* [新增] 聊天室標頭標題容器樣式 */
 .chat-list-header-title {
     display: flex;
     align-items: center;
@@ -203,6 +201,7 @@ body {
     position: relative;
     border-radius: 12px;
     margin-bottom: 5px;
+    cursor: grab; /* For desktop users to know it's draggable */
 }
 .chat-session-item {
     justify-content: space-between;
@@ -224,8 +223,19 @@ body {
     object-fit: cover;
 }
 
+.character-item-details {
+    display: flex;
+    flex-direction: column;
+}
+
 .char-item-name {
     font-weight: 500;
+}
+
+.character-item-author {
+    font-size: 12px; /* 您可以在這裡調整字體大小 */
+    color: var(--text-light-color);
+    margin-top: 2px;
 }
 
 .session-item-content {
@@ -813,7 +823,6 @@ body.theme-b .action-btn.secondary:hover { background-color: #BBD0DA; }
     margin-bottom: 8px;
 }
 
-/* [核心修正] 將通用輸入框樣式和文字輸入區樣式分開 */
 .modal-body .form-group input, 
 .modal-body .form-group select {
     width: 100%;
@@ -827,7 +836,6 @@ body.theme-b .action-btn.secondary:hover { background-color: #BBD0DA; }
     margin-bottom: 0;
 }
 
-/* [核心修正] 為所有 modal 中的 textarea 提供統一的美化樣式 */
 .modal-body textarea {
     background-color: var(--hover-background);
     border: 1px solid var(--border-color);
@@ -1103,6 +1111,10 @@ input[type="range"]::-moz-range-thumb {
 .chat-bubble em {
     color: var(--text-light-color);
     font-style: italic;
+}
+
+.chat-bubble .quoted-text {
+    color: var(--primary-hover-color);
 }
 
 .message-actions {
@@ -1472,6 +1484,7 @@ input[type="range"]::-moz-range-thumb {
     padding: 10px 15px;
     border-bottom: 1px solid var(--border-color);
     transition: background-color 0.2s;
+    cursor: grab; /* For desktop users to know it's draggable */
 }
 
 .prompt-item:last-child {
@@ -1528,36 +1541,30 @@ input[type="range"]::-moz-range-thumb {
     gap: 10px;
     flex-shrink: 0;
 }
-.prompt-item {
-    cursor: grab;
-}
-
-.prompt-item.dragging {
-    opacity: 0.5;
-    background: var(--active-background);
-}
-
-.prompt-drag-handle {
-    color: var(--text-light-color);
-    margin-right: 10px;
-}
-.character-item, .chat-session-item {
-    cursor: grab;
-}
-
-.character-item.dragging, .chat-session-item.dragging {
-    opacity: 0.5;
-    background: var(--active-background);
-}
 
 .drag-handle {
     color: var(--border-color);
     margin-right: 10px;
+    /* cursor: grab; */ /* This is now handled by the parent item */
+    touch-action: none;
+    padding: 8px;
     transition: color 0.2s;
 }
 
 .character-item:hover .drag-handle, .chat-session-item:hover .drag-handle {
     color: var(--text-light-color);
+}
+
+.character-item.dragging, .chat-session-item.dragging, .prompt-item.dragging {
+    opacity: 0.5;
+    background: var(--active-background);
+    border: 1px dashed var(--primary-color);
+}
+
+/* When dragging is active, change cursor for the whole page */
+body.is-dragging,
+body.is-dragging * {
+    cursor: grabbing !important;
 }
 
 .char-item-content {
@@ -1658,5 +1665,45 @@ input[type="range"]::-moz-range-thumb {
 .user-info-header span {
     font-size: 16px;
     font-weight: 500;
+}
+
+/* 進階定義 */
+.advanced-section {
+    border-top: 1px solid var(--border-color);
+    margin-top: 20px;
+    padding-top: 15px;
+}
+
+.advanced-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.advanced-section-header h3 {
+    padding: 0;
+    margin: 0;
+    font-size: 16px;
+    color: var(--text-color);
+}
+
+.advanced-section-header i {
+    transition: transform 0.3s ease;
+}
+
+.advanced-section.expanded .advanced-section-header i {
+    transform: rotate(180deg);
+}
+
+.advanced-section-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, margin-top 0.3s ease-out;
+}
+
+.advanced-section.expanded .advanced-section-content {
+    max-height: 1000px; /* 設一個足夠大的值 */
+    margin-top: 15px;
 }
 
