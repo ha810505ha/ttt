@@ -4,6 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>大冰奶</title>
+
+    <!-- Theme Initializer Script -->
+    <!-- 這段程式碼會在頁面渲染前執行，以避免主題閃爍 -->
+    <script>
+        (function() {
+            try {
+                const theme = localStorage.getItem('theme');
+                if (theme) {
+                    const classList = document.documentElement.classList;
+                    if (theme === 'dark') classList.add('dark-mode');
+                    else if (theme === 'a') classList.add('theme-a');
+                    else if (theme === 'b') classList.add('theme-b');
+                }
+            } catch (e) {
+                console.error('Failed to apply initial theme:', e);
+            }
+        })();
+    </script>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <!-- PWA Theme Color -->
+    <meta name="theme-color" content="#89CFF0">
     <!-- 分頁圖示 (Favicon) -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/ha810505ha/ttt/main/pic/milkteashop.png">
     <!-- 手機主畫面圖示 (Apple Touch Icon) -->
@@ -655,6 +678,11 @@
         </div>
     </div>
 
+    <!-- 更新提示元件 -->
+    <div id="update-notification" class="update-notification hidden">
+        <span>網站有新的版本！</span>
+        <button id="reload-page-btn">立即更新</button>
+    </div>
 
     <script type="module" src="js/main.js"></script>
 </body>

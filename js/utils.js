@@ -92,20 +92,29 @@ export function setAppHeight() {
  * @param {string} [theme] - 'light', 'dark', 'a', 或 'b'。如果未提供，則從 localStorage 讀取。
  */
 export function applyTheme(theme) {
+    // 如果沒有傳入主題，則嘗試從 localStorage 讀取，若無則使用預設 'light'
     const themeToApply = theme || localStorage.getItem('theme') || 'light';
     
-    document.body.classList.remove('dark-mode', 'theme-a', 'theme-b');
+    // 獲取 <html> 元素
+    const root = document.documentElement;
+    
+    // 先移除所有可能的主題 class
+    root.classList.remove('dark-mode', 'theme-a', 'theme-b');
 
+    // 根據要應用的主題，加上對應的 class
     if (themeToApply === 'dark') {
-        document.body.classList.add('dark-mode');
+        root.classList.add('dark-mode');
     } else if (themeToApply === 'a') {
-        document.body.classList.add('theme-a');
+        root.classList.add('theme-a');
     } else if (themeToApply === 'b') {
-        document.body.classList.add('theme-b');
+        root.classList.add('theme-b');
     }
+    // 'light' 主題不需要額外的 class，因為它是預設
 
+    // 將選擇的主題儲存到 localStorage
     localStorage.setItem('theme', themeToApply);
 }
+
 
 /**
  * @description 同步滑桿 (range input) 和數字輸入框 (number input) 的值

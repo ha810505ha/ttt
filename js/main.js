@@ -14,6 +14,59 @@ import { PREMIUM_ACCOUNTS } from './constants.js';
 export let auth;
 
 /**
+ * @description 註冊 Service Worker 並處理更新邏輯
+ */
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(registration => {
+                console.log('Service Worker 註冊成功:', registration);
+
+                // 檢查是否有等待中的新版本 Service Worker
+                if (registration.waiting) {
+                    showUpdateNotification(registration);
+                }
+
+                // 監聽是否有新版本準備好
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                             showUpdateNotification(registration);
+                        }
+                    });
+                });
+            })
+            .catch(error => {
+                console.log('Service Worker 註冊失敗:', error);
+            });
+        
+        // 當新的 Service Worker 啟用時，重新載入頁面
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.location.reload();
+        });
+    }
+}
+
+/**
+ * @description 顯示更新提示
+ * @param {ServiceWorkerRegistration} registration - Service Worker 註冊物件
+ */
+function showUpdateNotification(registration) {
+    const notification = document.getElementById('update-notification');
+    const reloadButton = document.getElementById('reload-page-btn');
+
+    if (notification && reloadButton) {
+        notification.classList.remove('hidden');
+        reloadButton.onclick = () => {
+            // 向等待中的 Service Worker 發送訊息，使其立即啟用
+            registration.waiting.postMessage({ action: 'skipWaiting' });
+        };
+    }
+}
+
+
+/**
  * @description 設定 Markdown 渲染器的選項
  */
 function setupMarkdownRenderer() {
@@ -58,6 +111,9 @@ async function initialize() {
         await openDB();
         console.log("資料庫已成功連接。");
 
+        // 註冊 Service Worker
+        registerServiceWorker();
+
         onAuthStateChanged(auth, async (user) => {
         state.currentUser = user;
     
@@ -100,3 +156,4 @@ async function initialize() {
 }
 
 document.addEventListener('DOMContentLoaded', initialize);
+

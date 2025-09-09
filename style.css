@@ -21,7 +21,7 @@
     --shadow-color: rgba(0,0,0,0.08);
 }
 
-body.dark-mode {
+html.dark-mode body {
     --primary-color: #89CFF0;
     --primary-hover-color: #9acfeb;
     --danger-color: #e57373;
@@ -42,7 +42,7 @@ body.dark-mode {
     --shadow-color: rgba(0,0,0,0.3);
 }
 
-body.theme-a {
+html.theme-a body {
     --primary-color: #A67F78;
     --primary-hover-color: #B5958E;
     --danger-color: #ff8a80;
@@ -63,7 +63,7 @@ body.theme-a {
     --shadow-color: rgba(50, 67, 95, 0.1);
 }
 
-body.theme-b {
+html.theme-b body {
     --primary-color: #EBC57C;
     --primary-hover-color: #F0D199;
     --danger-color: #e57373;
@@ -292,12 +292,12 @@ body.is-dragging .prompt-item-list {
 }
 
 /* 主題特定的放置指示器顏色 */
-body.theme-a .drop-indicator {
+html.theme-a body .drop-indicator {
     background: linear-gradient(90deg, var(--primary-color), var(--primary-hover-color)) !important;
     box-shadow: 0 0 8px rgba(166, 127, 120, 0.6);
 }
 
-body.theme-b .drop-indicator {
+html.theme-b body .drop-indicator {
     background: linear-gradient(90deg, var(--primary-color), var(--primary-hover-color)) !important;
     box-shadow: 0 0 8px rgba(235, 197, 124, 0.6);
 }
@@ -376,17 +376,17 @@ body.theme-b .drop-indicator {
     transform: translateY(-2px);
     box-shadow: 0 6px 12px rgba(137, 207, 240, 0.5);
 }
-body.theme-a .add-character-btn {
+html.theme-a body .add-character-btn {
     box-shadow: 0 4px 10px rgba(166, 127, 120, 0.4);
 }
-body.theme-a .add-character-btn:hover {
+html.theme-a body .add-character-btn:hover {
     box-shadow: 0 6px 12px rgba(166, 127, 120, 0.5);
 }
-body.theme-b .add-character-btn {
+html.theme-b body .add-character-btn {
     color: var(--text-color);
     box-shadow: 0 4px 10px rgba(235, 197, 124, 0.4);
 }
-body.theme-b .add-character-btn:hover {
+html.theme-b body .add-character-btn:hover {
     box-shadow: 0 6px 12px rgba(235, 197, 124, 0.5);
 }
 
@@ -751,10 +751,10 @@ body.theme-b .add-character-btn:hover {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(137, 207, 240, 0.3);
 }
-body.theme-a #message-input:focus {
+html.theme-a body #message-input:focus {
     box-shadow: 0 0 0 2px rgba(166, 127, 120, 0.3);
 }
-body.theme-b #message-input:focus {
+html.theme-b body #message-input:focus {
     box-shadow: 0 0 0 2px rgba(235, 197, 124, 0.3);
 }
 
@@ -771,7 +771,7 @@ body.theme-b #message-input:focus {
     transition: background-color 0.2s ease;
     margin-bottom: 2px;
 }
-body.theme-b #send-btn {
+html.theme-b body #send-btn {
     color: var(--text-color);
 }
 #send-btn:hover {
@@ -829,8 +829,8 @@ body.theme-b #send-btn {
 }
 .action-btn-sm { padding: 8px 16px; font-size: 14px; }
 .action-btn.primary { background-color: var(--primary-color); color: white; box-shadow: 0 2px 5px rgba(137, 207, 240, 0.4); }
-body.theme-a .action-btn.primary { box-shadow: 0 2px 5px rgba(166, 127, 120, 0.4); }
-body.theme-b .action-btn.primary { color: var(--text-color); box-shadow: 0 2px 5px rgba(235, 197, 124, 0.4); }
+html.theme-a body .action-btn.primary { box-shadow: 0 2px 5px rgba(166, 127, 120, 0.4); }
+html.theme-b body .action-btn.primary { color: var(--text-color); box-shadow: 0 2px 5px rgba(235, 197, 124, 0.4); }
 
 .action-btn.primary:hover { background-color: var(--primary-hover-color); transform: translateY(-1px); }
 .action-btn.secondary { background-color: #eee; color: #555; }
@@ -838,12 +838,12 @@ body.theme-b .action-btn.primary { color: var(--text-color); box-shadow: 0 2px 5
 .action-btn.danger { background-color: var(--danger-color); color: white; }
 .action-btn.danger:hover { background-color: #e57373; }
 
-body.dark-mode .action-btn.secondary { background-color: #424242; color: #eee; }
-body.dark-mode .action-btn.secondary:hover { background-color: #555; }
-body.theme-a .action-btn.secondary { background-color: #D4CCC9; color: #32435F; }
-body.theme-a .action-btn.secondary:hover { background-color: #C8C0BC; }
-body.theme-b .action-btn.secondary { background-color: #A6C2CE; color: var(--text-color); }
-body.theme-b .action-btn.secondary:hover { background-color: #BBD0DA; }
+html.dark-mode body .action-btn.secondary { background-color: #424242; color: #eee; }
+html.dark-mode body .action-btn.secondary:hover { background-color: #555; }
+html.theme-a body .action-btn.secondary { background-color: #D4CCC9; color: #32435F; }
+html.theme-a body .action-btn.secondary:hover { background-color: #C8C0BC; }
+html.theme-b body .action-btn.secondary { background-color: #A6C2CE; color: var(--text-color); }
+html.theme-b body .action-btn.secondary:hover { background-color: #BBD0DA; }
 
 .modal-overlay {
     position: fixed;
@@ -984,14 +984,14 @@ body.theme-b .action-btn.secondary:hover { background-color: #BBD0DA; }
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(137, 207, 240, 0.3);
 }
-body.theme-a .modal-body input:focus, 
-body.theme-a .modal-body select:focus, 
-body.theme-a .modal-body textarea:focus {
+html.theme-a body .modal-body input:focus, 
+html.theme-a body .modal-body select:focus, 
+html.theme-a body .modal-body textarea:focus {
     box-shadow: 0 0 0 2px rgba(166, 127, 120, 0.3);
 }
-body.theme-b .modal-body input:focus, 
-body.theme-b .modal-body select:focus, 
-body.theme-b .modal-body textarea:focus {
+html.theme-b body .modal-body input:focus, 
+html.theme-b body .modal-body select:focus, 
+html.theme-b body .modal-body textarea:focus {
     box-shadow: 0 0 0 2px rgba(235, 197, 124, 0.3);
 }
 
@@ -1865,3 +1865,57 @@ input[type="range"]::-moz-range-thumb {
         font-size: 18px;
     }
 }
+
+/* ===== 更新提示 ===== */
+.update-notification {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--primary-color);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    z-index: 9999;
+    font-weight: 500;
+    animation: slide-in 0.5s ease-out;
+}
+
+html.theme-b body .update-notification {
+    color: var(--text-color);
+}
+
+@keyframes slide-in {
+    from {
+        bottom: -100px;
+        opacity: 0;
+    }
+    to {
+        bottom: 20px;
+        opacity: 1;
+    }
+}
+
+.update-notification.hidden {
+    display: none;
+}
+
+.update-notification button {
+    background-color: white;
+    color: var(--primary-color);
+    border: none;
+    border-radius: 16px;
+    padding: 8px 15px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.update-notification button:hover {
+    background-color: #f0f0f0;
+}
+
