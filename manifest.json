@@ -1,7 +1,7 @@
 {
     "name": "大冰奶 AI 聊天",
     "short_name": "大冰奶",
-    "description": "一個功能強大的 AI 角色扮演聊天網站。",
+    "description": "一個功能簡易的 AI 角色扮演聊天網站(測試版)。",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#f7f9fc",
