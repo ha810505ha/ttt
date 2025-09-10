@@ -178,11 +178,17 @@ export function exportCharacter() {
         data: {
             name: char.name,
             description: char.description,
+            scenario: char.scenario, // 新增：匯出場景
             first_mes: char.firstMessage[0] || '',
             mes_example: char.exampleDialogue,
             alternate_greetings: char.firstMessage.slice(1),
+            // 為了更好的相容性，同時保留 firstMessage
             firstMessage: char.firstMessage, 
-            character_avatar: char.avatarUrl
+            character_avatar: char.avatarUrl,
+            // 新增：匯出元數據
+            creator: char.creator,
+            character_version: char.characterVersion,
+            creator_notes: char.creatorNotes,
         }
     };
 
@@ -318,13 +324,14 @@ export function importCharacter() {
 function populateEditorWithCharData(importedData, imageBase64 = null) {
     const data = importedData.data || importedData;
     
-    // 使用安全的方式設置值
-    DOM.charNameInput.value = escapeHtml(data.name || '');
-    DOM.charDescriptionInput.value = escapeHtml(data.description || data.personality || '');
+    // 修正 #4：移除 escapeHtml，直接賦值
+    DOM.charNameInput.value = data.name || '';
+    DOM.charDescriptionInput.value = data.description || data.personality || '';
+    DOM.charScenarioInput.value = data.scenario || ''; // 新增：填入場景資料
 
-    DOM.charCreatorInput.value = escapeHtml(data.creator || '');
-    DOM.charVersionInput.value = escapeHtml(data.character_version || data.characterVersion || '');
-    DOM.charCreatorNotesInput.value = escapeHtml(data.creator_notes || data.creatorNotes || '');
+    DOM.charCreatorInput.value = data.creator || '';
+    DOM.charVersionInput.value = data.character_version || data.characterVersion || '';
+    DOM.charCreatorNotesInput.value = data.creator_notes || data.creatorNotes || '';
     
     let allGreetings = [];
 
@@ -339,6 +346,7 @@ function populateEditorWithCharData(importedData, imageBase64 = null) {
         allGreetings = allGreetings.concat(validAlternateGreetings);
     }
 
+    // 為了相容性，也檢查 V1 格式的 firstMessage
     if (allGreetings.length === 0 && data.firstMessage && Array.isArray(data.firstMessage)) {
          const validFirstMessages = data.firstMessage
             .filter(g => typeof g === 'string' && g.trim() !== '')
@@ -352,7 +360,7 @@ function populateEditorWithCharData(importedData, imageBase64 = null) {
     
     renderFirstMessageInputs(allGreetings);
 
-    DOM.charExampleDialogueInput.value = escapeHtml(data.mes_example || data.exampleDialogue || '');
+    DOM.charExampleDialogueInput.value = data.mes_example || data.exampleDialogue || '';
     DOM.charAvatarPreview.src = imageBase64 || data.character_avatar || DEFAULT_AVATAR;
     
     alert('角色卡匯入成功！請記得儲存。');

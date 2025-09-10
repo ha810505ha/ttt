@@ -38,6 +38,7 @@ export let tempState = {
     selectedMessageIndices: [],
     editingPromptIdentifier: null, 
     editingLorebookEntryId: null, // 新增
+    deletingMessageInfo: null, // 新增：用於暫存要刪除的訊息資訊
 };
 
 /**
@@ -101,6 +102,7 @@ export async function loadStateFromDB() {
                 }
                 char.loved = char.loved || false;
                 char.order = char.order || state.characters.length;
+                char.scenario = char.scenario || ''; // 確保新角色有 scenario 欄位
                 await db.put('characters', char);
             }
             state.characters = await db.getAll('characters');
@@ -123,6 +125,10 @@ export async function loadStateFromDB() {
             }
             if (typeof char.firstMessage === 'string') {
                 char.firstMessage = [char.firstMessage];
+                updated = true;
+            }
+            if (char.scenario === undefined) { // 為舊角色新增 scenario 欄位
+                char.scenario = '';
                 updated = true;
             }
             if (updated) {

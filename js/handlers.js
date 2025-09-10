@@ -27,7 +27,7 @@ import {
     displayMessage, toggleModal, setGeneratingState, showCharacterListView, loadGlobalSettingsToUI,
     renderApiPresetsDropdown, loadApiPresetToUI, updateModelDropdown,
     renderFirstMessageInputs, renderPromptSetSelector, renderPromptList, renderRegexRulesList,
-    renderLorebookSelector, renderLorebookEntryList
+    renderLorebookSelector, renderLorebookEntryList, updateSendButtonState
 } from './ui.js';
 import { DEFAULT_AVATAR, PREMIUM_ACCOUNTS, MODELS } from './constants.js';
 import { handleImageUpload, exportChatAsJsonl, applyTheme, importCharacter, exportCharacter } from './utils.js';
@@ -102,7 +102,7 @@ export function handleLogout() {
     if (confirm('確定要登出嗎？')) {
         signOut(auth).catch(error => {
             console.error("登出失敗:", error);
-            alert(`登出失敗: ${error.message}`);
+            alert(`登入失敗: ${error.message}`);
         });
     }
 }
@@ -193,17 +193,29 @@ export async function handleDeleteApiPreset() {
 // 聊天核心邏輯 (Core Chat Logic)
 // ===================================================================================
 
-export function handleSendMessageOrContinue() {
-    const messageText = DOM.messageInput.value.trim();
-
-    if (messageText !== '') {
-        sendMessage(messageText);
-    } else {
-        handleContinueGeneration();
+export function handleSendBtnClick() {
+    const currentState = DOM.sendBtn.dataset.state;
+    switch (currentState) {
+        case 'send':
+            sendMessage(DOM.messageInput.value.trim());
+            break;
+        case 'continue':
+            handleContinueGeneration();
+            break;
+        case 'regenerate':
+            const history = state.chatHistories[state.activeCharacterId]?.[state.activeChatId] || [];
+            if (history.length > 0) {
+                regenerateResponse(history.length - 1, true); // 傳入 isSmartButton=true
+            }
+            break;
+        case 'stop':
+            handleStopGeneration();
+            break;
     }
 }
 
 async function sendMessage(messageText) {
+    if (messageText === '') return;
     if (state.globalSettings.apiProvider !== 'official_gemini' && !state.globalSettings.apiKey) {
         alert('請先在全域設定中設定您的 API 金鑰。');
         return;
@@ -222,6 +234,7 @@ async function sendMessage(messageText) {
     DOM.messageInput.value = '';
     DOM.messageInput.style.height = 'auto';
     DOM.messageInput.focus();
+    updateSendButtonState();
 
     try {
         setGeneratingState(true);
@@ -230,20 +243,7 @@ async function sendMessage(messageText) {
         const messagesForApi = buildApiMessages();
         let aiResponse = await callApi(messagesForApi);
 
-        const regexRules = state.globalSettings.regexRules || [];
-        const enabledRules = regexRules.filter(rule => rule.enabled);
-        for (const rule of enabledRules) {
-            try {
-                const regex = new RegExp(rule.find, 'gsi');
-                aiResponse = aiResponse.replace(regex, rule.replace);
-            } catch (e) {
-                console.warn(`無效的正規表達式規則 [${rule.name}]:`, e);
-            }
-        }
-
-        const aiTimestamp = new Date().toISOString();
-        
-        history.push({ role: 'assistant', content: [aiResponse], activeContentIndex: 0, timestamp: aiTimestamp });
+        history.push({ role: 'assistant', content: [aiResponse], activeContentIndex: 0, timestamp: new Date().toISOString() });
         
         thinkingBubble.remove();
         
@@ -280,17 +280,6 @@ async function handleContinueGeneration() {
         const messagesForApi = buildApiMessagesFromHistory(tempHistory);
 
         let aiResponse = await callApi(messagesForApi);
-
-        const regexRules = state.globalSettings.regexRules || [];
-        const enabledRules = regexRules.filter(rule => rule.enabled);
-        for (const rule of enabledRules) {
-            try {
-                const regex = new RegExp(rule.find, 'gsi');
-                aiResponse = aiResponse.replace(regex, rule.replace);
-            } catch (e) {
-                console.warn(`無效的正規表達式規則 [${rule.name}]:`, e);
-            }
-        }
         
         const lastMessageContent = lastMessage.content[lastMessage.activeContentIndex];
         lastMessage.content[lastMessage.activeContentIndex] = lastMessageContent + aiResponse;
@@ -342,7 +331,7 @@ export async function retryMessage(messageIndex) {
 }
 
 
-export async function regenerateResponse(messageIndex) {
+export async function regenerateResponse(messageIndex, isSmartButton = false) {
     if (state.globalSettings.apiProvider !== 'official_gemini' && !state.globalSettings.apiKey) {
         alert('請先在全域設定中設定您的 API 金鑰。');
         return;
@@ -350,39 +339,39 @@ export async function regenerateResponse(messageIndex) {
     if (!state.activeCharacterId || !state.activeChatId) return;
 
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
-    const targetMessage = history[messageIndex];
+    // 如果是智慧按鈕觸發的，我們重新生成的是最後一則訊息之前的內容
+    const contextEndIndex = isSmartButton ? messageIndex : messageIndex;
+    const contextHistory = history.slice(0, contextEndIndex);
 
-    if (!targetMessage || targetMessage.role !== 'assistant') return;
+    // 如果不是智慧按鈕，我們操作的是指定的訊息
+    const targetMessage = isSmartButton ? null : history[messageIndex];
 
-    const contextHistory = history.slice(0, messageIndex);
+    if (!isSmartButton && (!targetMessage || targetMessage.role !== 'assistant')) return;
 
-    const targetRow = DOM.chatWindow.querySelectorAll('.message-row')[messageIndex];
-    if (!targetRow) return;
-
-    const regenerateBtn = targetRow.querySelector('.regenerate-btn-sm');
-    if (regenerateBtn) {
-        regenerateBtn.disabled = true;
-        regenerateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>生成中...';
+    if (!isSmartButton) {
+        const targetRow = DOM.chatWindow.querySelectorAll('.message-row')[messageIndex];
+        if (targetRow) {
+            const regenerateBtn = targetRow.querySelector('.regenerate-btn-sm');
+            if (regenerateBtn) {
+                regenerateBtn.disabled = true;
+                regenerateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>生成中...';
+            }
+        }
     }
-    setGeneratingState(true, false);
+    setGeneratingState(true, isSmartButton);
 
     try {
         const messagesForApi = buildApiMessagesFromHistory(contextHistory);
         let aiResponse = await callApi(messagesForApi);
 
-        const regexRules = state.globalSettings.regexRules || [];
-        const enabledRules = regexRules.filter(rule => rule.enabled);
-        for (const rule of enabledRules) {
-            try {
-                const regex = new RegExp(rule.find, 'gsi');
-                aiResponse = aiResponse.replace(regex, rule.replace);
-            } catch (e) {
-                console.warn(`無效的正規表達式規則 [${rule.name}]:`, e);
-            }
+        if (isSmartButton) {
+            // 新增一則全新的訊息
+            history.push({ role: 'assistant', content: [aiResponse], activeContentIndex: 0, timestamp: new Date().toISOString() });
+        } else {
+            // 在現有訊息上新增一個版本
+            targetMessage.content.push(aiResponse);
+            targetMessage.activeContentIndex = targetMessage.content.length - 1;
         }
-
-        targetMessage.content.push(aiResponse);
-        targetMessage.activeContentIndex = targetMessage.content.length - 1;
 
         await saveAllChatHistoriesForChar(state.activeCharacterId);
         renderChatMessages();
@@ -392,40 +381,26 @@ export async function regenerateResponse(messageIndex) {
             console.error("重新生成 API 錯誤:", error);
         }
     } finally {
-        setGeneratingState(false, false);
-        if (regenerateBtn) {
-            renderChatMessages();
+        setGeneratingState(false, isSmartButton);
+        if (!isSmartButton) {
+            renderChatMessages(); // 確保按鈕狀態被刷新
         }
     }
 }
 
+export function handleStopGeneration() {
+    if (tempState.apiCallController) {
+        tempState.apiCallController.abort();
+    }
+    setGeneratingState(false);
+}
+
+
 export async function switchVersion(messageIndex, direction) {
-    // 新增安全檢查
-    if (!state.activeCharacterId || !state.activeChatId) {
-        console.error('switchVersion: activeCharacterId 或 activeChatId 為空', {
-            activeCharacterId: state.activeCharacterId,
-            activeChatId: state.activeChatId
-        });
-        return;
-    }
-    
-    const chatHistory = state.chatHistories[state.activeCharacterId];
-    if (!chatHistory) {
-        console.error('switchVersion: 找不到角色的聊天歷史');
-        return;
-    }
-    
-    const history = chatHistory[state.activeChatId];
-    if (!history) {
-        console.error('switchVersion: 找不到指定的聊天室歷史');
-        return;
-    }
-    
+    if (!state.activeCharacterId || !state.activeChatId) return;
+    const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
     const msg = history[messageIndex];
-    if (!msg || !Array.isArray(msg.content)) {
-        console.error('switchVersion: 訊息不存在或內容格式錯誤');
-        return;
-    }
+    if (!msg || !Array.isArray(msg.content)) return;
     
     const newIndex = msg.activeContentIndex + direction;
 
@@ -568,6 +543,7 @@ export function openCharacterEditor(charId = null) {
         DOM.charAvatarPreview.src = char.avatarUrl || DEFAULT_AVATAR;
         DOM.charNameInput.value = char.name;
         DOM.charDescriptionInput.value = char.description || '';
+        DOM.charScenarioInput.value = char.scenario || ''; // 新增：讀取場景
         renderFirstMessageInputs(char.firstMessage || ['']);
         DOM.charExampleDialogueInput.value = char.exampleDialogue || '';
         DOM.charCreatorInput.value = char.creator || '';
@@ -579,6 +555,7 @@ export function openCharacterEditor(charId = null) {
         DOM.charAvatarPreview.src = DEFAULT_AVATAR;
         DOM.charNameInput.value = '';
         DOM.charDescriptionInput.value = '';
+        DOM.charScenarioInput.value = ''; // 新增：清空場景
         renderFirstMessageInputs(['']);
         DOM.charExampleDialogueInput.value = '';
         DOM.charCreatorInput.value = '';
@@ -602,6 +579,7 @@ export async function handleSaveCharacter() {
         name: DOM.charNameInput.value.trim(),
         avatarUrl: DOM.charAvatarPreview.src,
         description: DOM.charDescriptionInput.value.trim(),
+        scenario: DOM.charScenarioInput.value.trim(), // 新增：儲存場景
         firstMessage: firstMessages.length > 0 ? firstMessages : [''],
         exampleDialogue: DOM.charExampleDialogueInput.value.trim(),
         creator: DOM.charCreatorInput.value.trim(),
@@ -620,7 +598,7 @@ export async function handleSaveCharacter() {
         state.characters.push(newChar);
         await saveCharacter(newChar);
         state.activeCharacterId = newChar.id;
-        handleAddNewChat();
+        await handleAddNewChat(); // 修正：加上 await
     }
     
     renderCharacterList();
@@ -776,7 +754,6 @@ export function makeMessageEditable(row, index) {
         </div>
     `;
     
-    // 安全地設置 textarea 的值
     const textarea = editContainer.querySelector('.edit-textarea');
     textarea.value = originalText;
     
@@ -804,13 +781,85 @@ async function saveMessageEdit(index, newText) {
     renderChatMessages();
 }
 
-async function handleDeleteMessage(index) {
-    if (confirm('您確定要永久刪除這則訊息嗎？')) {
-        state.chatHistories[state.activeCharacterId][state.activeChatId].splice(index, 1);
-        await saveAllChatHistoriesForChar(state.activeCharacterId);
-        renderChatMessages();
+// 修改：處理訊息刪除的主函式
+export function handleDeleteMessage(index) {
+    const msg = state.chatHistories[state.activeCharacterId][state.activeChatId][index];
+    if (!msg) return;
+
+    if (msg.role === 'assistant' && Array.isArray(msg.content) && msg.content.length > 1) {
+        openDeleteOptionsModal(index, msg);
+    } else {
+        if (confirm('您確定要永久刪除這則訊息嗎？')) {
+            performDeleteMessage(index, 'all');
+        }
     }
 }
+
+function openDeleteOptionsModal(index, msg) {
+    tempState.deletingMessageInfo = { index, msg };
+    const currentVersion = msg.activeContentIndex + 1;
+    const totalVersions = msg.content.length;
+
+    const deleteSingleBtn = document.getElementById('delete-single-version-btn');
+    const deleteAllBtn = document.getElementById('delete-all-versions-btn');
+    const deleteSingleDesc = document.getElementById('delete-single-version-desc');
+
+    if (deleteSingleBtn && deleteAllBtn && deleteSingleDesc) {
+        deleteSingleBtn.textContent = `刪除滑動 (${currentVersion}/${totalVersions})`;
+        deleteSingleDesc.textContent = `保留其他 ${totalVersions - 1} 個由「再生成」建立的版本。`;
+        deleteAllBtn.textContent = `刪除訊息`;
+        toggleModal('delete-options-modal', true);
+    } else {
+        console.error("無法找到刪除選項 modal 的元素！");
+        if (confirm(`這則回覆有多個版本。要刪除全部版本嗎？\n(按「取消」只會刪除目前顯示的版本)`)) {
+            performDeleteMessage(index, 'all');
+        } else {
+            performDeleteMessage(index, 'single');
+        }
+    }
+}
+
+// 新增：處理刪除單一版本
+export async function handleDeleteSingleVersion() {
+    if (!tempState.deletingMessageInfo) return;
+    const { index } = tempState.deletingMessageInfo;
+    await performDeleteMessage(index, 'single');
+    toggleModal('delete-options-modal', false);
+    tempState.deletingMessageInfo = null;
+}
+
+// 新增：處理刪除所有版本
+export async function handleDeleteAllVersions() {
+    if (!tempState.deletingMessageInfo) return;
+    const { index } = tempState.deletingMessageInfo;
+    await performDeleteMessage(index, 'all');
+    toggleModal('delete-options-modal', false);
+    tempState.deletingMessageInfo = null;
+}
+
+// 新增：實際執行刪除操作的函式
+async function performDeleteMessage(index, mode) {
+    const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
+    const msg = history[index];
+
+    if (mode === 'all') {
+        history.splice(index, 1);
+    } else if (mode === 'single') {
+        if (msg.content.length > 1) {
+            msg.content.splice(msg.activeContentIndex, 1);
+            if (msg.activeContentIndex >= msg.content.length) {
+                msg.activeContentIndex = msg.content.length - 1;
+            }
+        } else {
+            // 如果只剩最後一個版本，刪除單一版本就等於刪除整個訊息
+            history.splice(index, 1);
+        }
+    }
+
+    await saveAllChatHistoriesForChar(state.activeCharacterId);
+    renderChatMessages();
+}
+
 
 // ===================================================================================
 // 全域與提示詞設定 (Global & Prompt Settings)

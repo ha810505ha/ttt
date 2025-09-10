@@ -130,8 +130,10 @@
                     </div>
                     <div class="message-input-container">
                         <textarea id="message-input" placeholder="在這裡輸入訊息..." rows="1"></textarea>
-                        <button id="send-btn">
+                        <button id="send-btn" data-state="send">
                             <i id="send-icon" class="fa-solid fa-paper-plane"></i>
+                            <i id="continue-icon" class="fa-solid fa-arrow-right hidden"></i>
+                            <i id="regenerate-icon" class="fa-solid fa-rotate-right hidden"></i>
                             <i id="stop-icon" class="fa-solid fa-square hidden"></i>
                         </button>
                     </div>
@@ -201,11 +203,18 @@
                 
                  <!-- Advanced Metadata Section -->
                 <div class="advanced-section">
-                    <h4 class="advanced-section-header">
-                        進階定義 (中繼資料)
+                    <div class="advanced-section-header">
+                        <h4>
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            進階定義 (中繼資料)
+                        </h4>
                         <i class="fa-solid fa-chevron-down"></i>
-                    </h4>
+                    </div>
                     <div class="advanced-section-content">
+                        <div class="form-group">
+                            <label for="char-scenario">場景 (Scenario)</label>
+                            <textarea id="char-scenario" placeholder="描述對話開始時的背景、環境與事件"></textarea>
+                        </div>
                         <div class="form-group">
                             <label for="char-creator">創作者</label>
                             <input type="text" id="char-creator" placeholder="創作者名稱">
@@ -674,6 +683,28 @@
                 <button id="delete-lorebook-entry-btn" class="action-btn danger" style="margin-right: auto;">刪除</button>
                 <button id="cancel-lorebook-editor-btn" class="action-btn secondary">取消</button>
                 <button id="save-lorebook-entry-btn" class="action-btn primary">儲存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 更新：刪除選項 Modal -->
+    <div id="delete-options-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>您想要如何刪除？</h2>
+            <div class="modal-body">
+                <div class="import-option">
+                    <h4 id="delete-single-version-title">刪除滑動 (此版本)</h4>
+                    <p id="delete-single-version-desc">保留其他由「再生成」建立的版本。</p>
+                </div>
+                <div class="import-option">
+                    <h4 class="danger-text">刪除訊息 (全部版本)</h4>
+                    <p id="delete-all-versions-desc">這則 AI 回覆及其所有版本將被永久移除。</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-delete-options-btn" class="action-btn secondary" style="margin-right: auto;">關閉</button>
+                <button id="delete-single-version-btn" class="action-btn primary">刪除滑動</button>
+                <button id="delete-all-versions-btn" class="action-btn danger">刪除訊息</button>
             </div>
         </div>
     </div>

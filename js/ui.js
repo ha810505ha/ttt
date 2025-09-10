@@ -214,6 +214,7 @@ export function renderActiveChat() {
     
     renderChatUserPersonaSelector();
     renderChatMessages();
+    updateSendButtonState();
 }
 
 /**
@@ -229,6 +230,7 @@ export function renderChatMessages() {
         displayMessage(contentToDisplay, msg.role, msg.timestamp, index, false, msg.error);
     });
     DOM.chatWindow.scrollTop = DOM.chatWindow.scrollHeight;
+    updateSendButtonState();
 }
 
 /**
@@ -491,20 +493,57 @@ export function toggleModal(modalId, show) {
 /**
  * @description 設定 AI 是否正在生成中的狀態
  * @param {boolean} isGenerating - 是否正在生成
- * @param {boolean} [changeMainButton=true] - 是否改變主送出按鈕的狀態
  */
-export function setGeneratingState(isGenerating, changeMainButton = true) {
-    if (changeMainButton) {
-        DOM.sendBtn.classList.toggle('is-generating', isGenerating);
-        DOM.sendIcon.classList.toggle('hidden', isGenerating);
-        DOM.stopIcon.classList.toggle('hidden', !isGenerating);
-        DOM.messageInput.disabled = isGenerating;
-    }
+export function setGeneratingState(isGenerating) {
+    DOM.messageInput.disabled = isGenerating;
+    DOM.sendBtn.classList.toggle('is-generating', isGenerating);
     
     document.querySelectorAll('.regenerate-btn-sm, .retry-btn-sm').forEach(btn => {
         btn.disabled = isGenerating;
     });
+
+    if (isGenerating) {
+        DOM.sendBtn.dataset.state = 'stop';
+        DOM.stopIcon.classList.remove('hidden');
+        [DOM.sendIcon, DOM.continueIcon, DOM.regenerateIcon].forEach(icon => icon.classList.add('hidden'));
+    } else {
+        updateSendButtonState();
+    }
 }
+
+/**
+ * @description 更新傳送按鈕的狀態與圖示
+ */
+export function updateSendButtonState() {
+    if (!state.activeCharacterId || !state.activeChatId) return;
+
+    const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
+    const lastMessage = history[history.length - 1];
+    
+    let stateToShow = 'send';
+
+    if (DOM.messageInput.value.trim() !== '') {
+        stateToShow = 'send';
+    } else {
+        if (history.length === 0) {
+            stateToShow = 'send'; // 初始狀態或空對話
+        } else if (lastMessage.role === 'user') {
+            stateToShow = 'regenerate';
+        } else if (lastMessage.role === 'assistant') {
+            stateToShow = 'continue';
+        }
+    }
+    
+    DOM.sendBtn.dataset.state = stateToShow;
+    DOM.sendBtn.disabled = (stateToShow === 'send' && DOM.messageInput.value.trim() === '' && history.length === 0);
+
+    // 更新圖示可見度
+    DOM.sendIcon.classList.toggle('hidden', stateToShow !== 'send');
+    DOM.continueIcon.classList.toggle('hidden', stateToShow !== 'continue');
+    DOM.regenerateIcon.classList.toggle('hidden', stateToShow !== 'regenerate');
+    DOM.stopIcon.classList.add('hidden');
+}
+
 
 /**
  * @description 渲染角色編輯器中的「第一句話」輸入框
@@ -697,3 +736,4 @@ export function renderRegexRulesList() {
         DOM.regexRulesList.appendChild(item);
     });
 }
+
