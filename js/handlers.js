@@ -223,12 +223,17 @@ async function sendMessage(messageText) {
     if (!state.activeCharacterId || !state.activeChatId) return;
 
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
+    
+    // 暫存上一則訊息，稍後用來修剪
+    const lastMessage = history.length > 0 ? history[history.length - 1] : null;
+
     const timestamp = new Date().toISOString();
     history.push({ role: 'user', content: messageText, timestamp: timestamp });
     const currentUserMessageIndex = history.length - 1;
     
+    // 先儲存使用者訊息並更新 UI
     await saveAllChatHistoriesForChar(state.activeCharacterId);
-    renderChatMessages();
+    renderChatMessages(); 
     DOM.chatWindow.scrollTop = DOM.chatWindow.scrollHeight;
 
     DOM.messageInput.value = '';
@@ -242,6 +247,14 @@ async function sendMessage(messageText) {
         
         const messagesForApi = buildApiMessages();
         let aiResponse = await callApi(messagesForApi);
+        
+        // 【安全的分支鎖定機制】在成功收到 AI 回應後，才修剪分支
+        if (lastMessage && lastMessage.role === 'assistant' && Array.isArray(lastMessage.content) && lastMessage.content.length > 1) {
+            const selectedContent = lastMessage.content[lastMessage.activeContentIndex];
+            lastMessage.content = [selectedContent];
+            lastMessage.activeContentIndex = 0;
+            console.log('對話分支已成功鎖定並修剪。');
+        }
 
         history.push({ role: 'assistant', content: [aiResponse], activeContentIndex: 0, timestamp: new Date().toISOString() });
         
@@ -253,10 +266,11 @@ async function sendMessage(messageText) {
     } catch (error) {
         if (error.name !== 'AbortError') {
             console.error("API 錯誤:", error);
+            // 發生錯誤時，將使用者的訊息移除，讓使用者可以重試
+            history.splice(currentUserMessageIndex, 1); 
             const errorMessage = `發生錯誤: ${error.message}`;
-            history[currentUserMessageIndex].error = errorMessage;
-            await saveAllChatHistoriesForChar(state.activeCharacterId);
-            renderChatMessages();
+            alert(errorMessage); // 直接提示使用者
+            renderChatMessages(); // 刷新畫面，移除剛才輸入的訊息
         }
     } finally {
         setGeneratingState(false);
@@ -1159,6 +1173,50 @@ export function handleImportLorebook() {
     };
     input.click();
 }
+
+// 新增：匯出世界書的處理函式
+export function handleExportLorebook() {
+    const bookId = DOM.lorebookSelect.value;
+    if (!bookId) {
+        alert('請先從下拉選單中選擇一個要匯出的世界書。');
+        return;
+    }
+
+    const activeBook = state.lorebooks.find(lb => lb.id === bookId);
+    if (!activeBook) {
+        alert('找不到要匯出的世界書資料。');
+        return;
+    }
+
+    // 將我們的格式轉換回 SillyTavern V2 相容的格式
+    const exportData = {
+        entries: {}
+    };
+
+    activeBook.entries.forEach((entry, index) => {
+        const uid = `${entry.name.replace(/\s/g, '_')}_${index}`;
+        exportData.entries[uid] = {
+            uid: uid,
+            comment: entry.name,
+            key: entry.keywords,
+            content: entry.content,
+            disable: !entry.enabled,
+            order: entry.order,
+            position: entry.position,
+            depth: entry.scanDepth,
+            selectiveLogic: entry.logic
+        };
+    });
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${activeBook.name || 'lorebook'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
 
 export async function handleRenameLorebook() {
     const bookId = DOM.lorebookSelect.value;

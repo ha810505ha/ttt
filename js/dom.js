@@ -183,6 +183,7 @@ export const addLorebookBtn = document.getElementById('add-lorebook-btn');
 export const renameLorebookBtn = document.getElementById('rename-lorebook-btn');
 export const deleteLorebookBtn = document.getElementById('delete-lorebook-btn');
 export const importLorebookBtn = document.getElementById('import-lorebook-btn');
+export const exportLorebookBtn = document.getElementById('export-lorebook-btn'); // 新增
 export const lorebookEntryList = document.getElementById('lorebook-entry-list');
 export const addLorebookEntryBtn = document.getElementById('add-lorebook-entry-btn');
 export const lorebookEditorModal = document.getElementById('lorebook-editor-modal');

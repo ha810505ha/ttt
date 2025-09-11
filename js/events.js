@@ -239,6 +239,7 @@ export function setupEventListeners() {
     DOM.addLorebookBtn.addEventListener('click', Handlers.handleAddNewLorebook);
     DOM.renameLorebookBtn.addEventListener('click', Handlers.handleRenameLorebook);
     DOM.importLorebookBtn.addEventListener('click', Handlers.handleImportLorebook);
+    DOM.exportLorebookBtn.addEventListener('click', Handlers.handleExportLorebook); // 新增
     DOM.deleteLorebookBtn.addEventListener('click', Handlers.handleDeleteLorebook);
     DOM.lorebookSelect.addEventListener('change', Handlers.handleSwitchLorebook);
     DOM.addLorebookEntryBtn.addEventListener('click', () => Handlers.openLorebookEditor());
