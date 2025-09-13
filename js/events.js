@@ -11,31 +11,39 @@ import { state, tempState, saveSettings, loadChatDataForCharacter } from './stat
  * @description 集中設定所有 DOM 元素的事件監聽器
  */
 export function setupEventListeners() {
+    // Helper function to safely add event listeners
+    const safeAddEventListener = (element, event, handler) => {
+        if (element) {
+            element.addEventListener(event, handler);
+        } else {
+            // console.warn(`Event listener for ${event} could not be attached as the element is null.`);
+        }
+    };
+
     // 帳號認證
-    DOM.loginBtnInSettings.addEventListener('click', Handlers.handleLogin);
-    DOM.logoutBtn.addEventListener('click', Handlers.handleLogout);
+    safeAddEventListener(DOM.loginBtnInSettings, 'click', Handlers.handleLogin);
+    safeAddEventListener(DOM.logoutBtn, 'click', Handlers.handleLogout);
 
     // 側邊欄與行動裝置
-    DOM.menuToggleBtn.addEventListener('click', () => {
+    safeAddEventListener(DOM.menuToggleBtn, 'click', () => {
         DOM.leftPanel.classList.toggle('mobile-visible');
         DOM.mobileOverlay.classList.toggle('hidden');
     });
-    DOM.mobileOverlay.addEventListener('click', () => {
+    safeAddEventListener(DOM.mobileOverlay, 'click', () => {
         DOM.leftPanel.classList.remove('mobile-visible');
         DOM.mobileOverlay.classList.add('hidden');
     });
 
     // 角色與聊天室列表
-    DOM.backToCharsBtn.addEventListener('click', async () => {
+    safeAddEventListener(DOM.backToCharsBtn, 'click', async () => {
         UI.switchPanelToCharacterView(); 
         state.activeChatId = null; 
         await saveSettings();
     });
-    DOM.addChatBtn.addEventListener('click', Handlers.handleAddNewChat);
+    safeAddEventListener(DOM.addChatBtn, 'click', Handlers.handleAddNewChat);
 
-    // 修改：確保按鈕存在才綁定事件
     if (DOM.editActiveCharacterBtn) {
-        DOM.editActiveCharacterBtn.addEventListener('click', () => {
+        safeAddEventListener(DOM.editActiveCharacterBtn, 'click', () => {
             if (DOM.leftPanel.classList.contains('mobile-visible')) {
                 DOM.leftPanel.classList.remove('mobile-visible');
                 DOM.mobileOverlay.classList.add('hidden');
@@ -44,65 +52,62 @@ export function setupEventListeners() {
         });
     }
     
-    DOM.deleteActiveCharacterBtn.addEventListener('click', Handlers.handleDeleteActiveCharacter);
-    DOM.headerLoveChatBtn.addEventListener('click', () => Handlers.handleToggleCharacterLove(state.activeCharacterId));
+    safeAddEventListener(DOM.deleteActiveCharacterBtn, 'click', Handlers.handleDeleteActiveCharacter);
+    safeAddEventListener(DOM.headerLoveChatBtn, 'click', () => Handlers.handleToggleCharacterLove(state.activeCharacterId));
 
     // 聊天介面
-    DOM.chatNotesInput.addEventListener('blur', Handlers.handleSaveNote);
-    DOM.sendBtn.addEventListener('click', Handlers.handleSendBtnClick);
+    safeAddEventListener(DOM.chatNotesInput, 'blur', Handlers.handleSaveNote);
+    safeAddEventListener(DOM.sendBtn, 'click', Handlers.handleSendBtnClick);
 
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-    DOM.messageInput.addEventListener('keydown', (e) => {
+    safeAddEventListener(DOM.messageInput, 'keydown', (e) => {
         if (e.key === 'Enter' && !isMobile && !e.shiftKey) {
             e.preventDefault();
             Handlers.handleSendBtnClick();
         }
     });
 
-    DOM.messageInput.addEventListener('input', () => {
+    safeAddEventListener(DOM.messageInput, 'input', () => {
         DOM.messageInput.style.height = 'auto';
         DOM.messageInput.style.height = `${DOM.messageInput.scrollHeight}px`;
-        UI.updateSendButtonState(); // 即時更新按鈕狀態
+        UI.updateSendButtonState();
     });
 
-    DOM.chatOptionsBtn.addEventListener('click', (e) => {
+    safeAddEventListener(DOM.chatOptionsBtn, 'click', (e) => {
         e.stopPropagation();
         DOM.chatOptionsMenu.classList.toggle('hidden');
     });
-    DOM.deleteChatOptionBtn.addEventListener('click', Handlers.handleDeleteCurrentChat);
+    safeAddEventListener(DOM.deleteChatOptionBtn, 'click', Handlers.handleDeleteCurrentChat);
 
     window.addEventListener('click', () => {
-        if (!DOM.chatOptionsMenu.classList.contains('hidden')) {
+        if (DOM.chatOptionsMenu && !DOM.chatOptionsMenu.classList.contains('hidden')) {
             DOM.chatOptionsMenu.classList.add('hidden');
         }
     });
 
-    // Modals (彈出視窗)
-    DOM.saveRenameChatBtn.addEventListener('click', Handlers.handleSaveChatName);
-    DOM.cancelRenameChatBtn.addEventListener('click', () => UI.toggleModal('rename-chat-modal', false));
-    DOM.updateMemoryBtn.addEventListener('click', Handlers.handleUpdateMemory);
-    DOM.viewMemoryBtn.addEventListener('click', Handlers.openMemoryEditor);
-    DOM.saveMemoryEditorBtn.addEventListener('click', Handlers.handleSaveMemory);
-    DOM.cancelMemoryEditorBtn.addEventListener('click', () => UI.toggleModal('memory-editor-modal', false));
+    // Modals
+    safeAddEventListener(DOM.saveRenameChatBtn, 'click', Handlers.handleSaveChatName);
+    safeAddEventListener(DOM.cancelRenameChatBtn, 'click', () => UI.toggleModal('rename-chat-modal', false));
+    safeAddEventListener(DOM.updateMemoryBtn, 'click', Handlers.handleUpdateMemory);
+    safeAddEventListener(DOM.viewMemoryBtn, 'click', Handlers.openMemoryEditor);
+    safeAddEventListener(DOM.saveMemoryEditorBtn, 'click', Handlers.handleSaveMemory);
+    safeAddEventListener(DOM.cancelMemoryEditorBtn, 'click', () => UI.toggleModal('memory-editor-modal', false));
     
-    // 修改：確保按鈕存在才綁定事件
-    if (DOM.addCharacterBtn) {
-        DOM.addCharacterBtn.addEventListener('click', () => {
-             if (DOM.leftPanel.classList.contains('mobile-visible')) {
-                DOM.leftPanel.classList.remove('mobile-visible');
-                DOM.mobileOverlay.classList.add('hidden');
-            }
-            Handlers.openCharacterEditor()
-        });
-    }
+    safeAddEventListener(DOM.addCharacterBtn, 'click', () => {
+        if (DOM.leftPanel.classList.contains('mobile-visible')) {
+           DOM.leftPanel.classList.remove('mobile-visible');
+           DOM.mobileOverlay.classList.add('hidden');
+       }
+       Handlers.openCharacterEditor()
+   });
 
-    DOM.saveCharBtn.addEventListener('click', Handlers.handleSaveCharacter);
-    DOM.cancelCharEditorBtn.addEventListener('click', () => UI.toggleModal('character-editor-modal', false));
-    DOM.importCharBtn.addEventListener('click', Utils.importCharacter);
-    DOM.exportCharBtn.addEventListener('click', Utils.exportCharacter);
-    DOM.charAvatarUpload.addEventListener('change', (e) => Utils.handleImageUpload(e, DOM.charAvatarPreview));
+    safeAddEventListener(DOM.saveCharBtn, 'click', Handlers.handleSaveCharacter);
+    safeAddEventListener(DOM.cancelCharEditorBtn, 'click', () => UI.toggleModal('character-editor-modal', false));
+    safeAddEventListener(DOM.importCharBtn, 'click', Utils.importCharacter);
+    safeAddEventListener(DOM.exportCharBtn, 'click', Utils.exportCharacter);
+    safeAddEventListener(DOM.charAvatarUpload, 'change', (e) => Utils.handleImageUpload(e, DOM.charAvatarPreview));
 
-    DOM.addFirstMessageBtn.addEventListener('click', () => {
+    safeAddEventListener(DOM.addFirstMessageBtn, 'click', () => {
         const item = document.createElement('div');
         item.className = 'first-message-item';
         const nextIndex = DOM.firstMessageList.children.length + 1;
@@ -120,7 +125,7 @@ export function setupEventListeners() {
             textarea.style.height = `${textarea.scrollHeight}px`;
         });
     });
-    DOM.firstMessageList.addEventListener('click', (e) => {
+    safeAddEventListener(DOM.firstMessageList, 'click', (e) => {
         const removeBtn = e.target.closest('.remove-first-message-btn');
         if (removeBtn) {
             if (DOM.firstMessageList.children.length > 1) {
@@ -131,76 +136,55 @@ export function setupEventListeners() {
         }
     });
 
-    // 角色編輯器內的特定事件
-    DOM.charEditorModal.addEventListener('click', (e) => {
+    safeAddEventListener(DOM.charEditorModal, 'click', (e) => {
         const header = e.target.closest('.advanced-section-header');
         if (header) {
             header.parentElement.classList.toggle('expanded');
         }
     });
 
+    safeAddEventListener(DOM.lorebookEditorModal, 'click', (e) => {
+        const header = e.target.closest('.advanced-section-header');
+        if (header) {
+            header.parentElement.classList.toggle('expanded');
+        }
+    });
 
-    // 全域设定 Modal
-    if (DOM.globalSettingsBtn) {
-        DOM.globalSettingsBtn.addEventListener('click', () => {
-            if (DOM.leftPanel.classList.contains('mobile-visible')) {
-                DOM.leftPanel.classList.remove('mobile-visible');
-                DOM.mobileOverlay.classList.add('hidden');
-            }
-            // 只載入設定到 UI，不重置狀態
-            UI.renderAccountTab();
-            
-            const settings = state.globalSettings;
-            const officialGeminiOption = DOM.apiProviderSelect.querySelector('option[value="official_gemini"]');
-            if (officialGeminiOption) {
-                officialGeminiOption.hidden = !state.isPremiumUser;
-            }
-        
-            DOM.apiProviderSelect.value = settings.apiProvider || 'openai';
-            UI.updateModelDropdown(); 
-            DOM.apiModelSelect.value = settings.apiModel || '';
-            DOM.apiKeyInput.value = settings.apiKey || '';
-            DOM.temperatureSlider.value = settings.temperature || 1;
-            DOM.temperatureValue.value = settings.temperature || 1;
-            DOM.topPSlider.value = settings.topP || 1;
-            DOM.topPValue.value = settings.topP || 1;
-            DOM.repetitionPenaltySlider.value = settings.repetitionPenalty || 0;
-            DOM.repetitionPenaltyValue.value = settings.repetitionPenalty || 0;
-            DOM.contextSizeInput.value = settings.contextSize || 30000;
-            DOM.maxTokensSlider.value = settings.maxTokens || 1024;
-            DOM.maxTokensValue.value = settings.maxTokens || 1024;
-            DOM.themeSelect.value = settings.theme || 'light';
-            DOM.summarizationPromptInput.value = settings.summarizationPrompt || '';
-        
-            UI.renderUserPersonaList();
-            UI.renderActiveUserPersonaSelector();
-            UI.renderApiPresetsDropdown();
-            UI.renderPromptSetSelector();
-            UI.renderPromptList();
-            UI.renderLorebookSelector();
-            UI.renderLorebookEntryList();
-            UI.renderRegexRulesList();
-        
-            UI.toggleModal('global-settings-modal', true);
-        });
-    }
+    safeAddEventListener(DOM.globalSettingsBtn, 'click', () => {
+        UI.loadGlobalSettingsToUI();
+        UI.toggleModal('global-settings-modal', true);
+    });
 
-    DOM.testApiBtn.addEventListener('click', Handlers.handleTestApiConnection);
-    DOM.saveGlobalSettingsBtn.addEventListener('click', Handlers.handleSaveGlobalSettings);
-    DOM.cancelGlobalSettingsBtn.addEventListener('click', () => UI.toggleModal('global-settings-modal', false));
-    Utils.setupSliderSync(DOM.temperatureSlider, DOM.temperatureValue);
-    Utils.setupSliderSync(DOM.topPSlider, DOM.topPValue);
-    Utils.setupSliderSync(DOM.repetitionPenaltySlider, DOM.repetitionPenaltyValue);
-    Utils.setupSliderSync(DOM.maxTokensSlider, DOM.maxTokensValue);
-    DOM.apiProviderSelect.addEventListener('change', UI.updateModelDropdown);
+    safeAddEventListener(DOM.globalSettingsModal, 'click', (e) => {
+        const advancedHeader = e.target.closest('.advanced-section-header');
+        if (advancedHeader) {
+            advancedHeader.parentElement.classList.toggle('expanded');
+        }
+    
+        const aboutHeader = e.target.closest('.about-section-header');
+        if (aboutHeader) {
+            aboutHeader.parentElement.classList.toggle('expanded');
+        }
+    });
 
-    // API 设定档
-    DOM.saveApiPresetBtn.addEventListener('click', Handlers.handleSaveApiPreset);
-    DOM.apiPresetSelect.addEventListener('change', Handlers.handleLoadApiPreset);
-    DOM.deleteApiPresetBtn.addEventListener('click', Handlers.handleDeleteApiPreset);
+    safeAddEventListener(DOM.testApiBtn, 'click', Handlers.handleTestApiConnection);
+    safeAddEventListener(DOM.saveGlobalSettingsBtn, 'click', Handlers.handleSaveGlobalSettings);
+    safeAddEventListener(DOM.cancelGlobalSettingsBtn, 'click', () => UI.toggleModal('global-settings-modal', false));
+    
+    if (DOM.temperatureSlider) Utils.setupSliderSync(DOM.temperatureSlider, DOM.temperatureValue);
+    if (DOM.topPSlider) Utils.setupSliderSync(DOM.topPSlider, DOM.topPValue);
+    if (DOM.repetitionPenaltySlider) Utils.setupSliderSync(DOM.repetitionPenaltySlider, DOM.repetitionPenaltyValue);
+    if (DOM.maxTokensSlider) Utils.setupSliderSync(DOM.maxTokensSlider, DOM.maxTokensValue);
+    
+    safeAddEventListener(DOM.apiProviderSelect, 'change', UI.updateModelDropdown);
+
+    // API 設定檔
+    safeAddEventListener(DOM.saveApiPresetBtn, 'click', Handlers.handleSaveApiPreset);
+    safeAddEventListener(DOM.apiPresetSelect, 'change', Handlers.handleLoadApiPreset);
+    safeAddEventListener(DOM.deleteApiPresetBtn, 'click', Handlers.handleDeleteApiPreset);
 
     // 设定分页
-    DOM.settingsTabsContainer.addEventListener('click', (e) => {
+    safeAddEventListener(DOM.settingsTabsContainer, 'click', (e) => {
         const tabButton = e.target.closest('.tab-btn');
         if (!tabButton) return;
         const tabId = tabButton.dataset.tab;
@@ -210,15 +194,16 @@ export function setupEventListeners() {
             content.classList.toggle('active', content.id === tabId);
         });
     });
-    DOM.themeSelect.addEventListener('change', (e) => {
-        Utils.applyTheme(e.target.value);
-    });
+    safeAddEventListener(DOM.themeSelect, 'change', (e) => Utils.applyTheme(e.target.value));
     
     // 提示词库
-    DOM.importPromptSetBtn.addEventListener('click', Handlers.handleImportPromptSet);
-    DOM.deletePromptSetBtn.addEventListener('click', Handlers.handleDeletePromptSet);
-    DOM.promptSetSelect.addEventListener('change', Handlers.handleSwitchPromptSet);
-    DOM.promptList.addEventListener('click', (e) => {
+    safeAddEventListener(DOM.importPromptSetBtn, 'click', Handlers.handleImportPromptSet);
+    safeAddEventListener(DOM.exportPromptSetBtn, 'click', Handlers.handleExportPromptSet);
+    safeAddEventListener(DOM.addPromptSetBtn, 'click', Handlers.handleAddPromptSet);
+    safeAddEventListener(DOM.deletePromptSetBtn, 'click', Handlers.handleDeletePromptSet);
+    safeAddEventListener(DOM.promptSetSelect, 'change', Handlers.handleSwitchPromptSet);
+    safeAddEventListener(DOM.addPromptBtn, 'click', Handlers.handleAddPromptItem);
+    safeAddEventListener(DOM.promptList, 'click', (e) => {
         const toggle = e.target.closest('.prompt-item-toggle');
         const editBtn = e.target.closest('.edit-prompt-btn');
         if (toggle) {
@@ -227,23 +212,35 @@ export function setupEventListeners() {
             Handlers.openPromptEditor(editBtn.closest('.prompt-item').dataset.identifier);
         }
     });
-    DOM.savePromptEditorBtn.addEventListener('click', Handlers.handleSavePrompt);
-    DOM.cancelPromptEditorBtn.addEventListener('click', () => {
+    safeAddEventListener(DOM.savePromptEditorBtn, 'click', Handlers.handleSavePrompt);
+    safeAddEventListener(DOM.cancelPromptEditorBtn, 'click', () => {
         UI.toggleModal('prompt-editor-modal', false);
         tempState.editingPromptIdentifier = null;
     });
-    DOM.deletePromptEditorBtn.addEventListener('click', Handlers.handleDeletePromptItem);
-    DOM.promptEditorPositionSelect.addEventListener('change', Handlers.handlePromptPositionChange);
+    safeAddEventListener(DOM.deletePromptEditorBtn, 'click', Handlers.handleDeletePromptItem);
+    safeAddEventListener(DOM.promptEditorPositionSelect, 'change', Handlers.handlePromptPositionChange);
 
     // 世界書 (Lorebook)
-    DOM.addLorebookBtn.addEventListener('click', Handlers.handleAddNewLorebook);
-    DOM.renameLorebookBtn.addEventListener('click', Handlers.handleRenameLorebook);
-    DOM.importLorebookBtn.addEventListener('click', Handlers.handleImportLorebook);
-    DOM.exportLorebookBtn.addEventListener('click', Handlers.handleExportLorebook); // 新增
-    DOM.deleteLorebookBtn.addEventListener('click', Handlers.handleDeleteLorebook);
-    DOM.lorebookSelect.addEventListener('change', Handlers.handleSwitchLorebook);
-    DOM.addLorebookEntryBtn.addEventListener('click', () => Handlers.openLorebookEditor());
-    DOM.lorebookEntryList.addEventListener('click', (e) => {
+    safeAddEventListener(DOM.addLorebookBtn, 'click', Handlers.handleAddNewLorebook);
+    safeAddEventListener(DOM.importLorebookBtn, 'click', Handlers.handleImportLorebook);
+    safeAddEventListener(DOM.lorebookList, 'click', (e) => {
+        const item = e.target.closest('.lorebook-item');
+        if (!item) return;
+        const bookId = item.dataset.id;
+        if (e.target.closest('.prompt-item-toggle')) {
+            Handlers.handleToggleLorebookEnabled(bookId);
+        } else if (e.target.closest('.edit-lorebook-btn')) {
+            Handlers.openLorebookEntryManager(bookId);
+        } else if (e.target.closest('.delete-lorebook-btn')) {
+            Handlers.handleDeleteLorebook(bookId);
+        }
+    });
+    
+    // 條目編輯器 Modal
+    safeAddEventListener(DOM.closeLorebookEntryEditorBtn, 'click', () => UI.toggleModal('lorebook-entry-editor-modal', false));
+    safeAddEventListener(DOM.addLorebookEntryBtn, 'click', () => Handlers.openLorebookEditor());
+    safeAddEventListener(DOM.exportSingleLorebookBtn, 'click', Handlers.handleExportSingleLorebook);
+    safeAddEventListener(DOM.lorebookEntryList, 'click', (e) => {
         const item = e.target.closest('.prompt-item');
         if (!item) return;
         const entryId = item.dataset.id;
@@ -251,103 +248,101 @@ export function setupEventListeners() {
             Handlers.handleToggleLorebookEntryEnabled(entryId);
         } else if (e.target.closest('.edit-lorebook-entry-btn')) {
             Handlers.openLorebookEditor(entryId);
+        } else if (e.target.closest('.lorebook-status-indicator')) {
+             Handlers.handleToggleLorebookEntryConstant(entryId);
         }
     });
-    DOM.saveLorebookEntryBtn.addEventListener('click', Handlers.handleSaveLorebookEntry);
-    DOM.cancelLorebookEditorBtn.addEventListener('click', () => {
+    
+    // 單一條目編輯 Modal
+    safeAddEventListener(DOM.saveLorebookEntryBtn, 'click', Handlers.handleSaveLorebookEntry);
+    safeAddEventListener(DOM.cancelLorebookEditorBtn, 'click', () => {
         UI.toggleModal('lorebook-editor-modal', false);
         tempState.editingLorebookEntryId = null;
     });
-    DOM.deleteLorebookEntryBtn.addEventListener('click', Handlers.handleDeleteLorebookEntry);
-
+    safeAddEventListener(DOM.deleteLorebookEntryBtn, 'click', Handlers.handleDeleteLorebookEntry);
 
     // 正規表達式
-    DOM.addRegexRuleBtn.addEventListener('click', Handlers.handleAddRegexRule);
-    DOM.regexRulesList.addEventListener('change', Handlers.handleRegexRuleChange);
-    DOM.regexRulesList.addEventListener('click', (e) => {
+    safeAddEventListener(DOM.addRegexRuleBtn, 'click', Handlers.handleAddRegexRule);
+    safeAddEventListener(DOM.regexRulesList, 'change', Handlers.handleRegexRuleChange);
+    safeAddEventListener(DOM.regexRulesList, 'click', (e) => {
         const ruleItem = e.target.closest('.regex-rule-item');
         if (!ruleItem) return;
         const ruleId = ruleItem.dataset.id;
-        
-        if (e.target.closest('.prompt-item-toggle')) {
-            Handlers.handleRegexRuleToggle(ruleId);
-        } else if (e.target.closest('.delete-regex-rule-btn')) {
-            Handlers.handleDeleteRegexRule(ruleId);
-        } else if (e.target.closest('.regex-expand-btn')) {
-            ruleItem.classList.toggle('expanded');
-        }
+        if (e.target.closest('.prompt-item-toggle')) Handlers.handleRegexRuleToggle(ruleId);
+        else if (e.target.closest('.delete-regex-rule-btn')) Handlers.handleDeleteRegexRule(ruleId);
+        else if (e.target.closest('.regex-expand-btn')) ruleItem.classList.toggle('expanded');
     });
 
     // 使用者角色
-    DOM.addUserPersonaBtn.addEventListener('click', () => Handlers.openUserPersonaEditor());
-    DOM.saveUserPersonaBtn.addEventListener('click', Handlers.handleSaveUserPersona);
-    DOM.cancelUserPersonaEditorBtn.addEventListener('click', () => UI.toggleModal('user-persona-editor-modal', false));
-    DOM.activeUserPersonaSelect.addEventListener('change', async (e) => {
-    // 確保只更新使用者角色，不影響其他狀態
-    const oldCharacterId = state.activeCharacterId;
-    const oldChatId = state.activeChatId;
-    
-    state.activeUserPersonaId = e.target.value;
-    await saveSettings();
-    
-    // 確保活躍狀態不變
-    state.activeCharacterId = oldCharacterId;
-    state.activeChatId = oldChatId;
-});
-    DOM.chatUserPersonaSelect.addEventListener('change', Handlers.handleChatPersonaChange);
-    DOM.userPersonaAvatarUpload.addEventListener('change', (e) => Utils.handleImageUpload(e, DOM.userPersonaAvatarPreview));
+    safeAddEventListener(DOM.addUserPersonaBtn, 'click', () => Handlers.openUserPersonaEditor());
+    safeAddEventListener(DOM.saveUserPersonaBtn, 'click', Handlers.handleSaveUserPersona);
+    safeAddEventListener(DOM.cancelUserPersonaEditorBtn, 'click', () => UI.toggleModal('user-persona-editor-modal', false));
+    safeAddEventListener(DOM.activeUserPersonaSelect, 'change', async (e) => {
+        state.activeUserPersonaId = e.target.value;
+        await saveSettings();
+    });
+    safeAddEventListener(DOM.chatUserPersonaSelect, 'change', Handlers.handleChatPersonaChange);
+    safeAddEventListener(DOM.userPersonaAvatarUpload, 'change', (e) => Utils.handleImageUpload(e, DOM.userPersonaAvatarPreview));
 
     // 匯出與截圖
-    DOM.exportChatOptionBtn.addEventListener('click', Handlers.openExportModal);
-    DOM.confirmExportChatBtn.addEventListener('click', Handlers.handleConfirmExport);
-    DOM.cancelExportChatBtn.addEventListener('click', () => UI.toggleModal('export-chat-modal', false));
-    DOM.cancelScreenshotBtn.addEventListener('click', Handlers.handleToggleScreenshotMode);
-    DOM.generateScreenshotBtn.addEventListener('click', Handlers.handleGenerateScreenshot);
+    safeAddEventListener(DOM.exportChatOptionBtn, 'click', Handlers.openExportModal);
+    safeAddEventListener(DOM.confirmExportChatBtn, 'click', Handlers.handleConfirmExport);
+    safeAddEventListener(DOM.cancelExportChatBtn, 'click', () => UI.toggleModal('export-chat-modal', false));
+    safeAddEventListener(DOM.cancelScreenshotBtn, 'click', Handlers.handleToggleScreenshotMode);
+    safeAddEventListener(DOM.generateScreenshotBtn, 'click', Handlers.handleGenerateScreenshot);
 
     // 全域匯入/匯出
-    DOM.globalExportBtn.addEventListener('click', Handlers.handleGlobalExport);
-    DOM.openImportOptionsBtn.addEventListener('click', () => UI.toggleModal('import-options-modal', true));
-    DOM.cancelImportOptionsBtn.addEventListener('click', () => UI.toggleModal('import-options-modal', false));
-    DOM.importMergeBtn.addEventListener('click', () => {
+    safeAddEventListener(DOM.globalExportBtn, 'click', Handlers.handleGlobalExport);
+    safeAddEventListener(DOM.openImportOptionsBtn, 'click', () => UI.toggleModal('import-options-modal', true));
+    safeAddEventListener(DOM.cancelImportOptionsBtn, 'click', () => UI.toggleModal('import-options-modal', false));
+    safeAddEventListener(DOM.importMergeBtn, 'click', () => {
         UI.toggleModal('import-options-modal', false);
         Handlers.handleGlobalImport('merge');
     });
-    DOM.importOverwriteBtn.addEventListener('click', () => {
+    safeAddEventListener(DOM.importOverwriteBtn, 'click', () => {
         UI.toggleModal('import-options-modal', false);
         Handlers.handleGlobalImport('overwrite');
     });
+    
+    // 進階匯入 Modal
+    safeAddEventListener(DOM.cancelAdvancedImportBtn, 'click', () => {
+        UI.toggleModal('advanced-import-modal', false);
+        tempState.importedData = null;
+        tempState.importedLorebook = null;
+        tempState.importedRegex = null;
+        tempState.importedImageBase64 = null;
+    });
+    safeAddEventListener(DOM.importJustCharBtn, 'click', () => Handlers.handleAdvancedImport(false));
+    safeAddEventListener(DOM.importWithExtrasBtn, 'click', () => Handlers.handleAdvancedImport(true));
 
     // 登入 Modal
-    DOM.googleLoginBtn.addEventListener('click', Handlers.handleGoogleLogin);
-    DOM.loginForm.addEventListener('submit', Handlers.handleEmailLogin);
-    DOM.registerForm.addEventListener('submit', Handlers.handleEmailRegister);
-    DOM.cancelAuthModalBtn.addEventListener('click', () => UI.toggleModal('auth-modal', false));
-    DOM.showRegisterViewBtn.addEventListener('click', (e) => {
+    safeAddEventListener(DOM.googleLoginBtn, 'click', Handlers.handleGoogleLogin);
+    safeAddEventListener(DOM.loginForm, 'submit', Handlers.handleEmailLogin);
+    safeAddEventListener(DOM.registerForm, 'submit', Handlers.handleEmailRegister);
+    safeAddEventListener(DOM.cancelAuthModalBtn, 'click', () => UI.toggleModal('auth-modal', false));
+    safeAddEventListener(DOM.showRegisterViewBtn, 'click', (e) => {
         e.preventDefault();
         DOM.loginView.classList.add('hidden');
         DOM.registerView.classList.remove('hidden');
     });
-    DOM.showLoginViewBtn.addEventListener('click', (e) => {
+    safeAddEventListener(DOM.showLoginViewBtn, 'click', (e) => {
         e.preventDefault();
         DOM.registerView.classList.add('hidden');
         DOM.loginView.classList.remove('hidden');
     });
 
     // 刪除選項 Modal
-    if (DOM.deleteSingleVersionBtn) {
-        DOM.deleteSingleVersionBtn.addEventListener('click', Handlers.handleDeleteSingleVersion);
-        DOM.deleteAllVersionsBtn.addEventListener('click', Handlers.handleDeleteAllVersions);
-        DOM.cancelDeleteOptionsBtn.addEventListener('click', () => UI.toggleModal('delete-options-modal', false));
-    }
-
+    safeAddEventListener(DOM.deleteSingleVersionBtn, 'click', Handlers.handleDeleteSingleVersion);
+    safeAddEventListener(DOM.deleteAllVersionsBtn, 'click', Handlers.handleDeleteAllVersions);
+    safeAddEventListener(DOM.cancelDeleteOptionsBtn, 'click', () => UI.toggleModal('delete-options-modal', false));
+    
     window.addEventListener('resize', Utils.setAppHeight);
 
     // ================== 事件委派 (處理動態產生的元素) ==================
 
-    DOM.characterList.addEventListener('click', async (e) => {
+    safeAddEventListener(DOM.characterList, 'click', async (e) => {
         const charItem = e.target.closest('.character-item');
         if (!charItem || e.target.closest('.drag-handle')) return;
-
         const charId = charItem.dataset.id;
         await loadChatDataForCharacter(charId);
         UI.showChatSessionListView(charId);
@@ -356,7 +351,7 @@ export function setupEventListeners() {
         await saveSettings();
     });
 
-    DOM.chatSessionList.addEventListener('click', async (e) => {
+    safeAddEventListener(DOM.chatSessionList, 'click', async (e) => {
         const sessionItem = e.target.closest('.chat-session-item');
         if (!sessionItem) return;
         const chatId = sessionItem.dataset.id;
@@ -371,7 +366,7 @@ export function setupEventListeners() {
         }
     });
 
-    DOM.chatWindow.addEventListener('click', async (e) => {
+    safeAddEventListener(DOM.chatWindow, 'click', async (e) => {
         const messageRow = e.target.closest('.message-row');
         if (!messageRow) {
             if (!tempState.isScreenshotMode) {
@@ -381,258 +376,137 @@ export function setupEventListeners() {
         }
         
         const messageIndex = parseInt(messageRow.dataset.index, 10);
-
         if (tempState.isScreenshotMode) {
             Handlers.handleSelectMessage(messageIndex);
             return;
         }
-
         if (e.target.closest('.chat-bubble')) {
             document.querySelectorAll('.message-row.show-actions').forEach(otherRow => {
                 if (otherRow !== messageRow) otherRow.classList.remove('show-actions');
             });
             messageRow.classList.toggle('show-actions');
         }
-        else if (e.target.closest('.edit-msg-btn')) {
-            Handlers.makeMessageEditable(messageRow, messageIndex);
-        }
-        else if (e.target.closest('.regenerate-btn-sm')) {
-            await Handlers.regenerateResponse(messageIndex);
-        }
-        else if (e.target.closest('.retry-btn-sm')) {
-            await Handlers.retryMessage(messageIndex);
-        }
-        else if (e.target.closest('.version-prev-btn')) {
-            await Handlers.switchVersion(messageIndex, -1);
-        }
-        else if (e.target.closest('.version-next-btn')) {
-            await Handlers.switchVersion(messageIndex, 1);
-        }
+        else if (e.target.closest('.edit-msg-btn')) Handlers.makeMessageEditable(messageRow, messageIndex);
+        else if (e.target.closest('.regenerate-btn-sm')) await Handlers.regenerateResponse(messageIndex);
+        else if (e.target.closest('.retry-btn-sm')) await Handlers.retryMessage(messageIndex);
+        else if (e.target.closest('.version-prev-btn')) await Handlers.switchVersion(messageIndex, -1);
+        else if (e.target.closest('.version-next-btn')) await Handlers.switchVersion(messageIndex, 1);
     });
 
-    DOM.userPersonaList.addEventListener('click', async (e) => {
+    safeAddEventListener(DOM.userPersonaList, 'click', async (e) => {
         const personaItem = e.target.closest('.persona-item');
         if (!personaItem) return;
         const personaId = personaItem.dataset.id;
-        if (e.target.closest('.edit-persona-btn')) {
-            Handlers.openUserPersonaEditor(personaId);
-        } else if (e.target.closest('.delete-persona-btn')) {
-            await Handlers.handleDeleteUserPersona(personaId);
-        }
+        if (e.target.closest('.edit-persona-btn')) Handlers.openUserPersonaEditor(personaId);
+        else if (e.target.closest('.delete-persona-btn')) await Handlers.handleDeleteUserPersona(personaId);
     });
 
-    // [REVISED] 拖曳排序邏輯 (支援長按與觸控)
-let draggedId = null;
-let draggedElement = null;
-let longPressTimer = null;
-let startX = 0;
-let startY = 0;
-let isDragging = false;
+    // 拖曳排序邏輯 (保持不變)
+    let draggedId = null;
+    let draggedElement = null;
+    let longPressTimer = null;
+    let startX = 0;
+    let startY = 0;
+    let isDragging = false;
+    
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('[data-id]:not(.dragging)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
 
-function getDragAfterElement(container, y) {
-    const draggableElements = [...container.querySelectorAll('[data-id]:not(.dragging)')];
-    return draggableElements.reduce((closest, child) => {
-        const box = child.getBoundingClientRect();
-        const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closest.offset) {
-            return { offset: offset, element: child };
-        } else {
-            return closest;
-        }
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
-}
+    const setupDragSort = (container, handler) => {
+        if (!container) return;
+        const LONG_PRESS_DURATION = 500;
+        const MOVE_THRESHOLD = 10;
 
-const setupDragSort = (container, handler) => {
-    const LONG_PRESS_DURATION = 500; // 長按時間 (毫秒)
-    const MOVE_THRESHOLD = 10; // 移動閾值 (像素)
-
-    const onPointerDown = (e) => {
-        // 觸發拖曳的目標項目
-        const targetItem = e.target.closest('[data-id]');
-        if (!targetItem) return;
-
-        // 避免在互動元素上觸發拖曳
-        if (e.target.closest('button, a, input, select, textarea')) return;
-
-        // 只處理主要按鈕點擊或觸摸
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-
-        e.preventDefault();
-        
-        draggedElement = targetItem;
-        startX = e.clientX;
-        startY = e.clientY;
-        isDragging = false;
-
-        // 設置長按計時器
-        longPressTimer = setTimeout(() => {
-            if (draggedElement && !isDragging) {
-                // 長按觸發：開始拖曳模式
-                draggedElement.setAttribute('draggable', 'true');
-                draggedElement.classList.add('dragging');
-                document.body.classList.add('is-dragging');
-                isDragging = true;
-                
-                // 觸覺回饋（如果支援）
-                if (navigator.vibrate) {
-                    navigator.vibrate(50);
+        const onPointerDown = (e) => {
+            const targetItem = e.target.closest('[data-id]');
+            if (!targetItem || e.target.closest('button, a, input, select, textarea') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+            e.preventDefault();
+            draggedElement = targetItem;
+            startX = e.clientX;
+            startY = e.clientY;
+            isDragging = false;
+            longPressTimer = setTimeout(() => {
+                if (draggedElement && !isDragging) {
+                    isDragging = true;
+                    draggedElement.classList.add('dragging');
+                    document.body.classList.add('is-dragging');
+                    if (navigator.vibrate) navigator.vibrate(50);
+                    const dragStartEvent = new DragEvent('dragstart', { bubbles: true, cancelable: true });
+                    draggedElement.dispatchEvent(dragStartEvent);
                 }
-
-                // 手動觸發 dragstart 事件
-                const dragStartEvent = new DragEvent('dragstart', {
-                    bubbles: true,
-                    cancelable: true,
-                });
-                draggedElement.dispatchEvent(dragStartEvent);
+            }, LONG_PRESS_DURATION);
+            document.addEventListener('pointermove', onPointerMove, { passive: false });
+            document.addEventListener('pointerup', onPointerUp);
+            document.addEventListener('pointercancel', onPointerCancel);
+        };
+        const onPointerMove = (e) => {
+            if (!draggedElement) return;
+            const deltaX = Math.abs(e.clientX - startX);
+            const deltaY = Math.abs(e.clientY - startY);
+            if ((deltaX > MOVE_THRESHOLD || deltaY > MOVE_THRESHOLD) && !isDragging) {
+                clearTimeout(longPressTimer);
+                cleanup();
             }
-        }, LONG_PRESS_DURATION);
-
-        // 添加全域事件監聽器
-        document.addEventListener('pointermove', onPointerMove, { passive: false });
-        document.addEventListener('pointerup', onPointerUp);
-        document.addEventListener('pointercancel', onPointerCancel);
-    };
-
-    const onPointerMove = (e) => {
-        if (!draggedElement) return;
-
-        const deltaX = Math.abs(e.clientX - startX);
-        const deltaY = Math.abs(e.clientY - startY);
-
-        // 如果移動距離超過閾值，取消長按
-        if ((deltaX > MOVE_THRESHOLD || deltaY > MOVE_THRESHOLD) && !isDragging) {
-            clearTimeout(longPressTimer);
+            if (isDragging) {
+                e.preventDefault();
+                const afterElement = getDragAfterElement(container, e.clientY);
+                container.querySelectorAll('.drop-indicator').forEach(el => el.remove());
+                const indicator = document.createElement('div');
+                indicator.className = 'drop-indicator';
+                if (afterElement) {
+                    afterElement.parentNode.insertBefore(indicator, afterElement);
+                } else {
+                    container.appendChild(indicator);
+                }
+            }
+        };
+        const onPointerUp = (e) => {
+            if (isDragging && draggedElement && draggedId) {
+                const afterElement = getDragAfterElement(container, e.clientY);
+                const targetId = afterElement ? (afterElement.dataset.id || afterElement.dataset.identifier) : null;
+                handler(draggedId, targetId);
+            }
             cleanup();
-        }
-
-        // 如果正在拖曳，更新視覺回饋
-        if (isDragging) {
-            e.preventDefault();
-            
-            // 可以在這裡添加自定義的拖曳視覺效果
-            const afterElement = getDragAfterElement(container, e.clientY);
-            
-            // 移除之前的插入指示器
+        };
+        const onPointerCancel = () => cleanup();
+        const cleanup = () => {
+            clearTimeout(longPressTimer);
+            document.removeEventListener('pointermove', onPointerMove);
+            document.removeEventListener('pointerup', onPointerUp);
+            document.removeEventListener('pointercancel', onPointerCancel);
+            if (draggedElement) draggedElement.classList.remove('dragging');
+            document.body.classList.remove('is-dragging');
             container.querySelectorAll('.drop-indicator').forEach(el => el.remove());
-            
-            // 添加新的插入指示器
-            if (afterElement) {
-                const indicator = document.createElement('div');
-                indicator.className = 'drop-indicator';
-                indicator.style.height = '2px';
-                indicator.style.backgroundColor = 'var(--primary-color)';
-                indicator.style.margin = '2px 0';
-                indicator.style.borderRadius = '1px';
-                afterElement.parentNode.insertBefore(indicator, afterElement);
-            } else if (container.children.length > 0) {
-                const indicator = document.createElement('div');
-                indicator.className = 'drop-indicator';
-                indicator.style.height = '2px';
-                indicator.style.backgroundColor = 'var(--primary-color)';
-                indicator.style.margin = '2px 0';
-                indicator.style.borderRadius = '1px';
-                container.appendChild(indicator);
+            draggedElement = null;
+            draggedId = null;
+            isDragging = false;
+        };
+        container.addEventListener('pointerdown', onPointerDown, { passive: false });
+        container.addEventListener('dragstart', (e) => {
+            const target = e.target.closest('[data-id]');
+            if (target && isDragging) {
+                draggedId = target.dataset.id || target.dataset.identifier;
+            } else {
+                e.preventDefault();
             }
-        }
+        });
+        container.addEventListener('dragend', () => cleanup());
+        container.addEventListener('dragover', (e) => { if (isDragging) e.preventDefault(); });
+        container.addEventListener('drop', (e) => { if (isDragging) e.preventDefault(); });
+        container.addEventListener('selectstart', (e) => { if (isDragging) e.preventDefault(); });
     };
 
-    const onPointerUp = (e) => {
-        if (isDragging && draggedElement) {
-            // 處理放置邏輯
-            const afterElement = getDragAfterElement(container, e.clientY);
-            const targetId = afterElement ? (afterElement.dataset.id || afterElement.dataset.identifier) : null;
-            
-            if (draggedId) {
-                handler(draggedId, targetId);
-            }
-        }
-        cleanup();
-    };
-
-    const onPointerCancel = () => {
-        cleanup();
-    };
-
-    const cleanup = () => {
-        clearTimeout(longPressTimer);
-        
-        // 移除事件監聽器
-        document.removeEventListener('pointermove', onPointerMove);
-        document.removeEventListener('pointerup', onPointerUp);
-        document.removeEventListener('pointercancel', onPointerCancel);
-        
-        // 清理拖曳狀態
-        if (draggedElement) {
-            draggedElement.classList.remove('dragging');
-            draggedElement.removeAttribute('draggable');
-        }
-        
-        // 清理全域狀態
-        document.body.classList.remove('is-dragging');
-        container.querySelectorAll('.drop-indicator').forEach(el => el.remove());
-        
-        // 重置變數
-        draggedElement = null;
-        draggedId = null;
-        isDragging = false;
-        startX = 0;
-        startY = 0;
-    };
-
-    // 容器事件監聽器
-    container.addEventListener('pointerdown', onPointerDown, { passive: false });
-
-    container.addEventListener('dragstart', (e) => {
-        const target = e.target.closest('[data-id]');
-        if (target && isDragging) {
-            draggedElement = target;
-            draggedId = target.dataset.id || target.dataset.identifier;
-            
-            if (e.dataTransfer) {
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', draggedId);
-            }
-        } else {
-            e.preventDefault();
-        }
-    });
-
-    container.addEventListener('dragend', () => {
-        cleanup();
-    });
-
-    container.addEventListener('dragover', (e) => {
-        if (isDragging) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-        }
-    });
-
-    container.addEventListener('drop', (e) => {
-        if (isDragging) {
-            e.preventDefault();
-            
-            const afterElement = getDragAfterElement(container, e.clientY);
-            const targetId = afterElement ? (afterElement.dataset.id || afterElement.dataset.identifier) : null;
-            
-            if (draggedId) {
-                handler(draggedId, targetId);
-            }
-        }
-        cleanup();
-    });
-
-    // 防止預設的拖曳行為干擾
-    container.addEventListener('selectstart', (e) => {
-        if (isDragging) {
-            e.preventDefault();
-        }
-    });
+    setupDragSort(DOM.characterList, Handlers.handleCharacterDropSort);
+    setupDragSort(DOM.chatSessionList, Handlers.handleChatSessionDropSort);
+    setupDragSort(DOM.promptList, Handlers.handlePromptDropSort);
 };
-
-// 設置拖曳排序
-setupDragSort(DOM.characterList, Handlers.handleCharacterDropSort);
-setupDragSort(DOM.chatSessionList, Handlers.handleChatSessionDropSort);
-setupDragSort(DOM.promptList, Handlers.handlePromptDropSort);
-};
-

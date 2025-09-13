@@ -99,12 +99,16 @@ export const promptSettingsTab = document.getElementById('prompt-settings-tab');
 export const lorebookSettingsTab = document.getElementById('lorebook-tab');
 export const themeSettingsTab = document.getElementById('theme-settings-tab');
 export const regexTab = document.getElementById('regex-tab');
+export const aboutTab = document.getElementById('about-tab');
 export const themeSelect = document.getElementById('theme-select');
 
 // 新提示詞庫相關
 export const promptSetSelect = document.getElementById('prompt-set-select');
 export const deletePromptSetBtn = document.getElementById('delete-prompt-set-btn');
-export const importPromptSetBtn = document.getElementById('import-prompt-set-btn');
+export const importPromptSetBtn = document.getElementById('importPromptSetBtn');
+export const exportPromptSetBtn = document.getElementById('exportPromptSetBtn');
+export const addPromptSetBtn = document.getElementById('addPromptSetBtn');
+export const addPromptBtn = document.getElementById('addPromptBtn');
 export const promptListContainer = document.getElementById('prompt-list-container');
 export const promptList = document.getElementById('prompt-list');
 
@@ -178,26 +182,40 @@ export const addRegexRuleBtn = document.getElementById('add-regex-rule-btn');
 export const headerLoveChatBtn = document.getElementById('header-love-char-btn');
 
 // 世界書 (Lorebook) 相關
-export const lorebookSelect = document.getElementById('lorebook-select');
+export const lorebookList = document.getElementById('lorebook-list');
 export const addLorebookBtn = document.getElementById('add-lorebook-btn');
-export const renameLorebookBtn = document.getElementById('rename-lorebook-btn');
-export const deleteLorebookBtn = document.getElementById('delete-lorebook-btn');
 export const importLorebookBtn = document.getElementById('import-lorebook-btn');
-export const exportLorebookBtn = document.getElementById('export-lorebook-btn'); // 新增
+
+// 世界書條目編輯器 Modal (獨立視窗)
+export const lorebookEntryEditorModal = document.getElementById('lorebook-entry-editor-modal');
+export const lorebookEntryEditorTitle = document.getElementById('lorebook-entry-editor-title');
 export const lorebookEntryList = document.getElementById('lorebook-entry-list');
 export const addLorebookEntryBtn = document.getElementById('add-lorebook-entry-btn');
+export const closeLorebookEntryEditorBtn = document.getElementById('close-lorebook-entry-editor-btn');
+export const exportSingleLorebookBtn = document.getElementById('export-single-lorebook-btn'); 
+
+// 單一條目新增/編輯 Modal
 export const lorebookEditorModal = document.getElementById('lorebook-editor-modal');
 export const lorebookEditorTitle = document.getElementById('lorebook-editor-title');
 export const lorebookEntryNameInput = document.getElementById('lorebook-entry-name');
 export const lorebookEntryKeywordsInput = document.getElementById('lorebook-entry-keywords');
 export const lorebookEntryContentInput = document.getElementById('lorebook-entry-content');
+export const cancelLorebookEditorBtn = document.getElementById('cancel-lorebook-editor-btn');
+export const saveLorebookEntryBtn = document.getElementById('save-lorebook-entry-btn');
+export const deleteLorebookEntryBtn = document.getElementById('delete-lorebook-entry-btn');
+
+// 世界書進階設定 DOM 元素
+export const lorebookEntryTriggerSelect = document.getElementById('lorebook-entry-trigger');
 export const lorebookEntryLogicSelect = document.getElementById('lorebook-entry-logic');
 export const lorebookEntryPositionSelect = document.getElementById('lorebook-entry-position');
 export const lorebookEntryOrderInput = document.getElementById('lorebook-entry-order');
 export const lorebookEntryDepthInput = document.getElementById('lorebook-entry-depth');
-export const cancelLorebookEditorBtn = document.getElementById('cancel-lorebook-editor-btn');
-export const saveLorebookEntryBtn = document.getElementById('save-lorebook-entry-btn');
-export const deleteLorebookEntryBtn = document.getElementById('delete-lorebook-entry-btn');
+export const matchCharDescCheckbox = document.getElementById('match-char-desc');
+export const matchScenarioCheckbox = document.getElementById('match-scenario');
+export const matchCreatorNotesCheckbox = document.getElementById('match-creator-notes');
+export const matchPersonaDescCheckbox = document.getElementById('match-persona-desc');
+export const lorebookEntrySecondaryKeywordsInput = document.getElementById('lorebook-entry-secondary-keywords');
+
 
 // 刪除選項 Modal
 export const deleteOptionsModal = document.getElementById('delete-options-modal');
@@ -208,3 +226,9 @@ export const deleteSingleVersionDesc = document.getElementById('delete-single-ve
 export const deleteSingleVersionTitle = document.getElementById('delete-single-version-title');
 export const deleteAllVersionsDesc = document.getElementById('delete-all-versions-desc');
 
+// 進階匯入 Modal 相關
+export const advancedImportModal = document.getElementById('advanced-import-modal');
+export const advancedImportContent = document.getElementById('advanced-import-content');
+export const cancelAdvancedImportBtn = document.getElementById('cancel-advanced-import-btn');
+export const importJustCharBtn = document.getElementById('import-just-char-btn');
+export const importWithExtrasBtn = document.getElementById('import-with-extras-btn');

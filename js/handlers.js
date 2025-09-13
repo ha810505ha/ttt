@@ -27,10 +27,10 @@ import {
     displayMessage, toggleModal, setGeneratingState, showCharacterListView, loadGlobalSettingsToUI,
     renderApiPresetsDropdown, loadApiPresetToUI, updateModelDropdown,
     renderFirstMessageInputs, renderPromptSetSelector, renderPromptList, renderRegexRulesList,
-    renderLorebookSelector, renderLorebookEntryList, updateSendButtonState
+    renderLorebookList, renderLorebookEntryList, updateSendButtonState
 } from './ui.js';
 import { DEFAULT_AVATAR, PREMIUM_ACCOUNTS, MODELS } from './constants.js';
-import { handleImageUpload, exportChatAsJsonl, applyTheme, importCharacter, exportCharacter } from './utils.js';
+import { handleImageUpload, exportChatAsJsonl, applyTheme, importCharacter, exportCharacter, populateEditorFields } from './utils.js';
 import * as PromptManager from './promptManager.js';
 import * as LorebookManager from './lorebookManager.js';
 
@@ -223,12 +223,17 @@ async function sendMessage(messageText) {
     if (!state.activeCharacterId || !state.activeChatId) return;
 
     const history = state.chatHistories[state.activeCharacterId][state.activeChatId];
+    
+    // 暫存上一則訊息，稍後用來修剪
+    const lastMessage = history.length > 0 ? history[history.length - 1] : null;
+
     const timestamp = new Date().toISOString();
     history.push({ role: 'user', content: messageText, timestamp: timestamp });
     const currentUserMessageIndex = history.length - 1;
     
+    // 先儲存使用者訊息並更新 UI
     await saveAllChatHistoriesForChar(state.activeCharacterId);
-    renderChatMessages();
+    renderChatMessages(); 
     DOM.chatWindow.scrollTop = DOM.chatWindow.scrollHeight;
 
     DOM.messageInput.value = '';
@@ -242,6 +247,14 @@ async function sendMessage(messageText) {
         
         const messagesForApi = buildApiMessages();
         let aiResponse = await callApi(messagesForApi);
+        
+        // 【安全的分支鎖定機制】在成功收到 AI 回應後，才修剪分支
+        if (lastMessage && lastMessage.role === 'assistant' && Array.isArray(lastMessage.content) && lastMessage.content.length > 1) {
+            const selectedContent = lastMessage.content[lastMessage.activeContentIndex];
+            lastMessage.content = [selectedContent];
+            lastMessage.activeContentIndex = 0;
+            console.log('對話分支已成功鎖定並修剪。');
+        }
 
         history.push({ role: 'assistant', content: [aiResponse], activeContentIndex: 0, timestamp: new Date().toISOString() });
         
@@ -969,6 +982,73 @@ export function handleImportPromptSet() {
     input.click();
 }
 
+export function handleExportPromptSet() {
+    const activeSet = PromptManager.getActivePromptSet();
+    if (!activeSet || !activeSet.id || activeSet.id === 'prompt_set_default') {
+        alert('請先選擇一個要匯出的自訂提示詞庫。');
+        return;
+    }
+
+    // 1. 重建符合 SillyTavern 格式的 'prompts' 陣列
+    const exportPrompts = activeSet.prompts.map(p => ({
+        identifier: p.identifier,
+        name: p.name,
+        role: p.role,
+        content: p.content,
+        position: {
+            depth: p.position.depth
+        }
+    }));
+
+    // 2. 重建 'prompt_order' 陣列
+    const exportOrder = activeSet.prompts.map(p => ({
+        identifier: p.identifier,
+        enabled: p.enabled
+    }));
+    
+    const exportData = {
+        prompts: exportPrompts,
+        prompt_order: [
+            {
+                character_id: 100001, // SillyTavern 的標準 ID
+                order: exportOrder
+            }
+        ]
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${activeSet.name || 'prompt_set'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+export async function handleAddPromptSet() {
+    const setName = prompt('請輸入新提示詞庫的名稱：');
+    if (!setName || setName.trim() === '') {
+        alert('名稱不能為空！');
+        return;
+    }
+
+    const newPromptSet = {
+        id: `prompt_set_${Date.now()}`,
+        name: setName.trim(),
+        prompts: [], // 從一個空的提示詞列表開始
+    };
+
+    state.promptSets.push(newPromptSet);
+    await savePromptSet(newPromptSet);
+    
+    state.activePromptSetId = newPromptSet.id;
+    await saveSettings();
+
+    renderPromptSetSelector();
+    renderPromptList();
+    alert(`提示詞庫 "${newPromptSet.name}" 已建立！`);
+}
+
 export async function handleDeletePromptSet() {
     const setId = DOM.promptSetSelect.value;
     if (!setId) {
@@ -1023,6 +1103,7 @@ export function openPromptEditor(identifier) {
     }
 
     tempState.editingPromptIdentifier = identifier;
+    DOM.promptEditorTitle.textContent = '編輯提示詞';
     DOM.promptEditorNameInput.value = prompt.name;
     DOM.promptEditorRoleSelect.value = prompt.role || 'system';
     DOM.promptEditorContentInput.value = prompt.content;
@@ -1109,6 +1190,34 @@ export function handlePromptPositionChange() {
     DOM.promptDepthOrderContainer.classList.toggle('hidden', !isChatType);
 }
 
+export async function handleAddPromptItem() {
+    const activeSet = PromptManager.getActivePromptSet();
+    if (!activeSet) {
+        alert('請先選擇或建立一個提示詞庫。');
+        return;
+    }
+
+    const newPrompt = {
+        identifier: `prompt_${Date.now()}`,
+        name: '新提示詞',
+        enabled: true,
+        role: 'system',
+        content: '',
+        position: {
+            type: 'relative',
+            depth: 4
+        },
+        order: activeSet.prompts.length, // 加到列表末端
+    };
+
+    activeSet.prompts.push(newPrompt);
+    await savePromptSet(activeSet);
+    renderPromptList();
+    
+    // 為新提示詞打開編輯器
+    openPromptEditor(newPrompt.identifier);
+}
+
 
 // ===================================================================================
 // 世界書 (Lorebook) 處理函式
@@ -1124,15 +1233,12 @@ export async function handleAddNewLorebook() {
         id: `lorebook_${Date.now()}`,
         name: bookName.trim(),
         entries: [],
+        enabled: true, // 新增的預設啟用
     };
     state.lorebooks.push(newLorebook);
     await saveLorebook(newLorebook);
     
-    state.activeLorebookId = newLorebook.id;
-    await saveSettings();
-
-    renderLorebookSelector();
-    renderLorebookEntryList();
+    renderLorebookList();
 }
 
 export function handleImportLorebook() {
@@ -1151,12 +1257,8 @@ export function handleImportLorebook() {
                 state.lorebooks.push(newLorebook);
                 await saveLorebook(newLorebook);
                 
-                state.activeLorebookId = newLorebook.id;
-                await saveSettings();
-
-                renderLorebookSelector();
-                renderLorebookEntryList();
-                alert(`世界書 "${newLorebook.name}" 匯入成功！`);
+                renderLorebookList();
+                alert(`世界書 "${newLorebook.name}" 匯入成功！您可以手動啟用它。`);
             } catch (error) {
                 alert(`匯入失敗: ${error.message}`);
                 console.error("世界書匯入處理失敗:", error);
@@ -1167,35 +1269,23 @@ export function handleImportLorebook() {
     input.click();
 }
 
-export async function handleRenameLorebook() {
-    const bookId = DOM.lorebookSelect.value;
-    if (!bookId) {
-        alert('請先選擇一本要重新命名的世界書。');
-        return;
-    }
-
-    const activeBook = state.lorebooks.find(lb => lb.id === bookId);
-    if (!activeBook) {
-        alert('找不到對應的世界書資料。');
-        return;
-    }
-
-    const newName = prompt('請輸入世界書的新名稱：', activeBook.name);
-
-    if (newName && newName.trim() !== '' && newName.trim() !== activeBook.name) {
-        activeBook.name = newName.trim();
-        await saveLorebook(activeBook);
-        renderLorebookSelector();
-        alert('世界書已成功重新命名！');
+export async function handleToggleLorebookEnabled(bookId) {
+    const book = state.lorebooks.find(b => b.id === bookId);
+    if (book) {
+        book.enabled = !book.enabled;
+        await saveLorebook(book);
+        renderLorebookList();
     }
 }
 
-export async function handleDeleteLorebook() {
-    const bookId = DOM.lorebookSelect.value;
-    if (!bookId) {
-        alert('請選擇一個要刪除的世界書。');
-        return;
-    }
+export function openLorebookEntryManager(bookId) {
+    tempState.editingLorebookId = bookId;
+    renderLorebookEntryList();
+    toggleModal('lorebook-entry-editor-modal', true);
+}
+
+
+export async function handleDeleteLorebook(bookId) {
     if (state.lorebooks.length <= 1) {
         alert('無法刪除最後一個世界書。');
         return;
@@ -1205,95 +1295,124 @@ export async function handleDeleteLorebook() {
     if (confirm(`確定要刪除世界書 "${bookToDelete.name}" 嗎？`)) {
         state.lorebooks = state.lorebooks.filter(lb => lb.id !== bookId);
         await deleteLorebook(bookId);
+        renderLorebookList();
+    }
+}
 
-        if (state.activeLorebookId === bookId) {
-            state.activeLorebookId = state.lorebooks[0].id;
-            await saveSettings();
-        }
+export async function handleToggleLorebookEntryEnabled(entryId) {
+    const book = state.lorebooks.find(b => b.id === tempState.editingLorebookId);
+    if (!book) return;
 
-        renderLorebookSelector();
+    const entry = book.entries.find(e => e.id === entryId);
+    if (entry) {
+        entry.enabled = !entry.enabled;
+        await saveLorebook(book);
         renderLorebookEntryList();
     }
 }
 
-export async function handleSwitchLorebook(event) {
-    const newBookId = event.target.value;
-    state.activeLorebookId = newBookId;
-    await saveSettings();
-    renderLorebookEntryList();
-}
+export async function handleToggleLorebookEntryConstant(entryId) {
+    const book = state.lorebooks.find(b => b.id === tempState.editingLorebookId);
+    if (!book) return;
 
-export async function handleToggleLorebookEntryEnabled(entryId) {
-    const activeBook = LorebookManager.getActiveLorebook();
-    if (!activeBook) return;
-
-    const entry = activeBook.entries.find(e => e.id === entryId);
+    const entry = book.entries.find(e => e.id === entryId);
     if (entry) {
-        entry.enabled = !entry.enabled;
-        await saveLorebook(activeBook);
-        renderLorebookEntryList();
+        entry.constant = !entry.constant;
+        await saveLorebook(book);
+        renderLorebookEntryList(); // 重新渲染列表以更新圖示
     }
 }
 
 export function openLorebookEditor(entryId = null) {
     tempState.editingLorebookEntryId = entryId;
+    const book = state.lorebooks.find(b => b.id === tempState.editingLorebookId);
+    if (!book) { alert('發生錯誤，找不到正在編輯的世界書。'); return; }
+
     if (entryId) {
-        const activeBook = LorebookManager.getActiveLorebook();
-        const entry = activeBook.entries.find(e => e.id === entryId);
+        const entry = book.entries.find(e => e.id === entryId);
         if (!entry) { alert('找不到要編輯的條目。'); return; }
 
-        DOM.lorebookEditorTitle.textContent = '編輯世界書條目';
+        DOM.lorebookEditorTitle.textContent = '編輯條目';
         DOM.lorebookEntryNameInput.value = entry.name;
-        DOM.lorebookEntryKeywordsInput.value = entry.keywords.join(', ');
+        DOM.lorebookEntryKeywordsInput.value = (entry.keywords || []).join(', ');
+        DOM.lorebookEntrySecondaryKeywordsInput.value = (entry.secondaryKeywords || []).join(', ');
         DOM.lorebookEntryContentInput.value = entry.content;
-        DOM.lorebookEntryLogicSelect.value = entry.logic;
-        DOM.lorebookEntryPositionSelect.value = entry.position;
-        DOM.lorebookEntryOrderInput.value = entry.order;
-        DOM.lorebookEntryDepthInput.value = entry.scanDepth;
+        
+        // 進階設定
+        DOM.lorebookEntryTriggerSelect.value = entry.constant ? 'constant' : 'keyword';
+        DOM.lorebookEntryLogicSelect.value = entry.logic || 0;
+        DOM.lorebookEntryPositionSelect.value = entry.position || 'before_char';
+        DOM.lorebookEntryOrderInput.value = entry.order ?? 100;
+        DOM.lorebookEntryDepthInput.value = entry.scanDepth ?? 4;
+
+        DOM.matchCharDescCheckbox.checked = entry.matchSources?.includes('char_desc') || false;
+        DOM.matchScenarioCheckbox.checked = entry.matchSources?.includes('scenario') || false;
+        DOM.matchCreatorNotesCheckbox.checked = entry.matchSources?.includes('creator_notes') || false;
+        DOM.matchPersonaDescCheckbox.checked = entry.matchSources?.includes('persona_desc') || false;
+
     } else {
-        DOM.lorebookEditorTitle.textContent = '新增世界書條目';
+        DOM.lorebookEditorTitle.textContent = '新增條目';
         DOM.lorebookEntryNameInput.value = '';
         DOM.lorebookEntryKeywordsInput.value = '';
+        DOM.lorebookEntrySecondaryKeywordsInput.value = '';
         DOM.lorebookEntryContentInput.value = '';
+        
+        // 重設進階設定為預設值
+        DOM.lorebookEntryTriggerSelect.value = 'keyword';
         DOM.lorebookEntryLogicSelect.value = 0;
-        DOM.lorebookEntryPositionSelect.value = 0;
+        DOM.lorebookEntryPositionSelect.value = 'before_char';
         DOM.lorebookEntryOrderInput.value = 100;
         DOM.lorebookEntryDepthInput.value = 4;
+        
+        DOM.matchCharDescCheckbox.checked = false;
+        DOM.matchScenarioCheckbox.checked = false;
+        DOM.matchCreatorNotesCheckbox.checked = false;
+        DOM.matchPersonaDescCheckbox.checked = false;
     }
     toggleModal('lorebook-editor-modal', true);
 }
 
+
 export async function handleSaveLorebookEntry() {
     const entryId = tempState.editingLorebookEntryId;
-    const activeBook = LorebookManager.getActiveLorebook();
-    if (!activeBook) return;
+    const book = state.lorebooks.find(b => b.id === tempState.editingLorebookId);
+    if (!book) return;
+
+    const matchSources = [];
+    if (DOM.matchCharDescCheckbox.checked) matchSources.push('char_desc');
+    if (DOM.matchScenarioCheckbox.checked) matchSources.push('scenario');
+    if (DOM.matchCreatorNotesCheckbox.checked) matchSources.push('creator_notes');
+    if (DOM.matchPersonaDescCheckbox.checked) matchSources.push('persona_desc');
 
     const entryData = {
         name: DOM.lorebookEntryNameInput.value.trim() || '未命名條目',
         keywords: DOM.lorebookEntryKeywordsInput.value.split(',').map(k => k.trim()).filter(k => k),
+        secondaryKeywords: DOM.lorebookEntrySecondaryKeywordsInput.value.split(',').map(k => k.trim()).filter(k => k),
         content: DOM.lorebookEntryContentInput.value,
+        constant: DOM.lorebookEntryTriggerSelect.value === 'constant',
         logic: parseInt(DOM.lorebookEntryLogicSelect.value, 10),
-        position: parseInt(DOM.lorebookEntryPositionSelect.value, 10),
+        position: DOM.lorebookEntryPositionSelect.value,
         order: parseInt(DOM.lorebookEntryOrderInput.value, 10) || 100,
         scanDepth: parseInt(DOM.lorebookEntryDepthInput.value, 10) || 4,
+        matchSources: matchSources,
     };
 
-    if (entryId) { // 編輯現有
-        const entryIndex = activeBook.entries.findIndex(e => e.id === entryId);
+    if (entryId) {
+        const entryIndex = book.entries.findIndex(e => e.id === entryId);
         if (entryIndex > -1) {
-            const existingEntry = activeBook.entries[entryIndex];
-            activeBook.entries[entryIndex] = { ...existingEntry, ...entryData };
+            const existingEntry = book.entries[entryIndex];
+            book.entries[entryIndex] = { ...existingEntry, ...entryData };
         }
-    } else { // 新增
+    } else {
         const newEntry = {
             id: `entry_${Date.now()}`,
             enabled: true,
             ...entryData
         };
-        activeBook.entries.push(newEntry);
+        book.entries.push(newEntry);
     }
 
-    await saveLorebook(activeBook);
+    await saveLorebook(book);
     renderLorebookEntryList();
     toggleModal('lorebook-editor-modal', false);
     tempState.editingLorebookEntryId = null;
@@ -1303,16 +1422,66 @@ export async function handleDeleteLorebookEntry() {
     const entryId = tempState.editingLorebookEntryId;
     if (!entryId) return;
 
-    const activeBook = LorebookManager.getActiveLorebook();
-    const entryToDelete = activeBook.entries.find(e => e.id === entryId);
+    const book = state.lorebooks.find(b => b.id === tempState.editingLorebookId);
+    if (!book) return;
+
+    const entryToDelete = book.entries.find(e => e.id === entryId);
 
     if (confirm(`確定要刪除條目「${entryToDelete.name}」嗎？`)) {
-        activeBook.entries = activeBook.entries.filter(e => e.id !== entryId);
-        await saveLorebook(activeBook);
+        book.entries = book.entries.filter(e => e.id !== entryId);
+        await saveLorebook(book);
         renderLorebookEntryList();
         toggleModal('lorebook-editor-modal', false);
         tempState.editingLorebookEntryId = null;
     }
+}
+
+export function handleExportSingleLorebook() {
+    const bookId = tempState.editingLorebookId;
+    if (!bookId) {
+        alert('錯誤：找不到要匯出的世界書 ID。');
+        return;
+    }
+    const bookToExport = state.lorebooks.find(lb => lb.id === bookId);
+    if (!bookToExport) {
+        alert('錯誤：在資料中找不到對應的世界書。');
+        return;
+    }
+
+    const exportData = {
+        entries: {}
+    };
+
+    bookToExport.entries.forEach((entry, index) => {
+        const uid = `${entry.name.replace(/\s/g, '_')}_${index}`;
+        exportData.entries[uid] = {
+            uid: uid,
+            comment: entry.name,
+            key: entry.keywords,
+            keysecondary: entry.secondaryKeywords || [],
+            content: entry.content,
+            disable: !entry.enabled,
+            constant: !!entry.constant,
+            selectiveLogic: entry.logic,
+            addMemo: false, // Default value, can be customized if needed
+            order: entry.order,
+            position: entry.position, // Assuming we store ST-compatible values
+            depth: entry.scanDepth,
+            // Storing new match sources if they exist
+            matchPersonaDescription: entry.matchSources?.includes('persona_desc') || false,
+            matchCharacterDescription: entry.matchSources?.includes('char_desc') || false,
+            matchScenario: entry.matchSources?.includes('scenario') || false,
+            matchCreatorNotes: entry.matchSources?.includes('creator_notes') || false,
+        };
+    });
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${bookToExport.name || 'lorebook'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 
@@ -1776,3 +1945,102 @@ export async function handleDeleteRegexRule(ruleId) {
     }
 }
 
+/**
+ * @description [NEW] 處理進階匯入的邏輯
+ */
+export async function handleAdvancedImport(importBoth) {
+    // 從 tempState 讀取暫存的資料
+    const { importedData, importedLorebook, importedRegex, importedImageBase64 } = tempState;
+
+    if (!importedData) {
+        alert("匯入錯誤：找不到角色卡資料。");
+        return;
+    }
+    
+    toggleModal('advanced-import-modal', false);
+
+    if (importBoth) {
+        // 匯入世界書
+        if (importedLorebook) {
+            const data = importedData.data || importedData;
+            const bookName = importedLorebook.name || `${data.name} 的世界書`;
+            const existingBook = state.lorebooks.find(book => book.name === bookName);
+
+            let bookToActivateId;
+
+            if (existingBook) {
+                // 如果已存在同名世界書
+                if (confirm(`偵測到已存在名為「${bookName}」的世界書。\n\n您是否要直接啟用它？\n(按「取消」將不會變更目前啟用的世界書)`)) {
+                    bookToActivateId = existingBook.id;
+                }
+            } else {
+                // 如果不存在，則建立新的世界書
+                const entriesSource = Array.isArray(importedLorebook.entries) ? importedLorebook.entries : Object.values(importedLorebook.entries);
+                const newEntries = entriesSource.map((entry, index) => ({
+                    id: `entry_${entry.id || Date.now() + index}`,
+                    name: entry.comment || entry.name || '未命名條目',
+                    keywords: entry.key || entry.keywords || [],
+                    secondaryKeywords: entry.keysecondary || [],
+                    content: entry.content || '',
+                    enabled: !entry.disable,
+                    order: entry.order || 100,
+                    position: entry.position || 'before_char',
+                    scanDepth: entry.depth || 4,
+                    logic: entry.selectiveLogic || 0,
+                    constant: !!entry.constant, 
+                    matchSources: [], // Start with empty and populate below
+                }));
+
+                const newLorebook = {
+                    id: `lorebook_${Date.now()}`,
+                    name: bookName,
+                    entries: newEntries,
+                    enabled: false, // 預設不啟用，讓使用者決定
+                };
+
+                state.lorebooks.push(newLorebook);
+                await saveLorebook(newLorebook);
+                renderLorebookList(); // 匯入後立刻刷新列表
+                
+                if (confirm(`已成功匯入新的世界書「${bookName}」。\n\n您是否要立刻將其設為啟用狀態？`)) {
+                    bookToActivateId = newLorebook.id;
+                }
+            }
+
+            if (bookToActivateId) {
+                const book = state.lorebooks.find(b => b.id === bookToActivateId);
+                if(book) {
+                    book.enabled = true;
+                    await saveLorebook(book);
+                    renderLorebookList(); // 啟用後再次刷新列表
+                }
+            }
+        }
+
+        // 匯入正規表達式
+        if (importedRegex) {
+            const data = importedData.data || importedData;
+            const newRule = {
+                id: `regex_${Date.now()}`,
+                name: `來自 ${data.name} 的規則`,
+                find: importedRegex,
+                replace: '',
+                enabled: true
+            };
+            if (!state.globalSettings.regexRules) {
+                state.globalSettings.regexRules = [];
+            }
+            state.globalSettings.regexRules.push(newRule);
+            await saveSettings();
+            alert(`已成功將一條來自「${data.name}」的正規表達式規則新增至您的設定中。`);
+        }
+    }
+    
+    populateEditorFields(importedData, importedImageBase64);
+
+    // 清空暫存資料
+    tempState.importedData = null;
+    tempState.importedLorebook = null;
+    tempState.importedRegex = null;
+    tempState.importedImageBase64 = null;
+}

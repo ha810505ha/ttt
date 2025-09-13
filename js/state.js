@@ -19,8 +19,7 @@ export let state = {
     promptSets: [],
     activePromptSetId: null,
 
-    lorebooks: [], // 新增
-    activeLorebookId: null, // 新增
+    lorebooks: [],
 
     activeUserPersonaId: null,
     activeCharacterId: null,
@@ -37,8 +36,14 @@ export let tempState = {
     isScreenshotMode: false,
     selectedMessageIndices: [],
     editingPromptIdentifier: null, 
-    editingLorebookEntryId: null, // 新增
-    deletingMessageInfo: null, // 新增：用於暫存要刪除的訊息資訊
+    editingLorebookId: null, // 用於條目編輯視窗
+    editingLorebookEntryId: null,
+    deletingMessageInfo: null,
+    // [新增] 用於暫存角色卡匯入時的額外資料
+    importedData: null,
+    importedLorebook: null,
+    importedRegex: null,
+    importedImageBase64: null,
 };
 
 /**
@@ -53,7 +58,6 @@ export async function loadStateFromDB() {
         state.activeChatId = settingsData.activeChatId || null;
         state.apiPresets = settingsData.apiPresets || [];
         state.activePromptSetId = settingsData.activePromptSetId || null;
-        state.activeLorebookId = settingsData.activeLorebookId || null; // 新增
     }
 
     // 初始化記憶生成提示
@@ -86,7 +90,7 @@ export async function loadStateFromDB() {
     state.characters = await db.getAll('characters');
     state.userPersonas = await db.getAll('userPersonas');
     state.promptSets = await db.getAll('promptSets');
-    state.lorebooks = await db.getAll('lorebooks'); // 新增
+    state.lorebooks = await db.getAll('lorebooks'); 
 
     if (state.characters.length === 0) {
         try {
@@ -154,20 +158,38 @@ export async function loadStateFromDB() {
         await db.put('promptSets', DEFAULT_PROMPT_SET);
         state.promptSets.push(DEFAULT_PROMPT_SET);
     }
-
-    if (state.lorebooks.length === 0) { // 新增
+    
+    // [修改] 為舊的世界書資料加上 enabled 屬性
+    if (state.lorebooks.length === 0) {
         const defaultBookCopy = JSON.parse(JSON.stringify(DEFAULT_LOREBOOK));
+        defaultBookCopy.enabled = true; // 預設啟用
         await db.put('lorebooks', defaultBookCopy);
         state.lorebooks.push(defaultBookCopy);
+    } else {
+        let lorebookMigrationNeeded = false;
+        const updatePromises = state.lorebooks.map(book => {
+            if (book.enabled === undefined) {
+                // 如果是從舊的 activeLorebookId 系統遷移，則只啟用那一個
+                book.enabled = (settingsData && settingsData.activeLorebookId) ? book.id === settingsData.activeLorebookId : false;
+                lorebookMigrationNeeded = true;
+                return db.put('lorebooks', book);
+            }
+            return Promise.resolve();
+        });
+        await Promise.all(updatePromises);
+        if (lorebookMigrationNeeded) {
+            console.log("資料遷移完成: 世界書已更新為多重啟用模式。");
+        }
     }
     
     if (!state.activePromptSetId || !state.promptSets.find(ps => ps.id === state.activePromptSetId)) {
         state.activePromptSetId = state.promptSets[0]?.id || null;
     }
 
-    if (!state.activeLorebookId || !state.lorebooks.find(lb => lb.id === state.activeLorebookId)) { // 新增
-        state.activeLorebookId = state.lorebooks[0]?.id || null;
-    }
+    // [移除] 不再需要單一啟用ID
+    // if (!state.activeLorebookId || !state.lorebooks.find(lb => lb.id === state.activeLorebookId)) {
+    //     state.activeLorebookId = state.lorebooks[0]?.id || null;
+    // }
 
     await saveSettings();
 
@@ -216,7 +238,6 @@ export function saveSettings() {
         activeChatId: state.activeChatId,
         apiPresets: state.apiPresets,
         activePromptSetId: state.activePromptSetId, 
-        activeLorebookId: state.activeLorebookId, // 新增
     };
     return db.put('keyValueStore', settingsData);
 }

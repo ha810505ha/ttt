@@ -46,15 +46,19 @@ export function buildApiMessagesFromHistory(customHistory) {
 
     // 1. 計算提示詞庫和世界書的 Token 預算
     const promptSet = PromptManager.getActivePromptSet();
-    const lorebook = LorebookManager.getActiveLorebook();
+    const activeLorebooks = LorebookManager.getActiveLorebooks(); // [修改]
     
     const promptTokenCount = (promptSet.prompts || [])
         .filter(p => p.enabled)
         .reduce((sum, p) => sum + estimateTokens(PromptManager.replacePlaceholders(p.content)), 0);
     
-    const lorebookTokenCount = (lorebook.entries || [])
-        .filter(e => e.enabled)
-        .reduce((sum, e) => sum + estimateTokens(e.content), 0);
+    // [修改] 計算所有啟用世界書的 Token
+    const lorebookTokenCount = activeLorebooks.reduce((total, book) => {
+        return total + (book.entries || [])
+            .filter(e => e.enabled)
+            .reduce((sum, e) => sum + estimateTokens(e.content), 0);
+    }, 0);
+
 
     const fixedTokenBudget = promptTokenCount + lorebookTokenCount;
 
@@ -387,3 +391,4 @@ export async function testApiConnection(provider, apiKey, model) {
 
     return true;
 }
+

@@ -4,7 +4,7 @@
 import * as DOM from './dom.js';
 import { tempState, state } from './state.js';
 import { DEFAULT_AVATAR } from './constants.js';
-import { renderFirstMessageInputs } from './ui.js';
+import { renderFirstMessageInputs, showAdvancedImportModal } from './ui.js';
 
 /**
  * @description HTML 轉義函數，防範 XSS 攻擊
@@ -29,24 +29,40 @@ export function escapeHtml(unsafe) {
 export function safeRenderMarkdown(content) {
     if (typeof content !== 'string') return '';
     
-    // 使用 marked 解析 Markdown
-    const html = marked.parse(content);
-    
-    // 使用 DOMPurify 清理 HTML，只允許安全的標籤和屬性
+    let html;
+    // [最終修復] 採用混合模式解決 HTML 與換行問題：
+    // 1. 判斷內容是否以 HTML 標籤開頭。
+    if (content.trim().startsWith('<')) {
+        // 2. 如果是，我們假定它是 HTML，手動將換行符 `\n` 轉換為 `<br>`。
+        //    這樣可以避免 marked.js 破壞原有的 HTML 結構。
+        html = content.replace(/\n/g, '<br>');
+    } else {
+        // 3. 如果不是，我們將其視為標準 Markdown，讓 marked.js 處理所有格式，
+        //    包括 `breaks: true` 選項來自動處理換行。
+        html = marked.parse(content, { gfm: true, breaks: true });
+    }
+
+    // 4. 無論通過哪條路徑，最終都使用 DOMPurify 進行安全過濾。
     return DOMPurify.sanitize(html, {
         ALLOWED_TAGS: [
-            'p', 'br', 'strong', 'b', 'em', 'i', 'code', 'pre', 
+            'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'code', 'pre', 'hr',
             'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3', 
             'h4', 'h5', 'h6', 'span', 'div', 'table', 'thead', 
-            'tbody', 'tr', 'th', 'td'
+            'tbody', 'tr', 'th', 'td', 'font'
         ],
-        ALLOWED_ATTR: ['class'],
+        ALLOWED_ATTR: ['class', 'style', 'color', 'size'],
+        ALLOWED_CSS_PROPERTIES: [
+            'color', 'background-color', 'border', 'border-radius', 
+            'padding', 'margin', 'font-weight', 'font-style', 'text-decoration',
+            'text-align', 'display', 'width', 'height'
+        ],
         KEEP_CONTENT: true,
         RETURN_DOM: false,
         RETURN_DOM_FRAGMENT: false,
         RETURN_DOM_IMPORT: false
     });
 }
+
 
 /**
  * @description 安全地設置元素的 HTML 內容
@@ -213,9 +229,8 @@ export function importCharacter() {
         const file = event.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        
         if (file.type === 'application/json' || file.name.endsWith('.json')) {
+            const reader = new FileReader();
             reader.onload = (e) => { 
                 try { 
                     const jsonData = JSON.parse(e.target.result);
@@ -228,87 +243,108 @@ export function importCharacter() {
             reader.readAsText(file, 'UTF-8'); 
         
         } else if (file.type === 'image/png') {
-            let fileAsDataURL = '';
-            const readerForDataURL = new FileReader();
-            readerForDataURL.onload = (e) => {
-                fileAsDataURL = e.target.result;
-            };
-            readerForDataURL.readAsDataURL(file);
+            // [修復] 為了避免競爭條件 (race condition)，我們首先將檔案讀取為 Data URL。
+            // 這樣可以確保在解析 PNG 區塊之前，圖片的 Base64 字串已經準備好。
+            const dataUrlReader = new FileReader();
+            
+            dataUrlReader.onload = (e_url) => {
+                const fileAsDataURL = e_url.target.result;
 
-            reader.onload = (e) => {
-                try {
-                    const arrayBuffer = e.target.result;
-                    const dataView = new DataView(arrayBuffer);
-                    
-                    if (dataView.getUint32(0) !== 0x89504E47 || dataView.getUint32(4) !== 0x0D0A1A0A) {
-                        throw new Error('不是有效的 PNG 檔案。');
-                    }
-                    
-                    let offset = 8;
-                    let characterDataFound = false;
-                    
-                    while (offset < arrayBuffer.byteLength) {
-                        const length = dataView.getUint32(offset);
-                        const type = new TextDecoder("ascii").decode(new Uint8Array(arrayBuffer, offset + 4, 4));
-                        const chunkData = new Uint8Array(arrayBuffer, offset + 8, length);
+                // 在 Data URL 讀取成功後，再將同一個檔案讀取為 ArrayBuffer 來進行解析。
+                const arrayBufferReader = new FileReader();
+                arrayBufferReader.onload = (e_buffer) => {
+                    try {
+                        const arrayBuffer = e_buffer.target.result;
+                        const dataView = new DataView(arrayBuffer);
                         
-                        if (type === 'tEXt' || type === 'iTXt') {
-                            const nullSeparatorIndex = chunkData.indexOf(0);
-                            if (nullSeparatorIndex === -1) {
-                                offset += 12 + length;
-                                continue;
-                            }
-                            const keyword = new TextDecoder("ascii").decode(chunkData.slice(0, nullSeparatorIndex));
-
-                            if (keyword === 'chara') {
-                                let textPayloadOffset = nullSeparatorIndex + 1;
-                                
-                                if (type === 'iTXt') {
-                                    if (chunkData[textPayloadOffset] === 0 || chunkData[textPayloadOffset] === 1) { 
-                                         textPayloadOffset++; 
-                                         textPayloadOffset++; 
-                                         while(chunkData[textPayloadOffset] !== 0 && textPayloadOffset < chunkData.length) textPayloadOffset++; 
-                                         textPayloadOffset++;
-                                         while(chunkData[textPayloadOffset] !== 0 && textPayloadOffset < chunkData.length) textPayloadOffset++; 
-                                         textPayloadOffset++;
-                                    }
-                                }
-
-                                const base64Data = new TextDecoder("ascii").decode(chunkData.slice(textPayloadOffset));
-                                
-                                const decodedJsonString = new TextDecoder().decode(
-                                    Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
-                                );
-                                
-                                const jsonData = JSON.parse(decodedJsonString);
-                                populateEditorWithCharData(jsonData, fileAsDataURL);
-                                characterDataFound = true;
-                                break;
-                            }
-                        } else if (type === 'zTXt') {
-                            const nullSeparatorIndex = chunkData.indexOf(0);
-                            if (nullSeparatorIndex !== -1) {
-                                const keyword = new TextDecoder("ascii").decode(chunkData.slice(0, nullSeparatorIndex));
-                                if (keyword === 'chara') {
-                                      alert('偵測到壓縮格式(zTXt)的角色卡，目前版本尚不支援解壓縮。');
-                                      characterDataFound = true; 
-                                      break;
-                                }
-                            }
+                        if (dataView.getUint32(0) !== 0x89504E47 || dataView.getUint32(4) !== 0x0D0A1A0A) {
+                            throw new Error('不是有效的 PNG 檔案。');
                         }
                         
-                        offset += 12 + length;
-                    }
+                        let offset = 8;
+                        let characterDataFound = false;
+                        
+                        while (offset < arrayBuffer.byteLength) {
+                            const length = dataView.getUint32(offset);
+                            const type = new TextDecoder("ascii").decode(new Uint8Array(arrayBuffer, offset + 4, 4));
+                            
+                            // 檢查 chunk 是否有效
+                            if (length > arrayBuffer.byteLength - (offset + 8)) {
+                                console.warn('偵測到無效的 PNG chunk 長度，停止解析。');
+                                break;
+                            }
+                            const chunkData = new Uint8Array(arrayBuffer, offset + 8, length);
+                            
+                            if (type === 'tEXt' || type === 'iTXt') {
+                                const nullSeparatorIndex = chunkData.indexOf(0);
+                                if (nullSeparatorIndex === -1) {
+                                    offset += 12 + length;
+                                    continue;
+                                }
+                                const keyword = new TextDecoder("ascii").decode(chunkData.slice(0, nullSeparatorIndex));
 
-                    if (!characterDataFound) { 
-                        alert('在這張 PNG 圖片中找不到可識別的角色卡資料。'); 
+                                if (keyword === 'chara') {
+                                    let textPayloadOffset = nullSeparatorIndex + 1;
+                                    
+                                    if (type === 'iTXt') {
+                                        if (chunkData[textPayloadOffset] === 0 || chunkData[textPayloadOffset] === 1) { 
+                                             textPayloadOffset++; 
+                                             textPayloadOffset++; 
+                                             while(chunkData[textPayloadOffset] !== 0 && textPayloadOffset < chunkData.length) textPayloadOffset++; 
+                                             textPayloadOffset++;
+                                             while(chunkData[textPayloadOffset] !== 0 && textPayloadOffset < chunkData.length) textPayloadOffset++; 
+                                             textPayloadOffset++;
+                                        }
+                                    }
+
+                                    const base64Data = new TextDecoder("ascii").decode(chunkData.slice(textPayloadOffset));
+                                    
+                                    const decodedJsonString = new TextDecoder().decode(
+                                        Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
+                                    );
+                                    
+                                    const jsonData = JSON.parse(decodedJsonString);
+                                    // 此時 fileAsDataURL 必定有值
+                                    populateEditorWithCharData(jsonData, fileAsDataURL);
+                                    characterDataFound = true;
+                                    break;
+                                }
+                            } else if (type === 'zTXt') {
+                                const nullSeparatorIndex = chunkData.indexOf(0);
+                                if (nullSeparatorIndex !== -1) {
+                                    const keyword = new TextDecoder("ascii").decode(chunkData.slice(0, nullSeparatorIndex));
+                                    if (keyword === 'chara') {
+                                          alert('偵測到壓縮格式(zTXt)的角色卡，目前版本尚不支援解壓縮。');
+                                          characterDataFound = true; 
+                                          break;
+                                    }
+                                }
+                            }
+                            
+                            offset += 12 + length;
+                        }
+
+                        if (!characterDataFound) { 
+                            alert('在這張 PNG 圖片中找不到可識別的角色卡資料。'); 
+                        }
+                    } catch (error) { 
+                        alert('匯入 PNG 失敗，檔案可能已損壞、格式不符或不包含角色資料。'); 
+                        console.error('PNG Import error:', error); 
                     }
-                } catch (error) { 
-                    alert('匯入 PNG 失敗，檔案可能已損壞、格式不符或不包含角色資料。'); 
-                    console.error('PNG Import error:', error); 
-                }
+                };
+                
+                arrayBufferReader.onerror = () => {
+                    alert('讀取 PNG 檔案內容失敗。');
+                };
+                arrayBufferReader.readAsArrayBuffer(file);
             };
-            reader.readAsArrayBuffer(file);
+            
+            dataUrlReader.onerror = () => {
+                alert('讀取 PNG 檔案失敗。');
+            };
+
+            dataUrlReader.readAsDataURL(file);
+
         } else { 
             alert('不支援的檔案格式。請選擇 .json 或 .png 檔案。'); 
         }
@@ -322,12 +358,71 @@ export function importCharacter() {
  * @param {string|null} imageBase64 - 如果是從 PNG 匯入，則傳入圖片的 Base64 字串。
  */
 function populateEditorWithCharData(importedData, imageBase64 = null) {
+    if (!importedData) {
+        alert("匯入失敗：檔案內容為空或無法讀取。");
+        return;
+    }
+    
     const data = importedData.data || importedData;
     
-    // 修正 #4：移除 escapeHtml，直接賦值
+    // --- V1/V2/V3 相容性處理 ---
+    let description = data.description || data.personality || '';
+    let lorebookSource = data.lorebook || data.character_book; // 檢查 V2 的 lorebook 和 V3 的 character_book
+    let regexDataSource = data.post_history_instructions;
+
+    // 如果找不到 V2/V3 的 lorebook 欄位，就嘗試從 V1 的 description 中解析
+    if (!lorebookSource) {
+        const lorebookRegex = /\[Lorebook\]\s*(\{.*\})/is;
+        const lorebookMatch = description.match(lorebookRegex);
+        if (lorebookMatch && lorebookMatch[1]) {
+            try {
+                const lorebookJsonString = lorebookMatch[1];
+                const parsedLorebook = JSON.parse(lorebookJsonString);
+                // V1 格式的 entries 是一個物件，需要轉換
+                lorebookSource = { entries: Object.values(parsedLorebook) };
+                description = description.replace(lorebookRegex, '').trim();
+            } catch (e) {
+                console.error("從描述中解析世界書 JSON 失敗:", e);
+            }
+        }
+    }
+    // --- 相容性處理結束 ---
+
+    const hasValidLorebook = lorebookSource && 
+                             ((Array.isArray(lorebookSource.entries) && lorebookSource.entries.length > 0) ||
+                              (typeof lorebookSource.entries === 'object' && lorebookSource.entries !== null && Object.keys(lorebookSource.entries).length > 0));
+
+    const hasValidRegex = regexDataSource && typeof regexDataSource === 'string' && regexDataSource.trim() !== '';
+    
+    // 建立一份新的資料物件，其中包含清理過的 description
+    const cleanedImportedData = {
+        ...importedData,
+        data: {
+            ...data,
+            description: description 
+        }
+    };
+
+    if (hasValidLorebook || hasValidRegex) {
+        showAdvancedImportModal(cleanedImportedData, hasValidLorebook ? lorebookSource : null, hasValidRegex ? regexDataSource : null, imageBase64);
+    } else {
+        populateEditorFields(cleanedImportedData, imageBase64);
+    }
+}
+
+
+/**
+ * @description [NEW] 實際將角色卡資料填入編輯器欄位的函式
+ * @param {object} importedData - 解析後的 JSON 物件。
+ * @param {string|null} imageBase64 - 如果是從 PNG 匯入，則傳入圖片的 Base64 字串。
+ */
+export function populateEditorFields(importedData, imageBase64 = null) {
+    const data = importedData.data || importedData;
+    
     DOM.charNameInput.value = data.name || '';
+    // [修正] 確保使用清理過的 description
     DOM.charDescriptionInput.value = data.description || data.personality || '';
-    DOM.charScenarioInput.value = data.scenario || ''; // 新增：填入場景資料
+    DOM.charScenarioInput.value = data.scenario || '';
 
     DOM.charCreatorInput.value = data.creator || '';
     DOM.charVersionInput.value = data.character_version || data.characterVersion || '';
@@ -363,8 +458,9 @@ function populateEditorWithCharData(importedData, imageBase64 = null) {
     DOM.charExampleDialogueInput.value = data.mes_example || data.exampleDialogue || '';
     DOM.charAvatarPreview.src = imageBase64 || data.character_avatar || DEFAULT_AVATAR;
     
-    alert('角色卡匯入成功！請記得儲存。');
+    alert('角色卡資料已填入編輯器！請記得儲存。');
 }
+
 
 /**
  * @description [核心修改] 使用分塊處理的方式，非同步匯出對話為 JSONL 格式，避免 UI 凍結。
@@ -426,3 +522,4 @@ export function exportChatAsJsonl() {
         processChunk();
     });
 }
+

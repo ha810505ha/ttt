@@ -5,7 +5,7 @@ import * as DOM from './dom.js';
 import { state, tempState } from './state.js';
 import { DEFAULT_AVATAR, MODELS } from './constants.js';
 import { getActivePromptSet } from './promptManager.js';
-import { getActiveLorebook } from './lorebookManager.js';
+import { getActiveLorebooks } from './lorebookManager.js';
 import { escapeHtml, safeRenderMarkdown, createSafeTemplate } from './utils.js';
 
 /**
@@ -355,8 +355,7 @@ export function loadGlobalSettingsToUI() {
     renderApiPresetsDropdown();
     renderPromptSetSelector();
     renderPromptList();
-    renderLorebookSelector();
-    renderLorebookEntryList();
+    renderLorebookList(); // [修改]
     renderRegexRulesList();
 
    
@@ -631,48 +630,71 @@ export function renderPromptList() {
 }
 
 /**
- * @description 渲染世界書下拉選單
+ * @description [NEW] 渲染全新的世界書管理列表
  */
-export function renderLorebookSelector() {
-    DOM.lorebookSelect.innerHTML = '';
-    state.lorebooks.forEach(book => {
-        const option = document.createElement('option');
-        option.value = book.id;
-        option.textContent = book.name;
-        DOM.lorebookSelect.appendChild(option);
-    });
-    if (state.activeLorebookId) {
-        DOM.lorebookSelect.value = state.activeLorebookId;
-    } else if (state.lorebooks.length > 0) {
-        DOM.lorebookSelect.value = state.lorebooks[0].id;
+export function renderLorebookList() {
+    DOM.lorebookList.innerHTML = '';
+    if (state.lorebooks.length === 0) {
+        DOM.lorebookList.innerHTML = '<li class="list-placeholder">尚無世界書</li>';
+        return;
     }
+
+    state.lorebooks.forEach(book => {
+        const item = document.createElement('li');
+        item.className = 'lorebook-item';
+        item.dataset.id = book.id;
+        
+        item.innerHTML = createSafeTemplate(`
+            <span class="lorebook-item-name" title="{{name}}">{{name}}</span>
+            <div class="lorebook-item-actions">
+                <button class="icon-btn-sm edit-lorebook-btn" title="編輯條目"><i class="fa-solid fa-pencil"></i></button>
+                <button class="icon-btn-sm danger delete-lorebook-btn" title="刪除世界書"><i class="fa-solid fa-trash"></i></button>
+                <div class="prompt-item-toggle {{enabledClass}}" title="啟用/停用此世界書"></div>
+            </div>
+        `, {
+            name: book.name,
+            enabledClass: book.enabled ? 'enabled' : ''
+        });
+        
+        DOM.lorebookList.appendChild(item);
+    });
 }
 
+
 /**
- * @description 渲染世界書條目列表
+ * @description [核心修改] 渲染世界書條目編輯器 Modal 的內容，並加入狀態指示燈
  */
 export function renderLorebookEntryList() {
-    const activeBook = getActiveLorebook();
+    const book = state.lorebooks.find(b => b.id === tempState.editingLorebookId);
+    if (!book) {
+        DOM.lorebookEntryList.innerHTML = '<li class="list-placeholder">找不到世界書資料。</li>';
+        return;
+    }
+
+    DOM.lorebookEntryEditorTitle.textContent = `編輯條目: ${book.name}`;
     DOM.lorebookEntryList.innerHTML = '';
 
-    if (!activeBook || !activeBook.entries || activeBook.entries.length === 0) {
+    if (!book.entries || book.entries.length === 0) {
         DOM.lorebookEntryList.innerHTML = '<li class="list-placeholder">此世界書沒有條目。</li>';
         return;
     }
 
-    activeBook.entries.forEach(entry => {
+    book.entries.forEach(entry => {
         const item = document.createElement('li');
         item.className = 'prompt-item'; // 重用 prompt-item 樣式
         item.dataset.id = entry.id;
         
-        // 使用安全的模板創建
+        const triggerMode = entry.constant ? 'constant' : 'keyword';
+        
         item.innerHTML = createSafeTemplate(`
+            <div class="lorebook-status-indicator {{triggerMode}}" title="切換觸發模式 (藍燈/綠燈)"></div>
             <span class="prompt-item-name" title="{{name}}">{{name}}</span>
             <div class="prompt-item-actions">
                 <button class="icon-btn-sm edit-lorebook-entry-btn" title="編輯條目"><i class="fa-solid fa-pencil"></i></button>
                 <div class="prompt-item-toggle {{enabledClass}}"></div>
             </div>
         `, {
+            triggerMode: triggerMode,
             name: entry.name,
             enabledClass: entry.enabled ? 'enabled' : ''
         });
@@ -680,6 +702,7 @@ export function renderLorebookEntryList() {
         DOM.lorebookEntryList.appendChild(item);
     });
 }
+
 
 /**
  * @description 渲染正規表達式規則列表 (摺疊式)
@@ -735,5 +758,44 @@ export function renderRegexRulesList() {
         item.appendChild(detailsDiv);
         DOM.regexRulesList.appendChild(item);
     });
+}
+
+/**
+ * @description [NEW] 顯示進階匯入選項的 Modal
+ * @param {object} importedData - 完整的角色卡資料
+ * @param {object|null} lorebookData - 偵測到的世界書資料
+ * @param {string|null} regexData - 偵測到的正規表達式資料
+ * @param {string|null} imageBase64 - 圖片的 Base64 字串
+ */
+export function showAdvancedImportModal(importedData, lorebookData, regexData, imageBase64) {
+    // 將資料暫存到 tempState，以便按鈕的事件處理函式可以存取
+    tempState.importedData = importedData;
+    tempState.importedLorebook = lorebookData;
+    tempState.importedRegex = regexData;
+    tempState.importedImageBase64 = imageBase64;
+
+    let contentHTML = '<p>這張角色卡除了基本設定外，還包含了以下項目。請選擇您希望如何匯入：</p>';
+    
+    if (lorebookData) {
+        const bookName = escapeHtml(lorebookData.name || `${(importedData.data || importedData).name} 的世界書`);
+        contentHTML += `
+            <div class="import-option">
+                <h4><i class="fa-solid fa-book"></i> 世界書 (Lorebook)</h4>
+                <p>偵測到一個名為「${bookName}」的世界書。</p>
+            </div>
+        `;
+    }
+    
+    if (regexData) {
+        contentHTML += `
+             <div class="import-option">
+                <h4><i class="fa-solid fa-wand-magic-sparkles"></i> 正規表達式</h4>
+                <p>偵測到一條用於後處理的正規表達式規則。</p>
+            </div>
+        `;
+    }
+
+    DOM.advancedImportContent.innerHTML = contentHTML;
+    toggleModal('advanced-import-modal', true);
 }
 
