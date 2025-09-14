@@ -149,6 +149,7 @@ body {
     flex-direction: column;
     position: relative;
     min-width: 0; /* 防止 flex item 溢出 */
+    overflow-x: hidden; /* 新增：防止子元素（如編輯按鈕）溢出導致水平滾動 */
 }
 
 .panel-header {
@@ -631,28 +632,16 @@ html.theme-b body .add-character-btn:hover {
 .user-row { align-self: flex-end; flex-direction: row-reverse; }
 .user-row .bubble-container { align-items: flex-end; }
 
-.edit-msg-btn {
-    position: absolute;
-    bottom: 5px;
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-    font-size: 14px !important;
-    width: 32px !important;
-    height: 32px !important;
-}
-.message-row.show-actions .edit-msg-btn {
-    visibility: visible;
-    opacity: 1;
-}
-
-.user-row .edit-msg-btn { left: -45px; }
-.assistant-row .edit-msg-btn { right: -45px; }
-
 .message-row.is-editing {
+    max-width: 90%;
+    width: 100%;
     background-color: var(--hover-background);
     padding: 10px;
     border-radius: 12px;
+}
+
+.edit-container {
+    width: 100%;
 }
 
 .edit-textarea {
@@ -1249,7 +1238,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .message-actions {
-    display: none;
+    display: flex;
     padding-top: 8px;
     align-items: center;
     gap: 10px;
@@ -2166,8 +2155,8 @@ html.theme-b body .update-notification {
     font-size: 14px;
     line-height: 1.6;
     color: var(--text-color);
-    max-height: 1000px;
-    overflow: hidden;
+    max-height: 300px;
+    overflow-y: auto;
     transition: max-height 0.4s ease-out, padding 0.4s ease-out;
 }
 
@@ -2197,4 +2186,36 @@ html.theme-b body .update-notification {
 }
 .about-card p:last-child {
     margin-bottom: 0;
+}
+
+/* ===== 關於頁面樣式 ===== */
+#about-tab .about-section-content h5 {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0 0 10px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+#about-tab .about-section-content h6 {
+    font-size: 1em;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+#about-tab .about-section-content ul {
+    list-style-type: disc;
+    padding-left: 20px;
+    margin: 10px 0;
+}
+#about-tab .about-section-content ul li {
+    margin-bottom: 8px;
+}
+#about-tab .about-section-content ul li::marker {
+    color: var(--primary-color);
+}
+#about-tab .about-section-content strong {
+    font-weight: 600;
+    color: var(--text-color);
 }

@@ -763,8 +763,6 @@ export function makeMessageEditable(row, index) {
 
     const editContainer = document.createElement('div');
     editContainer.className = 'edit-container';
-    editContainer.style.width = window.getComputedStyle(bubble).width;
-    editContainer.style.maxWidth = '100%';
     editContainer.innerHTML = `
         <textarea class="edit-textarea"></textarea>
         <div class="edit-actions">
@@ -1982,7 +1980,8 @@ export async function handleAdvancedImport(importBoth) {
                     keywords: entry.key || entry.keywords || [],
                     secondaryKeywords: entry.keysecondary || [],
                     content: entry.content || '',
-                    enabled: !entry.disable,
+                    // [修正] 增加相容性，同時檢查 disable 和 enabled 屬性
+                    enabled: typeof entry.disable !== 'undefined' ? !entry.disable : (entry.enabled !== false),
                     order: entry.order || 100,
                     position: entry.position || 'before_char',
                     scanDepth: entry.depth || 4,

@@ -132,7 +132,8 @@ export function replacePlaceholders(text) {
     result = result.replace(/{{user}}/g, user.name || 'user');
     
     result = result.replace(/{{personality}}/g, `${char.description || ''}`);
-    result = result.replace(/{{scenario}}/g, `${char.scenario || ''}`); // 修正：使用獨立的 scenario 欄位
+    result = result.replace(/{{scenario}}/g, `${char.scenario || ''}`);
+    result = result.replace(/{{exampleDialogue}}/g, `${char.exampleDialogue || ''}`);
     result = result.replace(/{{memory}}/g, `${memory}`);
 
     return result;

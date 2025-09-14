@@ -263,30 +263,36 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
     
     const formattedTimestamp = new Date(timestamp).toLocaleString('zh-TW', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-    let messageActionsHTML = '';
     const msgData = state.chatHistories[state.activeCharacterId]?.[state.activeChatId]?.[index];
 
+    let permanentActionsHTML = '';
     if (sender === 'assistant' && msgData) {
+        // Version navigation
         if (msgData.content.length > 1) {
-            messageActionsHTML += `
+            permanentActionsHTML += `
                 <div class="version-nav">
                     <button class="version-prev-btn" ${msgData.activeContentIndex === 0 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>
                     <span class="version-counter">${msgData.activeContentIndex + 1}/${msgData.content.length}</span>
                     <button class="version-next-btn" ${msgData.activeContentIndex === msgData.content.length - 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>
                 </div>`;
         }
+        // Regenerate button for the last message
         const history = state.chatHistories[state.activeCharacterId]?.[state.activeChatId] || [];
         if (index === history.length - 1) {
-             messageActionsHTML += `<button class="regenerate-btn-sm" title="再生成一則新的回應？"><i class="fa-solid fa-arrows-rotate"></i> 再生成</button>`;
+             permanentActionsHTML += `<button class="regenerate-btn-sm" title="再生成一則新的回應？"><i class="fa-solid fa-arrows-rotate"></i> 再生成</button>`;
         }
     }
 
-    // 構建安全的 HTML 結構
+    // Edit button is always created but hidden by default. It's not part of "permanent" actions.
+    const editButtonHTML = `<button class="icon-btn-sm edit-msg-btn hidden" title="編輯訊息"><i class="fa-solid fa-pencil"></i></button>`;
+
+    // Combine permanent actions and the togglable edit button
+    const messageActionsHTML = permanentActionsHTML + editButtonHTML;
+    
     const safeAvatarUrl = avatarUrl;
     const safeSender = escapeHtml(sender);
     const safeTimestamp = escapeHtml(formattedTimestamp);
     const errorHtml = error ? `<div class="message-error"><span>${escapeHtml(error)}</span><button class="retry-btn-sm"><i class="fa-solid fa-rotate-right"></i> 重試</button></div>` : '';
-    const actionsStyle = messageActionsHTML ? 'display: flex;' : 'display: none;';
 
     row.innerHTML = `
         <img src="${safeAvatarUrl}" alt="${safeSender} avatar" class="chat-avatar">
@@ -294,9 +300,8 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
             <div class="chat-bubble"></div>
             ${errorHtml}
             <div class="message-timestamp">${safeTimestamp}</div>
-            <div class="message-actions" style="${actionsStyle}">${messageActionsHTML}</div>
+            <div class="message-actions">${messageActionsHTML}</div>
         </div>
-        <button class="icon-btn edit-msg-btn" title="編輯訊息"><i class="fa-solid fa-pencil"></i></button>
     `;
     
     let contentToRender = text;
@@ -304,12 +309,27 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
         contentToRender = applyRegexRules(text);
     }
 
-    // 處理引號樣式（這部分是安全的，因為只是添加 CSS 類別）
     contentToRender = (contentToRender || '').replace(/(「[^」]*」|『[^』]*』)/g, '<span class="quoted-text">$1</span>');
     
     const bubble = row.querySelector('.chat-bubble');
     // 使用安全的 Markdown 渲染
-    bubble.innerHTML = safeRenderMarkdown(contentToRender || '');
+
+    let processedText = text;
+    if (sender === 'assistant') {
+        // [新邏輯] 檢查 COT 規則是否被禁用，如果禁用，則手動轉義 <think> 標籤以供顯示
+        const cotRule = state.globalSettings.regexRules.find(rule => rule.id === 'regex_default_cot');
+        if (cotRule && !cotRule.enabled) {
+            processedText = (processedText || '')
+                .replace(/<think>/g, '&lt;think&gt;')
+                .replace(/<\/think>/g, '&lt;/think&gt;');
+        }
+        processedText = applyRegexRules(processedText);
+    }
+
+    // 處理引號樣式（這部分是安全的，因為只是添加 CSS 類別）
+    processedText = (processedText || '').replace(/(「[^」]*」|『[^』]*』)/g, '<span class="quoted-text">$1</span>');
+
+    bubble.innerHTML = safeRenderMarkdown(processedText || '');
 
     DOM.chatWindow.appendChild(row);
     if (isNew) {
@@ -317,6 +337,7 @@ export function displayMessage(text, sender, timestamp, index, isNew, error = nu
     }
     return row;
 }
+
 
 /**
  * @description 將 state 中的全域設定載入到 UI 中
@@ -344,8 +365,8 @@ export function loadGlobalSettingsToUI() {
     DOM.repetitionPenaltySlider.value = settings.repetitionPenalty || 0;
     DOM.repetitionPenaltyValue.value = settings.repetitionPenalty || 0;
     DOM.contextSizeInput.value = settings.contextSize || 30000;
-    DOM.maxTokensSlider.value = settings.maxTokens || 1024;
-    DOM.maxTokensValue.value = settings.maxTokens || 1024;
+    DOM.maxTokensSlider.value = settings.maxTokens || 3000;
+    DOM.maxTokensValue.value = settings.maxTokens || 3000;
     
     DOM.themeSelect.value = settings.theme || 'light';
     DOM.summarizationPromptInput.value = settings.summarizationPrompt || '';

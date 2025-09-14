@@ -71,7 +71,7 @@ export async function loadStateFromDB() {
             {
                 id: `regex_default_cot`,
                 name: '消除思考(COT)',
-                find: '.*?(<\\/thinking>|# respond|<plot>|# response)',
+                find: '<think>[\\s\\S]*?<\\/think>',
                 replace: '',
                 enabled: true
             },

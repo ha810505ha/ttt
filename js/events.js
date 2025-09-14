@@ -151,6 +151,10 @@ export function setupEventListeners() {
     });
 
     safeAddEventListener(DOM.globalSettingsBtn, 'click', () => {
+        if (DOM.leftPanel.classList.contains('mobile-visible')) {
+            DOM.leftPanel.classList.remove('mobile-visible');
+            DOM.mobileOverlay.classList.add('hidden');
+        }
         UI.loadGlobalSettingsToUI();
         UI.toggleModal('global-settings-modal', true);
     });
@@ -368,9 +372,12 @@ export function setupEventListeners() {
 
     safeAddEventListener(DOM.chatWindow, 'click', async (e) => {
         const messageRow = e.target.closest('.message-row');
+
+        // Clicked outside any message row
         if (!messageRow) {
             if (!tempState.isScreenshotMode) {
-                document.querySelectorAll('.message-row.show-actions').forEach(row => row.classList.remove('show-actions'));
+                // Hide all edit buttons
+                document.querySelectorAll('.edit-msg-btn').forEach(btn => btn.classList.add('hidden'));
             }
             return;
         }
@@ -380,13 +387,26 @@ export function setupEventListeners() {
             Handlers.handleSelectMessage(messageIndex);
             return;
         }
+
+        // Clicked on a chat bubble
         if (e.target.closest('.chat-bubble')) {
-            document.querySelectorAll('.message-row.show-actions').forEach(otherRow => {
-                if (otherRow !== messageRow) otherRow.classList.remove('show-actions');
+            const currentEditBtn = messageRow.querySelector('.edit-msg-btn');
+            
+            // Hide all other edit buttons
+            document.querySelectorAll('.edit-msg-btn').forEach(otherBtn => {
+                if (otherBtn !== currentEditBtn) {
+                    otherBtn.classList.add('hidden');
+                }
             });
-            messageRow.classList.toggle('show-actions');
+
+            // Toggle the current one
+            if (currentEditBtn) {
+                currentEditBtn.classList.toggle('hidden');
+            }
         }
-        else if (e.target.closest('.edit-msg-btn')) Handlers.makeMessageEditable(messageRow, messageIndex);
+        else if (e.target.closest('.edit-msg-btn')) { // Clicked the edit button itself
+            Handlers.makeMessageEditable(messageRow, messageIndex);
+        }
         else if (e.target.closest('.regenerate-btn-sm')) await Handlers.regenerateResponse(messageIndex);
         else if (e.target.closest('.retry-btn-sm')) await Handlers.retryMessage(messageIndex);
         else if (e.target.closest('.version-prev-btn')) await Handlers.switchVersion(messageIndex, -1);
