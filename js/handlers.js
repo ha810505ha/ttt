@@ -1593,7 +1593,30 @@ export async function handleUpdateMemory() {
     setGeneratingState(true, false);
     
     try {
-        const conversationText = history.map(m => `${m.role}: ${m.role === 'assistant' ? m.content[m.activeContentIndex] : m.content}`).join('\n');
+        // 為避免傳送給 API 的提示詞過長，我們在此截斷對話歷史。
+        // 設定一個安全且寬裕的 Token 上限 (此處用字元數約略估計)。
+        const MAX_SUMMARY_HISTORY_TOKENS = 28000;
+        let tokens = 0;
+        const truncatedHistory = [];
+
+        // 從最後一則訊息開始往前迭代，直到達到 Token 上限。
+        for (let i = history.length - 1; i >= 0; i--) {
+            const msg = history[i];
+            const content = (msg.role === 'assistant' && Array.isArray(msg.content))
+                ? msg.content[msg.activeContentIndex]
+                : msg.content;
+            
+            const messageTokens = (content || '').length;
+
+            if (tokens + messageTokens > MAX_SUMMARY_HISTORY_TOKENS) {
+                break; // 超出預算，停止加入
+            }
+
+            tokens += messageTokens;
+            truncatedHistory.unshift(msg); // 將訊息加到陣列最前面以保持順序
+        }
+
+        const conversationText = truncatedHistory.map(m => `${m.role}: ${m.role === 'assistant' ? m.content[m.activeContentIndex] : m.content}`).join('\n');
         
         let userPrompt = state.globalSettings.summarizationPrompt;
         if (!userPrompt) {
@@ -2043,3 +2066,4 @@ export async function handleAdvancedImport(importBoth) {
     tempState.importedRegex = null;
     tempState.importedImageBase64 = null;
 }
+
