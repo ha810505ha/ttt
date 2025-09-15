@@ -289,6 +289,7 @@ export function setupEventListeners() {
     safeAddEventListener(DOM.userPersonaAvatarUpload, 'change', (e) => Utils.handleImageUpload(e, DOM.userPersonaAvatarPreview));
 
     // 匯出與截圖
+    safeAddEventListener(DOM.importChatOptionBtn, 'click', Handlers.handleImportChat);
     safeAddEventListener(DOM.exportChatOptionBtn, 'click', Handlers.openExportModal);
     safeAddEventListener(DOM.confirmExportChatBtn, 'click', Handlers.handleConfirmExport);
     safeAddEventListener(DOM.cancelExportChatBtn, 'click', () => UI.toggleModal('export-chat-modal', false));

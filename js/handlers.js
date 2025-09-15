@@ -1666,6 +1666,62 @@ export function openExportModal() {
     toggleModal('export-chat-modal', true);
 }
 
+/**
+ * @description 處理聊天紀錄 (JSONL) 的匯入
+ */
+export function handleImportChat() {
+    if (!state.activeCharacterId || !state.activeChatId) {
+        alert('請先選擇一個要匯入紀錄的聊天室。');
+        return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.jsonl, .json'; // 接受 .jsonl 和 .json 以增加彈性
+
+    input.onchange = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const text = e.target.result;
+                const data = JSON.parse(text);
+
+                if (!data || !Array.isArray(data.messages)) {
+                    throw new Error('檔案格式不符，缺少 "messages" 陣列。');
+                }
+                
+                // 基礎的訊息結構驗證
+                const isValid = data.messages.every(msg => 'role' in msg && 'content' in msg && 'timestamp' in msg);
+                if (!isValid) {
+                    throw new Error('檔案中的訊息格式不正確。');
+                }
+
+                const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
+                const confirmationMessage = history.length > 0 
+                    ? '匯入將會覆蓋目前的對話紀錄。此操作無法復原。您確定要繼續嗎？'
+                    : '確定要匯入這份對話紀錄嗎？';
+
+                if (confirm(confirmationMessage)) {
+                    state.chatHistories[state.activeCharacterId][state.activeChatId] = data.messages;
+                    await saveAllChatHistoriesForChar(state.activeCharacterId);
+                    renderChatMessages();
+                    alert('對話紀錄匯入成功！');
+                }
+            } catch (error) {
+                console.error("匯入聊天紀錄失敗:", error);
+                alert(`匯入失敗：${error.message}`);
+            }
+        };
+        reader.readAsText(file, 'UTF-8');
+    };
+
+    input.click();
+}
+
+
 export async function handleConfirmExport() {
     if (!state.activeCharacterId || !state.activeChatId) return;
 
@@ -2066,4 +2122,3 @@ export async function handleAdvancedImport(importBoth) {
     tempState.importedRegex = null;
     tempState.importedImageBase64 = null;
 }
-

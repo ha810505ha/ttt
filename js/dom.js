@@ -133,6 +133,7 @@ export const saveApiPresetBtn = document.getElementById('save-api-preset-btn');
 export const deleteApiPresetBtn = document.getElementById('delete-api-preset-btn');
 
 // 截圖與匯出相關
+export const importChatOptionBtn = document.getElementById('import-chat-option-btn');
 export const exportChatOptionBtn = document.getElementById('export-chat-option-btn');
 export const exportChatModal = document.getElementById('export-chat-modal');
 export const exportFormatJsonl = document.getElementById('export-format-jsonl');
