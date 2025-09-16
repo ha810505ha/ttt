@@ -348,18 +348,71 @@ html.theme-b body .drop-indicator {
     text-overflow: ellipsis;
     display: block;
 }
+
 .session-item-actions {
     display: flex;
     align-items: center;
     gap: 5px;
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-}
-.chat-session-item:hover .session-item-actions {
+    /* [MODIFIED] 預設可見，但在非 hover 狀態下，除了釘選按鈕都隱藏 */
     visibility: visible;
     opacity: 1;
 }
+
+.session-options-container {
+    position: relative;
+    visibility: visible; /* 改為可見 */
+    opacity: 1; /* 改為不透明 */
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+
+
+.session-dropdown-menu {
+    position: absolute;
+    top: 100%; /* [MODIFIED] 改為從按鈕下方彈出 */
+    right: 0;
+    background-color: var(--panel-background);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    border: 1px solid var(--border-color);
+    padding: 5px;
+    z-index: 100;
+    width: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 5px; /* [MODIFIED] 增加與按鈕的間距 */
+}
+
+.session-dropdown-item {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 8px 10px;
+    text-align: left;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.session-dropdown-item:hover {
+    background-color: var(--hover-background);
+}
+
+.session-dropdown-item.danger {
+    color: var(--danger-color);
+}
+
+.session-dropdown-item.danger:hover {
+    background-color: var(--danger-color);
+    color: white;
+}
+
 
 .list-placeholder {
     text-align: center;
@@ -2219,3 +2272,4 @@ html.theme-b body .update-notification {
     font-weight: 600;
     color: var(--text-color);
 }
+

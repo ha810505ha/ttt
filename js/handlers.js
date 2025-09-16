@@ -19,7 +19,7 @@ import {
     deleteAllChatDataForChar, loadChatDataForCharacter, savePromptSet, deletePromptSet,
     saveLorebook, deleteLorebook
 } from './state.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, parseChatLogFile, parseCustomDate } from './utils.js';
 import * as db from './db.js';
 import { callApi, buildApiMessages, buildApiMessagesFromHistory, testApiConnection } from './api.js';
 import { 
@@ -485,25 +485,52 @@ export async function handleAddNewChat() {
     renderActiveChat();
 }
 
+/**
+ * @description [MODIFIED] 處理刪除目前開啟的聊天室 (現在是 handleDeleteChat 的一個包裝函式)
+ */
 export async function handleDeleteCurrentChat() {
     if (!state.activeCharacterId || !state.activeChatId) return;
-    if (confirm('確定要永久刪除這個對話嗎？此操作無法復原。')) {
-        delete state.chatHistories[state.activeCharacterId][state.activeChatId];
-        delete state.chatMetadatas[state.activeCharacterId][state.activeChatId];
-        if (state.longTermMemories[state.activeCharacterId]) {
-            delete state.longTermMemories[state.activeCharacterId][state.activeChatId];
+    await handleDeleteChat(state.activeChatId);
+}
+
+/**
+ * @description [NEW] 處理刪除指定 ID 的聊天室
+ * @param {string} chatIdToDelete - 要刪除的聊天室 ID
+ */
+export async function handleDeleteChat(chatIdToDelete) {
+    if (!state.activeCharacterId || !chatIdToDelete) return;
+
+    const chatName = state.chatMetadatas[state.activeCharacterId]?.[chatIdToDelete]?.name || `這個對話`;
+
+    if (confirm(`確定要永久刪除「${chatName}」嗎？此操作無法復原。`)) {
+        // 從所有相關的 state 物件中刪除
+        if (state.chatHistories[state.activeCharacterId]) {
+            delete state.chatHistories[state.activeCharacterId][chatIdToDelete];
         }
-        state.activeChatId = null;
-        
+        if (state.chatMetadatas[state.activeCharacterId]) {
+            delete state.chatMetadatas[state.activeCharacterId][chatIdToDelete];
+        }
+        if (state.longTermMemories[state.activeCharacterId]) {
+            delete state.longTermMemories[state.activeCharacterId][chatIdToDelete];
+        }
+
+        // 將更新後的資料存回資料庫
         await saveAllChatHistoriesForChar(state.activeCharacterId);
         await saveAllChatMetadatasForChar(state.activeCharacterId);
         await saveAllLongTermMemoriesForChar(state.activeCharacterId);
-        await saveSettings();
 
+        // 如果被刪除的是目前開啟的聊天室，則更新 UI
+        if (state.activeChatId === chatIdToDelete) {
+            state.activeChatId = null;
+            await saveSettings();
+            renderActiveChat(); // 這會顯示歡迎畫面
+        }
+        
+        // 重新渲染聊天室列表
         renderChatSessionList();
-        renderActiveChat();
     }
 }
+
 
 export async function handleSaveNote() {
     if (!state.activeCharacterId || !state.activeChatId) return;
@@ -1593,13 +1620,10 @@ export async function handleUpdateMemory() {
     setGeneratingState(true, false);
     
     try {
-        // 為避免傳送給 API 的提示詞過長，我們在此截斷對話歷史。
-        // 設定一個安全且寬裕的 Token 上限 (此處用字元數約略估計)。
         const MAX_SUMMARY_HISTORY_TOKENS = 28000;
         let tokens = 0;
         const truncatedHistory = [];
 
-        // 從最後一則訊息開始往前迭代，直到達到 Token 上限。
         for (let i = history.length - 1; i >= 0; i--) {
             const msg = history[i];
             const content = (msg.role === 'assistant' && Array.isArray(msg.content))
@@ -1609,11 +1633,11 @@ export async function handleUpdateMemory() {
             const messageTokens = (content || '').length;
 
             if (tokens + messageTokens > MAX_SUMMARY_HISTORY_TOKENS) {
-                break; // 超出預算，停止加入
+                break;
             }
 
             tokens += messageTokens;
-            truncatedHistory.unshift(msg); // 將訊息加到陣列最前面以保持順序
+            truncatedHistory.unshift(msg);
         }
 
         const conversationText = truncatedHistory.map(m => `${m.role}: ${m.role === 'assistant' ? m.content[m.activeContentIndex] : m.content}`).join('\n');
@@ -1627,14 +1651,16 @@ export async function handleUpdateMemory() {
         
         const provider = state.globalSettings.apiProvider || 'openai';
         let summaryMessages;
+
         if (provider === 'google' || provider === 'official_gemini') {
-            summaryMessages = [{ role: 'user', content: summaryPrompt }];
+            const contents = [{ role: 'user', parts: [{ text: summaryPrompt }] }];
+            summaryMessages = { contents };
         } else if (provider === 'anthropic') {
             summaryMessages = { system: 'You are a summarization expert.', messages: [{ role: 'user', content: summaryPrompt }] };
         } else {
             summaryMessages = [{ role: 'system', content: 'You are a summarization expert.' }, { role: 'user', content: summaryPrompt }];
         }
-
+        
         const summary = await callApi(summaryMessages, true);
         
         if (!state.longTermMemories[state.activeCharacterId]) {
@@ -1666,9 +1692,6 @@ export function openExportModal() {
     toggleModal('export-chat-modal', true);
 }
 
-/**
- * @description 處理聊天紀錄 (JSONL) 的匯入
- */
 export function handleImportChat() {
     if (!state.activeCharacterId || !state.activeChatId) {
         alert('請先選擇一個要匯入紀錄的聊天室。');
@@ -1677,7 +1700,7 @@ export function handleImportChat() {
 
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.jsonl, .json'; // 接受 .jsonl 和 .json 以增加彈性
+    input.accept = '.jsonl';
 
     input.onchange = (event) => {
         const file = event.target.files[0];
@@ -1686,26 +1709,37 @@ export function handleImportChat() {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
-                const text = e.target.result;
-                const data = JSON.parse(text);
-
-                if (!data || !Array.isArray(data.messages)) {
-                    throw new Error('檔案格式不符，缺少 "messages" 陣列。');
-                }
+                const jsonObjects = parseChatLogFile(e.target.result);
                 
-                // 基礎的訊息結構驗證
-                const isValid = data.messages.every(msg => 'role' in msg && 'content' in msg && 'timestamp' in msg);
-                if (!isValid) {
-                    throw new Error('檔案中的訊息格式不正確。');
+                const meta = jsonObjects.shift(); 
+                if (!meta || !meta.user_name || !meta.character_name) {
+                    throw new Error('檔案格式不符，缺少元數據。');
                 }
+
+                const newHistory = jsonObjects.map(item => {
+                    const date = parseCustomDate(item.send_date);
+                    if (isNaN(date.getTime())) {
+                        console.warn('無法解析日期:', item.send_date, '將使用目前時間。');
+                        item.timestamp = new Date().toISOString();
+                    } else {
+                        item.timestamp = date.toISOString();
+                    }
+                    
+                    return {
+                        role: item.is_user ? 'user' : 'assistant',
+                        content: item.is_user ? item.mes : (item.swipes || [item.mes]),
+                        activeContentIndex: item.is_user ? 0 : (item.swipe_id || 0),
+                        timestamp: item.timestamp
+                    };
+                });
 
                 const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
-                const confirmationMessage = history.length > 0 
+                const confirmationMessage = history.length > 0
                     ? '匯入將會覆蓋目前的對話紀錄。此操作無法復原。您確定要繼續嗎？'
                     : '確定要匯入這份對話紀錄嗎？';
 
                 if (confirm(confirmationMessage)) {
-                    state.chatHistories[state.activeCharacterId][state.activeChatId] = data.messages;
+                    state.chatHistories[state.activeCharacterId][state.activeChatId] = newHistory;
                     await saveAllChatHistoriesForChar(state.activeCharacterId);
                     renderChatMessages();
                     alert('對話紀錄匯入成功！');
@@ -1717,7 +1751,6 @@ export function handleImportChat() {
         };
         reader.readAsText(file, 'UTF-8');
     };
-
     input.click();
 }
 
@@ -1810,6 +1843,7 @@ export async function handleGenerateScreenshot() {
             scale: 2,
             useCORS: true,
             backgroundColor: null,
+            letterRendering: true, // 改善文字渲染精確度
         });
 
         const image = canvas.toDataURL('image/png', 1.0);
@@ -2122,3 +2156,4 @@ export async function handleAdvancedImport(importBoth) {
     tempState.importedRegex = null;
     tempState.importedImageBase64 = null;
 }
+

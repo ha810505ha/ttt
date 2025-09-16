@@ -463,63 +463,159 @@ export function populateEditorFields(importedData, imageBase64 = null) {
 
 
 /**
- * @description [核心修改] 使用分塊處理的方式，非同步匯出對話為 JSONL 格式，避免 UI 凍結。
+ * @description [核心修改] 匯出對話為 JSONL 格式。
+ * @returns {Promise<void>}
  */
 export function exportChatAsJsonl() {
     return new Promise((resolve, reject) => {
-        if (!state.activeCharacterId || !state.activeChatId) {
-            reject(new Error('沒有活躍的聊天室。'));
-            return;
-        }
-        const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
-        if (history.length === 0) {
-            alert('沒有對話可以匯出。');
+        try {
+            if (!state.activeCharacterId || !state.activeChatId) {
+                throw new Error('沒有活躍的聊天室。');
+            }
+            const history = state.chatHistories[state.activeCharacterId][state.activeChatId] || [];
+            if (history.length === 0) {
+                alert('沒有對話可以匯出。');
+                return resolve();
+            }
+
+            const activeChar = state.characters.find(c => c.id === state.activeCharacterId);
+            const activeUser = state.userPersonas.find(p => p.id === state.activeUserPersonaId) || state.userPersonas[0];
+            const metadata = state.chatMetadatas[state.activeCharacterId]?.[state.activeChatId] || {};
+            
+            const now = new Date();
+            const createDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}@${String(now.getHours()).padStart(2, '0')}h${String(now.getMinutes()).padStart(2, '0')}m${String(now.getSeconds()).padStart(2, '0')}s`;
+
+            // 建立元數據物件
+            const metaObject = {
+                user_name: activeUser.name,
+                character_name: activeChar.name,
+                create_date: createDate,
+                chat_metadata: metadata 
+            };
+            
+            let content = JSON.stringify(metaObject) + '\n';
+            
+            // 建立訊息物件
+            history.forEach(message => {
+                const isUser = message.role === 'user';
+                const messageObject = {
+                    name: isUser ? activeUser.name : activeChar.name,
+                    is_user: isUser,
+                    is_system: false,
+                    send_date: new Date(message.timestamp).toISOString(), // 標準 ISO 8601 格式
+                    mes: isUser ? message.content : message.content[message.activeContentIndex],
+                    swipe_id: isUser ? null : message.activeContentIndex,
+                    swipes: isUser ? null : message.content,
+                };
+                content += JSON.stringify(messageObject) + '\n';
+            });
+            
+            const filename = `${activeChar.name} - ${createDate}.jsonl`;
+            const blob = new Blob([content], { type: 'application/jsonl' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
             resolve();
-            return;
+        } catch (error) {
+            console.error("匯出 JSONL 失敗:", error);
+            reject(error);
         }
-        
-        const activeChar = state.characters.find(c => c.id === state.activeCharacterId);
-        const filename = `${activeChar.name}_${state.activeChatId}.jsonl`;
-        
-        let content = '{"messages":[\n';
-        const CHUNK_SIZE = 50; // 每次處理 50 則訊息
-        let currentIndex = 0;
+    });
+}
 
-        function processChunk() {
-            try {
-                const end = Math.min(currentIndex + CHUNK_SIZE, history.length);
-                const chunk = history.slice(currentIndex, end);
-                
-                chunk.forEach((message, index) => {
-                    const isLast = (currentIndex + index) === (history.length - 1);
-                    content += JSON.stringify(message) + (isLast ? '' : ',\n');
-                });
+/**
+ * @description [NEW] 解析 .jsonl 或包含多個 JSON 物件的檔案。
+ * @param {string} text - 檔案內容。
+ * @returns {Array<Object>} - 解析後的 JSON 物件陣列。
+ */
+export function parseChatLogFile(text) {
+    const lines = text.split('\n');
+    const jsonObjects = [];
+    let currentObjectStr = '';
 
-                currentIndex += CHUNK_SIZE;
-
-                if (currentIndex < history.length) {
-                    // 繼續處理下一塊，使用 setTimeout 將執行推遲到下一個事件循環
-                    setTimeout(processChunk, 0); 
-                } else {
-                    // 所有塊都處理完畢
-                    content += '\n]}';
-                    const blob = new Blob([content], { type: 'application/jsonl' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    resolve();
-                }
-            } catch (error) {
-                console.error("匯出 JSONL 失敗:", error);
-                reject(error);
+    for (const line of lines) {
+        currentObjectStr += line;
+        try {
+            const parsed = JSON.parse(currentObjectStr);
+            jsonObjects.push(parsed);
+            currentObjectStr = ''; // Reset for the next object
+        } catch (e) {
+            // If it's not a complete JSON object yet, continue to the next line
+            if (e instanceof SyntaxError) {
+                continue;
+            } else {
+                // Rethrow other errors
+                throw e;
             }
         }
-        
-        // 啟動第一個處理塊
-        processChunk();
-    });
+    }
+
+    // Handle the case where the last object might not have a trailing newline
+    if (currentObjectStr.trim() !== '') {
+        try {
+            jsonObjects.push(JSON.parse(currentObjectStr));
+        } catch (e) {
+            console.error("解析最後一個 JSON 物件時失敗:", currentObjectStr, e);
+        }
+    }
+
+    return jsonObjects;
+}
+
+/**
+ * @description [NEW] 更可靠地解析自訂日期字串，例如 "May 1, 2025 1:08pm"。
+ * @param {string} dateString - 日期字串。
+ * @returns {Date} - 解析後的 Date 物件。如果失敗，則回傳一個無效日期。
+ */
+export function parseCustomDate(dateString) {
+    if (!dateString) return new Date(NaN); // Return invalid date for empty/null input
+
+    // Regex to capture "Month Day, Year HH:MM am/pm"
+    // It's flexible with spacing and case-insensitive
+    const parts = dateString.match(/(\w+)\s+(\d{1,2}),\s+(\d{4})\s+(\d{1,2}):(\d{2})\s*(am|pm)/i);
+
+    if (!parts) {
+        // If custom parsing fails, fallback to the native parser
+        // This allows it to still handle ISO 8601 strings or other native formats
+        const fallbackDate = new Date(dateString);
+        if (isNaN(fallbackDate.getTime())) {
+            console.error("Custom and native parsers failed to parse date string:", dateString);
+        } else {
+            console.warn("Used native Date parser for:", dateString);
+        }
+        return fallbackDate;
+    }
+
+    const [, monthStr, day, year, hourStr, minute, ampm] = parts;
+    const months = {
+        jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+        jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+    };
+    
+    // Get the first three letters of the month and convert to lowercase for matching
+    const monthKey = monthStr.substring(0, 3).toLowerCase();
+    const month = months[monthKey];
+
+    if (month === undefined) {
+         console.error("Unrecognized month in date string:", dateString);
+         return new Date(NaN); // Return invalid date
+    }
+
+    let hour = parseInt(hourStr, 10);
+
+    // Adjust hour for AM/PM
+    if (ampm.toLowerCase() === 'pm' && hour < 12) {
+        hour += 12;
+    }
+    if (ampm.toLowerCase() === 'am' && hour === 12) { // Handle midnight (12 AM)
+        hour = 0;
+    }
+
+    // Create a new Date object. Month is 0-indexed.
+    // Note: This will be in the user's local timezone.
+    return new Date(year, month, day, hour, minute);
 }
 

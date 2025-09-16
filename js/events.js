@@ -79,10 +79,17 @@ export function setupEventListeners() {
     });
     safeAddEventListener(DOM.deleteChatOptionBtn, 'click', Handlers.handleDeleteCurrentChat);
 
-    window.addEventListener('click', () => {
+    window.addEventListener('click', (e) => {
+        // 隱藏聊天室右上角的下拉選單
         if (DOM.chatOptionsMenu && !DOM.chatOptionsMenu.classList.contains('hidden')) {
             DOM.chatOptionsMenu.classList.add('hidden');
         }
+        // [NEW] 隱藏側邊欄聊天室項目的下拉選單
+        document.querySelectorAll('.session-dropdown-menu').forEach(menu => {
+            if (!menu.classList.contains('hidden') && !menu.parentElement.contains(e.target)) {
+                 menu.classList.add('hidden');
+            }
+        });
     });
 
     // Modals
@@ -360,14 +367,29 @@ export function setupEventListeners() {
         const sessionItem = e.target.closest('.chat-session-item');
         if (!sessionItem) return;
         const chatId = sessionItem.dataset.id;
+        
         if (e.target.closest('.session-item-content')) {
             await Handlers.switchChat(chatId);
             DOM.leftPanel.classList.remove('mobile-visible');
             DOM.mobileOverlay.classList.add('hidden');
         } else if (e.target.closest('.pin-chat-btn')) {
             await Handlers.handleTogglePinChat(chatId);
+        } else if (e.target.closest('.session-more-options-btn')) {
+            e.stopPropagation();
+            const menu = sessionItem.querySelector('.session-dropdown-menu');
+            if (menu) {
+                // 隱藏其他所有已開啟的選單
+                document.querySelectorAll('.session-dropdown-menu').forEach(otherMenu => {
+                    if (otherMenu !== menu) {
+                        otherMenu.classList.add('hidden');
+                    }
+                });
+                menu.classList.toggle('hidden');
+            }
         } else if (e.target.closest('.rename-chat-btn')) {
             Handlers.openRenameModal(chatId);
+        } else if (e.target.closest('.delete-chat-btn')) {
+            await Handlers.handleDeleteChat(chatId);
         }
     });
 
@@ -530,4 +552,4 @@ export function setupEventListeners() {
     setupDragSort(DOM.characterList, Handlers.handleCharacterDropSort);
     setupDragSort(DOM.chatSessionList, Handlers.handleChatSessionDropSort);
     setupDragSort(DOM.promptList, Handlers.handlePromptDropSort);
-};
+}

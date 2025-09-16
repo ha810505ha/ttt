@@ -163,14 +163,21 @@ export function renderChatSessionList() {
         const item = document.createElement('li');
         item.className = `chat-session-item ${session.id === state.activeChatId ? 'active' : ''}`;
         item.dataset.id = session.id;
+
         item.innerHTML = `
             <div class="session-item-content">
-                 <i class="fa-solid fa-grip-vertical drag-handle"></i>
+                <i class="fa-solid fa-grip-vertical drag-handle"></i>
                 <span class="session-item-name">${displayName}</span>
             </div>
             <div class="session-item-actions">
                 <button class="icon-btn-sm pin-chat-btn ${session.pinned ? 'active' : ''}" title="置頂"><i class="fa-solid fa-thumbtack"></i></button>
-                <button class="icon-btn-sm rename-chat-btn" title="重新命名"><i class="fa-solid fa-i-cursor"></i></button>
+                <div class="session-options-container">
+                    <button class="icon-btn-sm session-more-options-btn" title="更多選項"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    <div class="session-dropdown-menu hidden">
+                        <button class="session-dropdown-item rename-chat-btn"><i class="fa-solid fa-i-cursor"></i> 重新命名</button>
+                        <button class="session-dropdown-item delete-chat-btn danger"><i class="fa-solid fa-trash-can"></i> 刪除</button>
+                    </div>
+                </div>
             </div>
         `;
         DOM.chatSessionList.appendChild(item);
@@ -819,4 +826,3 @@ export function showAdvancedImportModal(importedData, lorebookData, regexData, i
     DOM.advancedImportContent.innerHTML = contentHTML;
     toggleModal('advanced-import-modal', true);
 }
-
