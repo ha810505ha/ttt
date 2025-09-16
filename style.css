@@ -217,6 +217,10 @@ body {
     -webkit-user-select: none;
 }
 
+.chat-session-item.menu-is-open {
+    z-index: 20;
+}
+
 .chat-session-item {
     justify-content: space-between;
 }
@@ -360,12 +364,10 @@ html.theme-b body .drop-indicator {
 
 .session-options-container {
     position: relative;
-    visibility: visible; /* 改為可見 */
-    opacity: 1; /* 改為不透明 */
+    visibility: visible;
+    opacity: 1;
     transition: opacity 0.2s, visibility 0.2s;
 }
-
-
 
 .session-dropdown-menu {
     position: absolute;
@@ -1200,22 +1202,6 @@ input[type="range"]::-moz-range-thumb {
         padding: 15px;
     }
     
-    /* 行動裝置拖曳適配 */
-    .drag-handle {
-        opacity: 1;
-        padding: 12px 8px;
-    }
-    
-    .character-item, .chat-session-item {
-        padding: 15px;
-        border-radius: 16px;
-    }
-    
-    .character-item.dragging, 
-    .chat-session-item.dragging {
-        transform: scale(1.02);
-    }
-    
     .drop-indicator {
         height: 4px !important;
         margin: 5px 10px !important;
@@ -1942,8 +1928,10 @@ input[type="range"]::-moz-range-thumb {
     }
     
     .drag-handle {
-        padding: 12px;
-        font-size: 18px;
+        padding: 15px; /* 增加觸控區域 */
+        font-size: 20px; /* 讓圖示更清晰 */
+        opacity: 1; /* 在觸控裝置上永遠顯示 */
+        color: var(--text-light-color); /* 使用更明顯的顏色 */
     }
 }
 

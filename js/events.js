@@ -378,13 +378,19 @@ export function setupEventListeners() {
             e.stopPropagation();
             const menu = sessionItem.querySelector('.session-dropdown-menu');
             if (menu) {
-                // 隱藏其他所有已開啟的選單
+                const isOpening = menu.classList.contains('hidden');
+
+                // 隱藏其他所有已開啟的選單，並移除它們父層的 class
                 document.querySelectorAll('.session-dropdown-menu').forEach(otherMenu => {
-                    if (otherMenu !== menu) {
-                        otherMenu.classList.add('hidden');
-                    }
+                    otherMenu.classList.add('hidden');
+                    otherMenu.closest('.chat-session-item').classList.remove('menu-is-open');
                 });
-                menu.classList.toggle('hidden');
+
+                // 切換目前點擊的選單
+                if (isOpening) {
+                    menu.classList.remove('hidden');
+                    sessionItem.classList.add('menu-is-open');
+                }
             }
         } else if (e.target.closest('.rename-chat-btn')) {
             Handlers.openRenameModal(chatId);
@@ -444,12 +450,9 @@ export function setupEventListeners() {
         else if (e.target.closest('.delete-persona-btn')) await Handlers.handleDeleteUserPersona(personaId);
     });
 
-    // 拖曳排序邏輯 (保持不變)
+    // 拖曳排序邏輯
     let draggedId = null;
     let draggedElement = null;
-    let longPressTimer = null;
-    let startX = 0;
-    let startY = 0;
     let isDragging = false;
     
     function getDragAfterElement(container, y) {
@@ -467,50 +470,42 @@ export function setupEventListeners() {
 
     const setupDragSort = (container, handler) => {
         if (!container) return;
-        const LONG_PRESS_DURATION = 500;
-        const MOVE_THRESHOLD = 10;
 
         const onPointerDown = (e) => {
-            const targetItem = e.target.closest('[data-id]');
-            if (!targetItem || e.target.closest('button, a, input, select, textarea') || (e.pointerType === 'mouse' && e.button !== 0)) return;
-            e.preventDefault();
+            // [MODIFIED] 只在點擊 .drag-handle 時才啟動拖曳
+            const dragHandle = e.target.closest('.drag-handle');
+            if (!dragHandle) return;
+
+            const targetItem = dragHandle.closest('[data-id]');
+            if (!targetItem || (e.pointerType === 'mouse' && e.button !== 0)) return;
+
+            e.preventDefault(); // 防止文字選取等預設行為
+            
             draggedElement = targetItem;
-            startX = e.clientX;
-            startY = e.clientY;
-            isDragging = false;
-            longPressTimer = setTimeout(() => {
-                if (draggedElement && !isDragging) {
-                    isDragging = true;
-                    draggedElement.classList.add('dragging');
-                    document.body.classList.add('is-dragging');
-                    if (navigator.vibrate) navigator.vibrate(50);
-                    const dragStartEvent = new DragEvent('dragstart', { bubbles: true, cancelable: true });
-                    draggedElement.dispatchEvent(dragStartEvent);
-                }
-            }, LONG_PRESS_DURATION);
+            isDragging = true;
+            draggedId = targetItem.dataset.id || targetItem.dataset.identifier;
+
+            draggedElement.classList.add('dragging');
+            document.body.classList.add('is-dragging');
+            if (navigator.vibrate) navigator.vibrate(50);
+
             document.addEventListener('pointermove', onPointerMove, { passive: false });
             document.addEventListener('pointerup', onPointerUp);
             document.addEventListener('pointercancel', onPointerCancel);
         };
         const onPointerMove = (e) => {
-            if (!draggedElement) return;
-            const deltaX = Math.abs(e.clientX - startX);
-            const deltaY = Math.abs(e.clientY - startY);
-            if ((deltaX > MOVE_THRESHOLD || deltaY > MOVE_THRESHOLD) && !isDragging) {
-                clearTimeout(longPressTimer);
-                cleanup();
-            }
-            if (isDragging) {
-                e.preventDefault();
-                const afterElement = getDragAfterElement(container, e.clientY);
-                container.querySelectorAll('.drop-indicator').forEach(el => el.remove());
-                const indicator = document.createElement('div');
-                indicator.className = 'drop-indicator';
-                if (afterElement) {
-                    afterElement.parentNode.insertBefore(indicator, afterElement);
-                } else {
-                    container.appendChild(indicator);
-                }
+            if (!isDragging) return;
+            e.preventDefault();
+
+            const afterElement = getDragAfterElement(container, e.clientY);
+            container.querySelectorAll('.drop-indicator').forEach(el => el.remove());
+            const indicator = document.createElement('div');
+            indicator.className = 'drop-indicator';
+
+            if (afterElement) {
+                afterElement.parentNode.insertBefore(indicator, afterElement);
+            } else {
+                container.appendChild(indicator);
             }
         };
         const onPointerUp = (e) => {
@@ -522,8 +517,8 @@ export function setupEventListeners() {
             cleanup();
         };
         const onPointerCancel = () => cleanup();
+
         const cleanup = () => {
-            clearTimeout(longPressTimer);
             document.removeEventListener('pointermove', onPointerMove);
             document.removeEventListener('pointerup', onPointerUp);
             document.removeEventListener('pointercancel', onPointerCancel);
@@ -534,15 +529,9 @@ export function setupEventListeners() {
             draggedId = null;
             isDragging = false;
         };
-        container.addEventListener('pointerdown', onPointerDown, { passive: false });
-        container.addEventListener('dragstart', (e) => {
-            const target = e.target.closest('[data-id]');
-            if (target && isDragging) {
-                draggedId = target.dataset.id || target.dataset.identifier;
-            } else {
-                e.preventDefault();
-            }
-        });
+        
+        container.addEventListener('pointerdown', onPointerDown);
+        container.addEventListener('dragstart', (e) => { if (isDragging) e.preventDefault(); });
         container.addEventListener('dragend', () => cleanup());
         container.addEventListener('dragover', (e) => { if (isDragging) e.preventDefault(); });
         container.addEventListener('drop', (e) => { if (isDragging) e.preventDefault(); });
@@ -553,3 +542,4 @@ export function setupEventListeners() {
     setupDragSort(DOM.chatSessionList, Handlers.handleChatSessionDropSort);
     setupDragSort(DOM.promptList, Handlers.handlePromptDropSort);
 }
+
