@@ -1186,30 +1186,6 @@ export async function handleDeletePromptItem() {
     }
 }
 
-export async function handlePromptDropSort(draggedIdentifier, targetIdentifier) {
-    const activeSet = PromptManager.getActivePromptSet();
-    if (!activeSet || !activeSet.prompts) return;
-
-    const draggedItem = activeSet.prompts.find(p => p.identifier === draggedIdentifier);
-    if (!draggedItem) return;
-
-    const originalIndex = activeSet.prompts.findIndex(p => p.identifier === draggedIdentifier);
-    activeSet.prompts.splice(originalIndex, 1);
-
-    const targetIndex = targetIdentifier 
-        ? activeSet.prompts.findIndex(p => p.identifier === targetIdentifier)
-        : activeSet.prompts.length;
-
-    activeSet.prompts.splice(targetIndex, 0, draggedItem);
-    
-    activeSet.prompts.forEach((p, index) => {
-        p.order = index;
-    });
-
-    await savePromptSet(activeSet);
-    renderPromptList();
-}
-
 export function handlePromptPositionChange() {
     const isChatType = DOM.promptEditorPositionSelect.value === 'chat';
     DOM.promptDepthOrderContainer.classList.toggle('hidden', !isChatType);
@@ -1241,6 +1217,41 @@ export async function handleAddPromptItem() {
     
     // 為新提示詞打開編輯器
     openPromptEditor(newPrompt.identifier);
+}
+
+
+export async function handlePromptDropSort(draggedIdentifier, targetIdentifier) {
+    const activeSet = PromptManager.getActivePromptSet();
+    if (!activeSet || !activeSet.prompts) return;
+
+    // Directly find the set in the main state to ensure modifications are persistent
+    const activeSetId = state.activePromptSetId;
+    const setIndex = state.promptSets.findIndex(ps => ps.id === activeSetId);
+    if (setIndex === -1) {
+        console.error("Could not find active prompt set in state for sorting.");
+        return;
+    }
+    const setToUpdate = state.promptSets[setIndex];
+
+    const draggedItem = setToUpdate.prompts.find(p => p.identifier === draggedIdentifier);
+    if (!draggedItem) return;
+
+    const originalIndex = setToUpdate.prompts.findIndex(p => p.identifier === draggedIdentifier);
+    setToUpdate.prompts.splice(originalIndex, 1);
+
+    const targetIndex = targetIdentifier 
+        ? setToUpdate.prompts.findIndex(p => p.identifier === targetIdentifier)
+        : setToUpdate.prompts.length;
+
+    setToUpdate.prompts.splice(targetIndex, 0, draggedItem);
+    
+    // Re-index the order property for all items to ensure it's sequential and clean
+    setToUpdate.prompts.forEach((p, index) => {
+        p.order = index;
+    });
+
+    await savePromptSet(setToUpdate);
+    renderPromptList();
 }
 
 
@@ -1652,12 +1663,16 @@ export async function handleUpdateMemory() {
         const provider = state.globalSettings.apiProvider || 'openai';
         let summaryMessages;
 
-        if (provider === 'google' || provider === 'official_gemini') {
+        // [FIX] Correctly format payload for each provider
+        if (provider === 'google') {
             const contents = [{ role: 'user', parts: [{ text: summaryPrompt }] }];
-            summaryMessages = { contents };
+            summaryMessages = { 
+                contents: contents,
+                systemInstruction: { parts: [{ text: 'You are a summarization expert.' }] }
+            };
         } else if (provider === 'anthropic') {
             summaryMessages = { system: 'You are a summarization expert.', messages: [{ role: 'user', content: summaryPrompt }] };
-        } else {
+        } else { // This now includes 'official_gemini', 'openai', etc.
             summaryMessages = [{ role: 'system', content: 'You are a summarization expert.' }, { role: 'user', content: summaryPrompt }];
         }
         

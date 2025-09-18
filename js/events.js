@@ -218,9 +218,9 @@ export function setupEventListeners() {
         const toggle = e.target.closest('.prompt-item-toggle');
         const editBtn = e.target.closest('.edit-prompt-btn');
         if (toggle) {
-            Handlers.handleTogglePromptEnabled(toggle.closest('.prompt-item').dataset.identifier);
+            Handlers.handleTogglePromptEnabled(toggle.closest('.prompt-item').dataset.id);
         } else if (editBtn) {
-            Handlers.openPromptEditor(editBtn.closest('.prompt-item').dataset.identifier);
+            Handlers.openPromptEditor(editBtn.closest('.prompt-item').dataset.id);
         }
     });
     safeAddEventListener(DOM.savePromptEditorBtn, 'click', Handlers.handleSavePrompt);
@@ -483,7 +483,7 @@ export function setupEventListeners() {
             
             draggedElement = targetItem;
             isDragging = true;
-            draggedId = targetItem.dataset.id || targetItem.dataset.identifier;
+            draggedId = targetItem.dataset.id;
 
             draggedElement.classList.add('dragging');
             document.body.classList.add('is-dragging');
@@ -511,7 +511,7 @@ export function setupEventListeners() {
         const onPointerUp = (e) => {
             if (isDragging && draggedElement && draggedId) {
                 const afterElement = getDragAfterElement(container, e.clientY);
-                const targetId = afterElement ? (afterElement.dataset.id || afterElement.dataset.identifier) : null;
+                const targetId = afterElement ? afterElement.dataset.id : null;
                 handler(draggedId, targetId);
             }
             cleanup();

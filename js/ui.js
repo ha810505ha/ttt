@@ -635,10 +635,13 @@ export function renderPromptList() {
         return;
     }
 
-    activeSet.prompts.forEach(prompt => {
+    // [FIX] Always sort prompts by their order property before rendering
+    const sortedPrompts = [...activeSet.prompts].sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    sortedPrompts.forEach(prompt => {
         const item = document.createElement('li');
         item.className = 'prompt-item';
-        item.dataset.identifier = prompt.identifier;
+        item.dataset.id = prompt.identifier;
         
         // 使用安全的模板創建
         item.innerHTML = createSafeTemplate(`
